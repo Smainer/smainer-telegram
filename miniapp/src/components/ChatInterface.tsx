@@ -1,0 +1,281 @@
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
+import type { AIModel, InferenceRequest, InferenceResponse, InferenceTaskStatus } from '@/types';
+import { ModelSelector } from './ModelSelector';
+import { CostEstimator } from './CostEstimator';
+import { NFTPreview } from './NFTPreview';
+
+interface ChatInterfaceProps {
+  walletAddress: string;
+  availableModels: AIModel[];
+  onSubmitTask: (task: InferenceRequest) => Promise<string>; // Returns task ID
+  onTaskUpdate?: (taskId: string, status: InferenceTaskStatus) => void;
+}
+
+interface ChatMessage {
+  id: string;
+  type: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  taskId?: string;
+  nftMintable?: boolean;
+  imageUrl?: string;
+}
+
+export function ChatInterface({ 
+  walletAddress, 
+  availableModels, 
+  onSubmitTask, 
+  onTaskUpdate 
+}: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      type: 'system',
+      content: 'Welcome to Smainer AI! Choose a model and start your AI inference. You can also mint NFTs from generated images.',
+      timestamp: new Date(),
+    }
+  ]);
+  
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [showNFTPreview, setShowNFTPreview] = useState(false);
+  const [selectedImageForNFT, setSelectedImageForNFT] = useState<string | null>(null);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!currentMessage.trim() || !selectedModel || isGenerating) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: currentMessage,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setCurrentMessage('');
+    setIsGenerating(true);
+
+    try {
+      const inferenceRequest: InferenceRequest = {
+        model_name: selectedModel.name,
+        prompt: currentMessage,
+        max_tokens: 150,
+        temperature: 0.7,
+        callback_url: `${import.meta.env.VITE_RELAYER_URL || 'http://localhost:8001'}/callback`,
+        metadata: {
+          user_address: walletAddress,
+          session_id: Date.now().toString(),
+        }
+      };
+
+      const taskId = await onSubmitTask(inferenceRequest);
+      setActiveTaskId(taskId);
+
+      // Add loading message
+      const loadingMessage: ChatMessage = {
+        id: `loading-${Date.now()}`,
+        type: 'assistant',
+        content: 'Generating response...',
+        timestamp: new Date(),
+        taskId,
+      };
+
+      setMessages(prev => [...prev, loadingMessage]);
+
+      // Simulate streaming response (replace with actual WebSocket in production)
+      setTimeout(() => {
+        const isImageGeneration = currentMessage.toLowerCase().includes('image') || 
+                                currentMessage.toLowerCase().includes('picture') ||
+                                currentMessage.toLowerCase().includes('generate');
+        
+        const responseContent = isImageGeneration 
+          ? 'Here\'s your generated image:'
+          : 'This is a sample AI response. In production, this would be streamed from the actual model.';
+        
+        const responseMessage: ChatMessage = {
+          id: `response-${Date.now()}`,
+          type: 'assistant',
+          content: responseContent,
+          timestamp: new Date(),
+          taskId,
+          nftMintable: isImageGeneration,
+          imageUrl: isImageGeneration ? '/api/placeholder-image.jpg' : undefined,
+        };
+
+        setMessages(prev => prev.filter(m => m.id !== loadingMessage.id).concat(responseMessage));
+        setIsGenerating(false);
+        setActiveTaskId(null);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Failed to submit task:', error);
+      
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        type: 'system',
+        content: 'Failed to generate response. Please try again.',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => prev.filter(m => m.id !== `loading-${Date.now()}`).concat(errorMessage));
+      setIsGenerating(false);
+      setActiveTaskId(null);
+    }
+  };
+
+  const handleMintNFT = (imageUrl: string) => {
+    setSelectedImageForNFT(imageUrl);
+    setShowNFTPreview(true);
+  };
+
+  return (
+    <div className="flex flex-col h-full max-h-screen">
+      {/* Header with Model Selection */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+        <div className="flex flex-col space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">AI Inference</h3>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span>Connected</span>
+            </div>
+          </div>
+          
+          <ModelSelector
+            models={availableModels}
+            selectedModel={selectedModel}
+            onSelectModel={setSelectedModel}
+          />
+          
+          {selectedModel && (
+            <CostEstimator
+              model={selectedModel}
+              estimatedTokens={currentMessage.split(' ').length * 2}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            onMintNFT={handleMintNFT}
+          />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="border-t bg-background/95 backdrop-blur p-4">
+        <form onSubmit={handleSubmit} className="flex space-x-2">
+          <textarea
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={selectedModel ? "Type your message..." : "Select a model first..."}
+            disabled={!selectedModel || isGenerating}
+            className="flex-1 min-h-[40px] max-h-32 px-3 py-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            rows={1}
+          />
+          
+          <button
+            type="submit"
+            disabled={!currentMessage.trim() || !selectedModel || isGenerating}
+            className="px-4 py-2 bg-smainer-green hover:bg-smainer-green/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md transition-colors flex items-center space-x-2"
+          >
+            {isGenerating ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {/* NFT Preview Modal */}
+      {showNFTPreview && selectedImageForNFT && (
+        <NFTPreview
+          imageUrl={selectedImageForNFT}
+          onClose={() => {
+            setShowNFTPreview(false);
+            setSelectedImageForNFT(null);
+          }}
+          onMint={(metadata) => {
+            console.log('Minting NFT with metadata:', metadata);
+            // TODO: Implement actual NFT minting
+            setShowNFTPreview(false);
+            setSelectedImageForNFT(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface MessageBubbleProps {
+  message: ChatMessage;
+  onMintNFT: (imageUrl: string) => void;
+}
+
+function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
+  const isUser = message.type === 'user';
+  const isSystem = message.type === 'system';
+
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
+        isUser 
+          ? 'bg-smainer-green text-white' 
+          : isSystem
+          ? 'bg-muted text-muted-foreground text-center'
+          : 'bg-card border'
+      }`}>
+        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        
+        {message.imageUrl && (
+          <div className="mt-2">
+            <img 
+              src={message.imageUrl} 
+              alt="Generated content" 
+              className="rounded-lg max-w-full h-auto"
+            />
+            {message.nftMintable && (
+              <button
+                onClick={() => onMintNFT(message.imageUrl!)}
+                className="mt-2 w-full px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors"
+              >
+                🎨 Mint as NFT
+              </button>
+            )}
+          </div>
+        )}
+        
+        <div className="text-xs mt-1 opacity-70">
+          {message.timestamp.toLocaleTimeString()}
+        </div>
+      </div>
+    </div>
+  );
+}

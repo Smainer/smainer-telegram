@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#10b981" />
+    <meta name="color-scheme" content="light dark" />
+    
+    <!-- Telegram Mini App meta tags -->
+    <meta name="telegram-miniapp" content="true" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    
+    <title>⚡ Smainer AI</title>
+    <meta name="description" content="High-Performance AI Inference on Starknet with NFT Creation" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Telegram Web App CSS -->
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: var(--tg-theme-bg-color, #ffffff);
+        color: var(--tg-theme-text-color, #000000);
+        overflow-x: hidden;
+      }
+      
+      #root {
+        min-height: 100vh;
+        width: 100%;
+      }
+      
+      /* Telegram theme CSS variables */
+      :root {
+        --tg-bg: var(--tg-theme-bg-color, #ffffff);
+        --tg-text: var(--tg-theme-text-color, #000000);
+        --tg-hint: var(--tg-theme-hint-color, #707579);
+        --tg-link: var(--tg-theme-link-color, #2481cc);
+        --tg-button: var(--tg-theme-button-color, #2481cc);
+        --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+        --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f1f1f1);
+        --tg-header-bg: var(--tg-theme-header-bg-color, #2481cc);
+        --tg-accent: var(--tg-theme-accent-text-color, #2481cc);
+        --tg-section-bg: var(--tg-theme-section-bg-color, #ffffff);
+        --tg-section-header: var(--tg-theme-section-header-text-color, #6ab7f7);
+        --tg-subtitle: var(--tg-theme-subtitle-text-color, #707579);
+        --tg-destructive: var(--tg-theme-destructive-text-color, #e53e3e);
+        --tg-separator: var(--tg-theme-section-separator-color, #e7e7e7);
+        
+        /* Smainer brand colors */
+        --smainer-green: #10b981;
+        --smainer-green-dark: #059669;
+        --smainer-green-light: #34d399;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

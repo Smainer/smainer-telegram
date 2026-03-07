@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "name": "smainer-miniapp",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "ALLOWALL"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; frame-ancestors *;"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "VITE_RELAYER_URL": "@vite_relayer_url",
+    "VITE_STARKNET_RPC_URL": "@vite_starknet_rpc_url",
+    "VITE_SMAINER_CONTRACT_ADDRESS": "@vite_smainer_contract_address",
+    "VITE_NFT_CONTRACT_ADDRESS": "@vite_nft_contract_address"
+  }
+}

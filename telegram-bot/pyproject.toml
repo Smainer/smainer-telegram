@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "smainer-telegram-bot"
+version = "0.1.0"
+description = "Telegram Bot for Smainer Private AI Inference"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "python-telegram-bot[webhooks]>=21.0,<22.0",
+    "httpx>=0.27.0,<1.0",
+    "redis[hiredis]>=5.0.0,<6.0",
+    "pydantic>=2.5.0,<3.0",
+    "pydantic-settings>=2.1.0,<3.0",
+    "starknet-py>=0.29.0,<0.30.0",
+    "structlog>=24.1.0,<25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "fakeredis[json]>=2.21.0",
+    "respx>=0.21.0",
+    "black>=24.0.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+]
+
+[project.scripts]
+smainer-telegram-bot = "telegram_bot.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
