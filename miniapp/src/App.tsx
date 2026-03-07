@@ -12,9 +12,12 @@ export default function App() {
   const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(null);
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'nft' | 'dashboard'>('home');
 
-  const initData = useInitData();
-  const miniApp = useMiniApp();
-  const themeParams = useThemeParams();
+  // These hooks throw outside Telegram — catch gracefully
+  let initData: ReturnType<typeof useInitData> | undefined;
+  let miniApp: ReturnType<typeof useMiniApp> | undefined;
+  try { initData = useInitData(); } catch { initData = undefined; }
+  try { miniApp = useMiniApp(); } catch { miniApp = undefined; }
+  try { useThemeParams(); } catch { /* no-op outside Telegram */ }
   const { address, isConnected } = useAccount();
 
   // Initialize Relayer API connection

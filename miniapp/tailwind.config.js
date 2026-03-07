@@ -57,6 +57,16 @@ module.exports = {
           purple: "#7c3aed", 
           green: "#10b981",
           orange: "#f59e0b",
+        },
+        // Telegram theme color aliases (fallback for non-Telegram browsers)
+        tg: {
+          bg: "var(--tg-theme-bg-color, #ffffff)",
+          text: "var(--tg-theme-text-color, #000000)",
+          "text-hint": "var(--tg-theme-hint-color, #707579)",
+          link: "var(--tg-theme-link-color, #2481cc)",
+          button: "var(--tg-theme-button-color, #10b981)",
+          "button-text": "var(--tg-theme-button-text-color, #ffffff)",
+          "secondary-bg": "var(--tg-theme-secondary-bg-color, #f1f1f1)",
         }
       },
       borderRadius: {

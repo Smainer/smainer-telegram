@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "smainer-miniapp",
   "builds": [
     {
       "src": "package.json",
@@ -40,9 +39,9 @@
     }
   ],
   "env": {
-    "VITE_RELAYER_URL": "@vite_relayer_url",
-    "VITE_STARKNET_RPC_URL": "@vite_starknet_rpc_url",
-    "VITE_SMAINER_CONTRACT_ADDRESS": "@vite_smainer_contract_address",
-    "VITE_NFT_CONTRACT_ADDRESS": "@vite_nft_contract_address"
+    "VITE_RELAYER_URL": "http://localhost:8001",
+    "VITE_STARKNET_RPC_URL": "https://starknet-sepolia.public.blastapi.io",
+    "VITE_SMAINER_CONTRACT_ADDRESS": "0x0000000000000000000000000000000000000000000000000000000000000001",
+    "VITE_NFT_CONTRACT_ADDRESS": "0x0000000000000000000000000000000000000000000000000000000000000003"
   }
 }
