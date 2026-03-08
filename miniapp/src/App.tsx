@@ -15,9 +15,15 @@ export default function App() {
   // These hooks throw outside Telegram — catch gracefully
   let initData: ReturnType<typeof useInitData> | undefined;
   let miniApp: ReturnType<typeof useMiniApp> | undefined;
-  try { initData = useInitData(); } catch { initData = undefined; }
-  try { miniApp = useMiniApp(); } catch { miniApp = undefined; }
-  try { useThemeParams(); } catch { /* no-op outside Telegram */ }
+  try { 
+    initData = useInitData(); 
+    miniApp = useMiniApp();
+    useThemeParams();
+  } catch (error) { 
+    console.log('Running outside Telegram, using fallback mode');
+    initData = undefined; 
+    miniApp = undefined;
+  }
   const { address, isConnected } = useAccount();
 
   // Initialize Relayer API connection
@@ -29,12 +35,14 @@ export default function App() {
   useEffect(() => {
     // Initialize the mini app
     if (miniApp) {
-      miniApp.ready();
-      // Note: expand, setHeaderColor, setBackgroundColor may not be available in this SDK version
-      // These would be handled via Telegram Bot API or CSS
+      try {
+        miniApp.ready();
+      } catch (error) {
+        console.log('Mini app initialization failed:', error);
+      }
     }
     setIsLoading(false);
-  }, [miniApp, themeParams]);
+  }, [miniApp]);
 
   useEffect(() => {
     // Update connected wallet when Starknet account changes
@@ -65,13 +73,11 @@ export default function App() {
       const taskId = await relayerAPI.submitInferenceTask(request);
       
       // Show task submitted notification
-      // Note: showAlert may not be available in this SDK version
       console.log('AI task submitted! You will receive the result shortly.');
       
       return taskId;
     } catch (error) {
       console.error('Failed to submit inference task:', error);
-      // Note: showAlert may not be available in this SDK version
       alert(`Failed to submit task: ${error}`);
       
       throw error;
