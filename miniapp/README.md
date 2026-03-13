@@ -1,15 +1,15 @@
-# ⚡ Smainer Mini App
+# ⚡ Smainer Telegram App
 
-A Next.js-based Telegram Mini App for decentralized AI inference and NFT creation on Starknet.
+Starknet AI tasks through Telegram. Connect wallet, run compute tasks, pay with STRK tokens.
 
-## 🌟 Features
+## � Current Features
 
-- **🔗 Wallet Integration**: Connect Argent X, Braavos, or Telegram Wallet
-- **🤖 AI Chat**: Interact with various AI models through a chat interface
-- **🎨 NFT Creation**: Generate images with AI and mint them as NFTs
-- **📊 Dashboard**: Monitor balances, tasks, and network status
-- **💳 Multi-Token Support**: Pay with STRK or SMAINER tokens
-- **📱 Responsive Design**: Optimized for Telegram's mobile interface
+- **🔗 Wallet Connect**: Argent X, Braavos, or Telegram Wallet support
+- **🤖 AI Tasks**: Submit inference tasks through chat interface
+- **🎨 Image Generate**: Create and optionally mint AI-generated images
+- **📊 Status Monitor**: Check balances, tasks, and network status
+- **💳 STRK Payment**: Pay for tasks with STRK tokens
+- **📱 Mobile Optimized**: Works within Telegram mobile app
 
 ## 🚀 Deployment
 

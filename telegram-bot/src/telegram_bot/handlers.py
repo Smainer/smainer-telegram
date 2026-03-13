@@ -58,7 +58,10 @@ class SmainerBot:
         self._payment = PaymentManager(self._redis)
 
         # Callback server (receives results from relayer)
-        self._callback = CallbackServer(port=settings.relayer_callback_port)
+        self._callback = CallbackServer(
+            port=settings.relayer_callback_port,
+            signing_secret=settings.relayer_api_key,
+        )
         self._callback.on_stream_chunk(self._handle_stream_chunk)
         self._callback.on_task_complete(self._handle_task_complete)
         await self._callback.start()

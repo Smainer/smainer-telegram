@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         description="$STRK ERC-20 contract address",
     )
     smainer_contract_address: str = Field(
-        default="0x0000000000000000000000000000000000000000000000000000000000000001",
+        default="0x0747d450d0304b01f52c901bb362428b385c4a86f1e346c80b69a3b6df0da90d",
         description="SmainerEscrow contract address",
     )
 

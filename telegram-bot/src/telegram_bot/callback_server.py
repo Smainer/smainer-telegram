@@ -5,7 +5,11 @@ to this server, which then forwards them to the correct Telegram chat.
 """
 
 import asyncio
+import hashlib
+import hmac
+import json
 import logging
+import time
 from typing import Callable, Coroutine, Any
 
 from aiohttp import web
@@ -18,8 +22,15 @@ logger = logging.getLogger(__name__)
 class CallbackServer:
     """Runs alongside the Telegram bot to receive relayer push notifications."""
 
-    def __init__(self, port: int) -> None:
+    def __init__(
+        self,
+        port: int,
+        signing_secret: str,
+        timestamp_tolerance_seconds: int = 300,
+    ) -> None:
         self._port = port
+        self._signing_secret = signing_secret.encode("utf-8")
+        self._timestamp_tolerance_seconds = timestamp_tolerance_seconds
         self._app = web.Application()
         self._runner: web.AppRunner | None = None
 
@@ -30,6 +41,28 @@ class CallbackServer:
         self._app.router.add_post("/callback/stream", self._handle_stream)
         self._app.router.add_post("/callback/complete", self._handle_complete)
         self._app.router.add_get("/health", self._handle_health)
+
+    def _is_request_authenticated(self, request: web.Request, body: bytes) -> bool:
+        """Verify that the callback was sent by the relayer."""
+        timestamp = request.headers.get("X-Smainer-Timestamp")
+        signature = request.headers.get("X-Smainer-Signature")
+        if not timestamp or not signature:
+            return False
+
+        try:
+            timestamp_value = int(timestamp)
+        except ValueError:
+            return False
+
+        if abs(int(time.time()) - timestamp_value) > self._timestamp_tolerance_seconds:
+            return False
+
+        expected_signature = hmac.new(
+            self._signing_secret,
+            timestamp.encode("utf-8") + b"." + body,
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(signature, expected_signature)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -70,7 +103,11 @@ class CallbackServer:
     async def _handle_stream(self, request: web.Request) -> web.Response:
         """Receive a streaming text chunk from the relayer."""
         try:
-            body = await request.json()
+            raw_body = await request.read()
+            if not self._is_request_authenticated(request, raw_body):
+                return web.json_response({"error": "unauthorized"}, status=401)
+
+            body = json.loads(raw_body.decode("utf-8"))
             chunk = StreamChunk.model_validate(body)
             if self._on_chunk:
                 asyncio.create_task(self._on_chunk(chunk))
@@ -82,7 +119,11 @@ class CallbackServer:
     async def _handle_complete(self, request: web.Request) -> web.Response:
         """Receive a task completion / failure callback from the relayer."""
         try:
-            body = await request.json()
+            raw_body = await request.read()
+            if not self._is_request_authenticated(request, raw_body):
+                return web.json_response({"error": "unauthorized"}, status=401)
+
+            body = json.loads(raw_body.decode("utf-8"))
             callback = TaskCallback.model_validate(body)
             if self._on_complete:
                 asyncio.create_task(self._on_complete(callback))
