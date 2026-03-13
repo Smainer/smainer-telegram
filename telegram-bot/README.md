@@ -46,7 +46,7 @@ smainer-telegram-bot
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather | required |
-| `RELAYER_API_URL` | Smainer Relayer base URL | `http://localhost:8000` |
+| `RELAYER_API_URL` | Smainer Relayer base URL (configurable) | `http://localhost:8000` (fallback: 8001) |
 | `RELAYER_API_KEY` | Relayer API key | required |
 | `STARKNET_RPC_URL` | Starknet RPC endpoint | sepolia |
 | `STRK_TOKEN_ADDRESS` | $STRK token contract | mainnet addr |
