@@ -1,45 +1,21 @@
 /* Starknet configuration and contract addresses */
 
-import { Chain } from '@starknet-react/chains';
+
 import { StarknetConfig, publicProvider } from '@starknet-react/core';
 
 // Contract addresses (update with actual deployments)
 export const CONTRACT_ADDRESSES = {
-  SMAINER_TOKEN: import.meta.env.VITE_SMAINER_TOKEN_ADDRESS || '0x01',
-  NFT_FACTORY: import.meta.env.VITE_NFT_FACTORY_ADDRESS || '0x02',  
-  USER_PROFILE: import.meta.env.VITE_USER_PROFILE_ADDRESS || '0x03',
-  DATA_STORAGE: import.meta.env.VITE_DATA_STORAGE_ADDRESS || '0x04',
-  ESCROW: import.meta.env.VITE_SMAINER_CONTRACT_ADDRESS || '0x05',
+  SMAINER_TOKEN: import.meta.env.VITE_SMAINER_TOKEN_ADDRESS || '0x0',
+  NFT_FACTORY: import.meta.env.VITE_NFT_FACTORY_ADDRESS || '0x0',  
+  USER_PROFILE: import.meta.env.VITE_USER_PROFILE_ADDRESS || '0x0',
+  DATA_STORAGE: import.meta.env.VITE_DATA_STORAGE_ADDRESS || '0x0',
+  ESCROW: import.meta.env.VITE_SMAINER_CONTRACT_ADDRESS || '0x0',
 } as const;
 
 // Starknet chain configuration
-export const chains: Chain[] = [
-  {
-    id: BigInt('0x534e5f4d41494e'), // SN_MAIN
-    name: 'Starknet Mainnet',
-    network: 'mainnet',
-    nativeCurrency: {
-      address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
-      name: 'Ether',
-      symbol: 'ETH',
-      decimals: 18,
-    },
-    rpcUrls: {
-      default: {
-        http: [
-          import.meta.env.VITE_STARKNET_RPC_URL || 
-          'https://free-rpc.nethermind.io/mainnet-juno'
-        ],
-      },
-      public: {
-        http: [
-          'https://free-rpc.nethermind.io/mainnet-juno',
-        ],
-      },
-    },
-    testnet: false,
-  },
-];
+import { mainnet, sepolia } from '@starknet-react/chains';
+
+export const chains = [mainnet, sepolia];
 
 // Starknet React configuration  
 export const starknetConfig = {

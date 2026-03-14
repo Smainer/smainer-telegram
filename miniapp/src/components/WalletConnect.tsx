@@ -14,7 +14,7 @@ interface WalletConnectProps {
 export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const { connect, connectors } = useConnect();
-  const { address, isConnected: starknetConnected } = useAccount();
+  const { address, isConnected: starknetConnected, chainId } = useAccount();
   const { disconnect } = useDisconnect();
 
   const handleConnect = async (connectFn: () => void) => {
@@ -47,6 +47,26 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   };
 
   if (starknetConnected && address) {
+    const expectedChainStr = import.meta.env.VITE_STARKNET_CHAIN_ID || 'SN_MAIN';
+    const expectedChainId = expectedChainStr === 'SN_MAIN' ? BigInt('0x534e5f4d41494e') : BigInt('0x534e5f5345504f4c4941');
+    const isWrongNetwork = chainId && chainId !== expectedChainId;
+
+    if (isWrongNetwork) {
+      return (
+        <div className="w-full max-w-md mx-auto">
+          <div className="bg-destructive/10 border border-destructive rounded-lg p-6">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-destructive">Wrong Network</h3>
+              <p className="text-sm text-destructive/80 mt-2">Please switch to {expectedChainStr === 'SN_MAIN' ? 'Mainnet' : 'Sepolia'} to continue.</p>
+            </div>
+            <button onClick={handleDisconnect} className="w-full px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors">
+              Disconnect Wallet
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="w-full max-w-md mx-auto">
         <div className="bg-card border rounded-lg p-6">

@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 _PENDING_TASKS_KEY = "tgbot:tasks:pending"
 
 
+def escape_md(text: str) -> str:
+    """Escape special characters for Telegram Markdown (V1)."""
+    return text.replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
+
+
 class SmainerBot:
     """Orchestrates the Telegram bot, wallet linking, inference, and payment."""
 
@@ -52,7 +57,12 @@ class SmainerBot:
         logger.info("Redis connected")
 
         # Services
-        callback_url = f"{settings.relayer_callback_host.rstrip('/')}:{settings.relayer_callback_port}"
+        host = settings.relayer_callback_host.rstrip("/")
+        if ":" not in host[8:]:  # No port in host
+            callback_url = f"{host}:{settings.relayer_callback_port}"
+        else:
+            callback_url = host
+
         self._wallet = WalletManager(self._redis)
         self._relayer = RelayerClient(callback_url)
         self._payment = PaymentManager(self._redis)
@@ -384,10 +394,13 @@ class SmainerBot:
         if callback.status == "completed" and callback.result:
             response_text = callback.result.get("response", "No response generated.")
             exec_time = callback.execution_time or 0
+            
+            # Escape to prevent MD syntax breakage
+            safe_text = escape_md(response_text)
             footer = f"\n\n_Inference: {exec_time:.1f}s_"
 
             # Telegram message limit is 4096 chars
-            text = response_text[:3900] + footer
+            text = safe_text[:3900] + footer
 
             await self._app.bot.edit_message_text(
                 chat_id=chat_id,
