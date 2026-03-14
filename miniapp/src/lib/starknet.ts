@@ -15,9 +15,9 @@ export const CONTRACT_ADDRESSES = {
 // Starknet chain configuration
 export const chains: Chain[] = [
   {
-    id: BigInt('0x534e5f5345504f4c4941'), // SN_SEPOLIA
-    name: 'Starknet Sepolia',
-    network: 'sepolia',
+    id: BigInt('0x534e5f4d41494e'), // SN_MAIN
+    name: 'Starknet Mainnet',
+    network: 'mainnet',
     nativeCurrency: {
       address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
       name: 'Ether',
@@ -28,17 +28,16 @@ export const chains: Chain[] = [
       default: {
         http: [
           import.meta.env.VITE_STARKNET_RPC_URL || 
-          'https://starknet-sepolia.public.blastapi.io'
+          'https://free-rpc.nethermind.io/mainnet-juno'
         ],
       },
       public: {
         http: [
-          'https://starknet-sepolia.public.blastapi.io',
-          'https://free-rpc.nethermind.io/sepolia-juno',
+          'https://free-rpc.nethermind.io/mainnet-juno',
         ],
       },
     },
-    testnet: true,
+    testnet: false,
   },
 ];
 
