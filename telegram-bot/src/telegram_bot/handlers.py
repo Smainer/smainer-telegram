@@ -23,8 +23,13 @@ from .wallet import WalletManager
 
 logger = logging.getLogger(__name__)
 
-# Map task_id → (chat_id, message_id) so callbacks can edit the right message
-_pending_tasks: Dict[str, tuple[int, int]] = {}
+# Redis key schemas
+_PENDING_TASKS_KEY = "tgbot:tasks:pending"
+
+
+def escape_md(text: str) -> str:
+    """Escape special characters for Telegram Markdown (V1)."""
+    return text.replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
 
 
 class SmainerBot:
@@ -52,7 +57,12 @@ class SmainerBot:
         logger.info("Redis connected")
 
         # Services
-        callback_url = f"http://localhost:{settings.relayer_callback_port}"
+        host = settings.relayer_callback_host.rstrip("/")
+        if ":" not in host[8:]:  # No port in host
+            callback_url = f"{host}:{settings.relayer_callback_port}"
+        else:
+            callback_url = host
+
         self._wallet = WalletManager(self._redis)
         self._relayer = RelayerClient(callback_url)
         self._payment = PaymentManager(self._redis)
@@ -60,7 +70,7 @@ class SmainerBot:
         # Callback server (receives results from relayer)
         self._callback = CallbackServer(
             port=settings.relayer_callback_port,
-            signing_secret=settings.relayer_api_key,
+            signing_secret=settings.callback_signing_secret,
         )
         self._callback.on_stream_chunk(self._handle_stream_chunk)
         self._callback.on_task_complete(self._handle_task_complete)
@@ -198,7 +208,17 @@ class SmainerBot:
             )
             return
 
-        balance_wei = await self._wallet.get_strk_balance(address)
+        try:
+            balance_wei = await self._wallet.get_strk_balance(address)
+        except Exception:
+            await update.message.reply_text(
+                f"*Wallet:* `{address}`\n"
+                "\u26a0\ufe0f Balance check temporarily unavailable. "
+                "Please try again in a moment.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
         balance_strk = balance_wei / 1e18
         prompts_remaining = balance_wei // settings.prompt_cost_strk
 
@@ -329,8 +349,12 @@ class SmainerBot:
             amount=settings.prompt_cost_strk,
         )
 
-        # 7. Track for callback routing
-        _pending_tasks[task_id] = (chat_id, placeholder.message_id)
+        # 7. Track for callback routing in Redis
+        await self._redis.hset(
+            _PENDING_TASKS_KEY,
+            task_id,
+            f"{chat_id}:{placeholder.message_id}",
+        )
 
         await placeholder.edit_text(
             f"Task submitted (`{task_id[:8]}...`). Waiting for inference...",
@@ -343,11 +367,11 @@ class SmainerBot:
 
     async def _handle_stream_chunk(self, chunk: StreamChunk) -> None:
         """Edit the placeholder message with streaming text."""
-        loc = _pending_tasks.get(chunk.task_id)
-        if not loc or not self._app:
+        raw_loc = await self._redis.hget(_PENDING_TASKS_KEY, chunk.task_id)
+        if not raw_loc or not self._app:
             return
 
-        chat_id, message_id = loc
+        chat_id, message_id = map(int, raw_loc.split(":"))
         try:
             await self._app.bot.edit_message_text(
                 chat_id=chat_id,
@@ -360,19 +384,23 @@ class SmainerBot:
 
     async def _handle_task_complete(self, callback: TaskCallback) -> None:
         """Deliver the final result and settle the payment."""
-        loc = _pending_tasks.pop(callback.task_id, None)
-        if not loc or not self._app:
+        raw_loc = await self._redis.hget(_PENDING_TASKS_KEY, callback.task_id)
+        if not raw_loc or not self._app:
             return
 
-        chat_id, message_id = loc
+        await self._redis.hdel(_PENDING_TASKS_KEY, callback.task_id)
+        chat_id, message_id = map(int, raw_loc.split(":"))
 
         if callback.status == "completed" and callback.result:
             response_text = callback.result.get("response", "No response generated.")
             exec_time = callback.execution_time or 0
+            
+            # Escape to prevent MD syntax breakage
+            safe_text = escape_md(response_text)
             footer = f"\n\n_Inference: {exec_time:.1f}s_"
 
             # Telegram message limit is 4096 chars
-            text = response_text[:3900] + footer
+            text = safe_text[:3900] + footer
 
             await self._app.bot.edit_message_text(
                 chat_id=chat_id,

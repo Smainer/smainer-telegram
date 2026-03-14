@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 _WALLET_KEY = "tgbot:wallet:{user_id}"
 
 
+class BalanceUnavailableError(Exception):
+    """Raised when the Starknet RPC is unreachable and balance cannot be queried."""
+
+
 class WalletManager:
     """Links Telegram users to Starknet addresses and checks $STRK balances."""
 
@@ -50,20 +54,21 @@ class WalletManager:
     # ------------------------------------------------------------------
 
     async def get_strk_balance(self, starknet_address: str) -> int:
-        """Query on-chain $STRK balance (returns wei)."""
+        """Query on-chain $STRK balance (returns wei).
+
+        Raises BalanceUnavailableError when the RPC is unreachable so the
+        caller can display a proper error instead of a fake zero.
+        """
         try:
-            normalized = self._normalize_address(starknet_address)
-            contract = await Contract.from_address(
-                address=int(normalized, 16),
-                provider=self._client,
-            )
-            (balance,) = await contract.functions["balance_of"].call(
-                int(normalized, 16)
-            )
-            return int(balance)
-        except Exception:
-            # If we can't reach the chain, try calling the ERC-20 directly
             return await self._raw_balance_of(starknet_address)
+        except Exception as exc:
+            logger.error(
+                "Primary balance check failed",
+                extra={"error": type(exc).__name__, "rpc": settings.starknet_rpc_url},
+            )
+            raise BalanceUnavailableError(
+                f"Cannot reach Starknet RPC at {settings.starknet_rpc_url}"
+            ) from exc
 
     async def has_sufficient_balance(self, user_id: int) -> bool:
         """Check if the linked wallet meets the minimum $STRK balance."""
@@ -79,18 +84,14 @@ class WalletManager:
 
     async def _raw_balance_of(self, starknet_address: str) -> int:
         """Direct low-level call to balanceOf on the $STRK token contract."""
-        try:
-            token_addr = int(settings.strk_token_address, 16)
-            contract = await Contract.from_address(
-                address=token_addr,
-                provider=self._client,
-            )
-            user_addr = int(self._normalize_address(starknet_address), 16)
-            (balance,) = await contract.functions["balance_of"].call(user_addr)
-            return int(balance)
-        except Exception as exc:
-            logger.error("Failed to check balance", extra={"error": str(exc)})
-            return 0
+        token_addr = int(settings.strk_token_address, 16)
+        contract = await Contract.from_address(
+            address=token_addr,
+            provider=self._client,
+        )
+        user_addr = int(self._normalize_address(starknet_address), 16)
+        (balance,) = await contract.functions["balance_of"].call(user_addr)
+        return int(balance)
 
     @staticmethod
     def _normalize_address(address: str) -> str:

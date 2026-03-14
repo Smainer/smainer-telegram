@@ -73,7 +73,6 @@ export function ChatInterface({
         prompt: currentMessage,
         max_tokens: 150,
         temperature: 0.7,
-        callback_url: `${import.meta.env.VITE_RELAYER_URL || 'http://localhost:8001'}/callback`,
         metadata: {
           user_address: walletAddress,
           session_id: Date.now().toString(),
