@@ -6,14 +6,12 @@ dist/
 build/
 .eggs/
 *.egg
-.env
-.env.local
 .venv/
 venv/
 node_modules/
 .DS_Store
 *.log
 .idea/
-.vscode/
 *.swp
 *.swo
+config.bat
