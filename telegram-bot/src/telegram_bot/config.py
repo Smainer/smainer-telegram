@@ -1,7 +1,12 @@
 """Configuration for the Smainer Telegram Bot."""
 
-from pydantic import Field
+import logging
+import os
+
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -21,6 +26,14 @@ class Settings(BaseSettings):
         default="dev-api-key",
         description="Relayer API authentication key",
     )
+    callback_signing_secret: str = Field(
+        default="",
+        description="HMAC secret for validating relayer callbacks",
+    )
+    relayer_callback_host: str = Field(
+        default="http://localhost",
+        description="Public base URL of this bot server so the relayer can push callbacks (e.g. http://138.197.11.147)",
+    )
     relayer_callback_port: int = Field(
         default=8100,
         description="Port for the callback HTTP server that receives streaming results",
@@ -28,7 +41,7 @@ class Settings(BaseSettings):
 
     # Starknet
     starknet_rpc_url: str = Field(
-        default="https://starknet-sepolia.public.blastapi.io",
+        default="https://free-rpc.nethermind.io/mainnet-juno",
         description="Starknet JSON-RPC endpoint",
     )
     strk_token_address: str = Field(
@@ -62,12 +75,41 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
+    environment: str = Field(default="development", description="Deployment environment")
 
     model_config = {
-        "env_file": ".env",
+        "env_file": ".env" if os.path.exists(".env") else None,
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
     }
+
+    @model_validator(mode="after")
+    def _warn_dev_defaults(self) -> "Settings":
+        """Log warnings for dangerous default values."""
+        if self.relayer_api_key == "dev-api-key":
+            logger.warning("RELAYER_API_KEY is using insecure default 'dev-api-key'")
+        if "sepolia" in self.starknet_rpc_url.lower():
+            logger.warning(
+                "STARKNET_RPC_URL points to Sepolia testnet: %s",
+                self.starknet_rpc_url,
+            )
+        if "localhost" in self.relayer_callback_host:
+            logger.warning(
+                "RELAYER_CALLBACK_HOST is localhost — callbacks from relayer will fail in production"
+            )
+
+        env = self.environment.lower()
+        if env in {"production", "prod"}:
+            if self.relayer_api_key == "dev-api-key":
+                raise ValueError("RELAYER_API_KEY must not use dev default in production")
+            if "localhost" in self.relayer_api_url.lower():
+                raise ValueError("RELAYER_API_URL must not point to localhost in production")
+            if "localhost" in self.relayer_callback_host.lower():
+                raise ValueError("RELAYER_CALLBACK_HOST must be public in production")
+            if not self.callback_signing_secret:
+                raise ValueError("CALLBACK_SIGNING_SECRET must be set in production")
+
+        return self
 
 
 settings = Settings()
