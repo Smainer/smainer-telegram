@@ -60,21 +60,15 @@ class WalletManager:
         caller can display a proper error instead of a fake zero.
         """
         try:
-            normalized = self._normalize_address(starknet_address)
-            contract = await Contract.from_address(
-                address=int(settings.strk_token_address, 16),
-                provider=self._client,
-            )
-            (balance,) = await contract.functions["balance_of"].call(
-                int(normalized, 16)
-            )
-            return int(balance)
+            return await self._raw_balance_of(starknet_address)
         except Exception as exc:
-            logger.warning(
-                "Primary balance check failed, retrying",
+            logger.error(
+                "Primary balance check failed",
                 extra={"error": type(exc).__name__, "rpc": settings.starknet_rpc_url},
             )
-            return await self._raw_balance_of(starknet_address)
+            raise BalanceUnavailableError(
+                f"Cannot reach Starknet RPC at {settings.starknet_rpc_url}"
+            ) from exc
 
     async def has_sufficient_balance(self, user_id: int) -> bool:
         """Check if the linked wallet meets the minimum $STRK balance."""
@@ -89,27 +83,15 @@ class WalletManager:
     # ------------------------------------------------------------------
 
     async def _raw_balance_of(self, starknet_address: str) -> int:
-        """Direct low-level call to balanceOf on the $STRK token contract.
-
-        Raises BalanceUnavailableError instead of silently returning 0.
-        """
-        try:
-            token_addr = int(settings.strk_token_address, 16)
-            contract = await Contract.from_address(
-                address=token_addr,
-                provider=self._client,
-            )
-            user_addr = int(self._normalize_address(starknet_address), 16)
-            (balance,) = await contract.functions["balance_of"].call(user_addr)
-            return int(balance)
-        except Exception as exc:
-            logger.error(
-                "Failed to check balance",
-                extra={"error": type(exc).__name__, "rpc": settings.starknet_rpc_url},
-            )
-            raise BalanceUnavailableError(
-                f"Cannot reach Starknet RPC at {settings.starknet_rpc_url}"
-            ) from exc
+        """Direct low-level call to balanceOf on the $STRK token contract."""
+        token_addr = int(settings.strk_token_address, 16)
+        contract = await Contract.from_address(
+            address=token_addr,
+            provider=self._client,
+        )
+        user_addr = int(self._normalize_address(starknet_address), 16)
+        (balance,) = await contract.functions["balance_of"].call(user_addr)
+        return int(balance)
 
     @staticmethod
     def _normalize_address(address: str) -> str:

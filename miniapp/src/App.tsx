@@ -28,7 +28,7 @@ export default function App() {
 
   // Initialize Relayer API connection
   const relayerAPI = useRelayerAPI({
-    baseUrl: import.meta.env.VITE_RELAYER_URL || 'http://localhost:8001',
+    baseUrl: import.meta.env.VITE_RELAYER_URL || 'https://api.smainer.io',
     walletAddress: connectedWallet?.address,
   });
 
