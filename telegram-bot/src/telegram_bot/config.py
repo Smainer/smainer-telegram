@@ -49,7 +49,7 @@ class Settings(BaseSettings):
         description="$STRK ERC-20 contract address",
     )
     smainer_contract_address: str = Field(
-        default="0x0747d450d0304b01f52c901bb362428b385c4a86f1e346c80b69a3b6df0da90d",
+        default="0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe",
         description="SmainerEscrow contract address",
     )
 

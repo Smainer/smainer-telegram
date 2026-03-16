@@ -40,8 +40,11 @@
   ],
   "env": {
     "VITE_RELAYER_URL": "https://api.smainer.ai",
-    "VITE_STARKNET_RPC_URL": "https://starknet-mainnet.public.blastapi.io", 
-    "VITE_SMAINER_CONTRACT_ADDRESS": "REQUIRED_REPLACE_WITH_MAINNET_ADDRESS",
-    "VITE_NFT_CONTRACT_ADDRESS": "REQUIRED_REPLACE_WITH_MAINNET_ADDRESS"
+    "VITE_STARKNET_RPC_URL": "https://starknet-mainnet.public.blastapi.io",
+    "VITE_SMAINER_CONTRACT_ADDRESS": "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe",
+    "VITE_SMAINER_TOKEN_ADDRESS": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "VITE_NFT_FACTORY_ADDRESS": "0x0",
+    "VITE_USER_PROFILE_ADDRESS": "0x0",
+    "VITE_DATA_STORAGE_ADDRESS": "0x0"
   }
 }

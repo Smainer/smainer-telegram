@@ -3,13 +3,30 @@
 
 import { StarknetConfig, publicProvider } from '@starknet-react/core';
 
+function parseContractAddress(envKey: string, required: boolean): string | undefined {
+  const raw = import.meta.env[envKey] as string | undefined;
+
+  if (!raw || raw === '0x0') {
+    if (required) {
+      throw new Error(`Missing required Starknet address: ${envKey}`);
+    }
+    return undefined;
+  }
+
+  if (!/^0x[0-9a-fA-F]{1,64}$/.test(raw)) {
+    throw new Error(`Invalid Starknet address format for ${envKey}`);
+  }
+
+  return raw;
+}
+
 // Contract addresses (update with actual deployments)
 export const CONTRACT_ADDRESSES = {
-  SMAINER_TOKEN: import.meta.env.VITE_SMAINER_TOKEN_ADDRESS || '0x0',
-  NFT_FACTORY: import.meta.env.VITE_NFT_FACTORY_ADDRESS || '0x0',  
-  USER_PROFILE: import.meta.env.VITE_USER_PROFILE_ADDRESS || '0x0',
-  DATA_STORAGE: import.meta.env.VITE_DATA_STORAGE_ADDRESS || '0x0',
-  ESCROW: import.meta.env.VITE_SMAINER_CONTRACT_ADDRESS || '0x0',
+  SMAINER_TOKEN: parseContractAddress('VITE_SMAINER_TOKEN_ADDRESS', false),
+  NFT_FACTORY: parseContractAddress('VITE_NFT_FACTORY_ADDRESS', false),  
+  USER_PROFILE: parseContractAddress('VITE_USER_PROFILE_ADDRESS', false),
+  DATA_STORAGE: parseContractAddress('VITE_DATA_STORAGE_ADDRESS', false),
+  ESCROW: parseContractAddress('VITE_SMAINER_CONTRACT_ADDRESS', true),
 } as const;
 
 // Starknet chain configuration
