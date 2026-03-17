@@ -11,6 +11,9 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(null);
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'nft' | 'dashboard'>('home');
+  
+  // Detect connect mode from URL params
+  const connectMode = new URLSearchParams(window.location.search).get('mode') === 'connect';
 
   // These hooks throw outside Telegram — catch gracefully
   let initData: ReturnType<typeof useInitData> | undefined;
@@ -58,9 +61,33 @@ export default function App() {
     }
   }, [isConnected, address]);
 
+  // Send wallet data to Telegram bot when connected in connect mode
+  useEffect(() => {
+    if (connectMode && address && isConnected) {
+      const tgWebApp = (window as any).Telegram?.WebApp;
+      if (tgWebApp?.sendData) {
+        const walletData = {
+          action: 'wallet_connect',
+          address: address,
+          wallet_type: 'starknet' // TODO: Detect actual wallet type (argentx, braavos, etc.)
+        };
+        
+        try {
+          tgWebApp.sendData(JSON.stringify(walletData));
+          console.log('Wallet data sent to Telegram bot:', walletData);
+        } catch (error) {
+          console.error('Failed to send wallet data to Telegram bot:', error);
+        }
+      }
+    }
+  }, [connectMode, address, isConnected]);
+
   const handleWalletConnect = (wallet: ConnectedWallet) => {
     setConnectedWallet(wallet);
-    setCurrentView('chat'); // Auto-navigate to chat after connecting
+    // Only auto-navigate to chat in full app mode, not in connect mode
+    if (!connectMode) {
+      setCurrentView('chat');
+    }
   };
 
   const handleWalletDisconnect = () => {
@@ -98,16 +125,29 @@ export default function App() {
       <main className="min-h-screen p-4 bg-tg-bg">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-smainer-green mb-2">
-              ⚡ Smainer AI
-            </h1>
-            <p className="text-tg-text-hint">
-              High-Performance AI Inference on Starknet
-            </p>
+            {connectMode ? (
+              <>
+                <h1 className="text-3xl font-bold text-smainer-green mb-2">
+                  🔗 Connect Wallet
+                </h1>
+                <p className="text-tg-text-hint">
+                  Connect your wallet to Smainer Bot
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-smainer-green mb-2">
+                  ⚡ Smainer AI
+                </h1>
+                <p className="text-tg-text-hint">
+                  High-Performance AI Inference on Starknet
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Telegram User Info */}
-          {initData?.user && (
+          {/* Only show Telegram user info in full app mode */}
+          {!connectMode && initData?.user && (
             <div className="mb-6 p-4 bg-tg-secondary-bg border border-tg-separator rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-smainer-green/10 rounded-full flex items-center justify-center">
@@ -132,19 +172,52 @@ export default function App() {
             onDisconnect={handleWalletDisconnect}
           />
 
-          {/* Connection Status */}
-          <div className="mt-6 p-3 bg-muted/50 rounded-lg text-center">
-            <div className="flex items-center justify-center space-x-2 text-sm">
-              <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-tg-text-hint">
-                Relayer: {relayerAPI.isConnected ? 'Connected' : 'Disconnected'}
-              </span>
+          {/* Only show connection status in full app mode */}
+          {!connectMode && (
+            <div className="mt-6 p-3 bg-muted/50 rounded-lg text-center">
+              <div className="flex items-center justify-center space-x-2 text-sm">
+                <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-tg-text-hint">
+                  Relayer: {relayerAPI.isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+              {relayerAPI.availableModels.length > 0 && (
+                <p className="text-xs text-tg-text-hint mt-1">
+                  {relayerAPI.availableModels.length} AI models available
+                </p>
+              )}
             </div>
-            {relayerAPI.availableModels.length > 0 && (
-              <p className="text-xs text-tg-text-hint mt-1">
-                {relayerAPI.availableModels.length} AI models available
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  // If in connect mode and wallet is connected, show success message
+  if (connectMode && connectedWallet) {
+    return (
+      <main className="min-h-screen p-4 bg-tg-bg">
+        <div className="max-w-md mx-auto">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-smainer-green/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-smainer-green" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-smainer-green mb-2">
+              ✅ Wallet Connected!
+            </h1>
+            <p className="text-tg-text-hint mb-4">
+              Your wallet has been linked to Smainer Bot
+            </p>
+            <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg">
+              <p className="text-sm text-tg-text font-medium">
+                {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
               </p>
-            )}
+            </div>
+            <p className="text-xs text-tg-text-hint mt-4">
+              This window will close automatically. You can now use AI features in the bot!
+            </p>
           </div>
         </div>
       </main>

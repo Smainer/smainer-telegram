@@ -73,6 +73,12 @@ class Settings(BaseSettings):
         description="Cost per prompt in $STRK wei",
     )
 
+    # MiniApp
+    miniapp_url: str = Field(
+        default="https://smainer-miniapp.vercel.app",
+        description="Telegram MiniApp URL for wallet connection",
+    )
+
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
     environment: str = Field(default="development", description="Deployment environment")

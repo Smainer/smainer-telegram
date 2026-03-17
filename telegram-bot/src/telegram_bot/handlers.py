@@ -1,10 +1,17 @@
 """Telegram bot command and message handlers."""
 
+import json
 import logging
 from typing import Dict
 
 import redis.asyncio as aioredis
-from telegram import Update
+from telegram import (
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+    WebAppInfo,
+)
 from telegram.constants import ChatAction, ParseMode
 from telegram.ext import (
     Application,
@@ -114,6 +121,10 @@ class SmainerBot:
         self._app.add_handler(CommandHandler("balance", self._cmd_balance))
         self._app.add_handler(CommandHandler("models", self._cmd_models))
         self._app.add_handler(CommandHandler("model", self._cmd_set_model))
+        # WebApp data from miniapp wallet connection (must be before text handler)
+        self._app.add_handler(
+            MessageHandler(filters.StatusUpdate.WEB_APP_DATA, self._handle_webapp_data)
+        )
         # Any plain text message that isn't a command → treat as a prompt
         self._app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_prompt)
@@ -126,15 +137,23 @@ class SmainerBot:
     async def _cmd_start(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
+        connect_button = KeyboardButton(
+            text="\U0001f517 Connect Wallet",
+            web_app=WebAppInfo(url=settings.miniapp_url + "?mode=connect"),
+        )
+        keyboard = ReplyKeyboardMarkup(
+            [[connect_button]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
         await update.message.reply_text(
             "*Welcome to Smainer*\n\n"
             "Private AI inference on decentralized hardware, paid in $STRK.\n\n"
-            "*Quick start:*\n"
-            "1. /link `<your_starknet_address>` — connect your wallet\n"
-            "2. Send any message — it becomes an AI prompt\n"
-            "3. You pay per-prompt; 88% goes to hardware providers\n\n"
+            "Tap the button below to connect your Starknet wallet, "
+            "then send any message as an AI prompt.\n\n"
             "/help for all commands",
             parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard,
         )
 
     # ------------------------------------------------------------------
@@ -157,7 +176,61 @@ class SmainerBot:
         )
 
     # ------------------------------------------------------------------
-    # /link <starknet_address>
+    # WebApp data (miniapp wallet connection callback)
+    # ------------------------------------------------------------------
+
+    async def _handle_webapp_data(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle wallet connection data sent from the Telegram MiniApp via sendData()."""
+        raw = update.effective_message.web_app_data.data
+        try:
+            payload = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("Invalid webapp data from user %s", update.effective_user.id)
+            await update.message.reply_text(
+                "Failed to process wallet data. Please try again.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        action = payload.get("action")
+        address = payload.get("address")
+
+        if action != "wallet_connect" or not address:
+            await update.message.reply_text(
+                "Unexpected data from miniapp. Please try /start again.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        user_id = update.effective_user.id
+        try:
+            await self._wallet.link_wallet(user_id, address)
+        except ValueError:
+            await update.message.reply_text(
+                "Invalid Starknet address received from miniapp. "
+                "Please try again or use /link `<address>` manually.",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        wallet_type = payload.get("wallet_type", "unknown")
+        logger.info(
+            "Wallet connected via miniapp: user=%s wallet_type=%s",
+            user_id,
+            wallet_type,
+        )
+        await update.message.reply_text(
+            f"\u2705 Wallet connected: `{address}`\n\n"
+            "Send any message to start an AI prompt.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+
+    # ------------------------------------------------------------------
+    # /link <starknet_address> (manual fallback)
     # ------------------------------------------------------------------
 
     async def _cmd_link(
