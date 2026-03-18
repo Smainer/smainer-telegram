@@ -438,6 +438,14 @@ class SmainerBot:
         # Infer tier from model name
         tier = self._infer_tier(user_model)
 
+        # 3.5 Ensure there is at least one GPU-capable node online
+        available_nodes = await self._relayer.list_available_models()
+        if not available_nodes:
+            await update.message.reply_text(
+                "No GPU compute nodes are online right now. Please try again in a few minutes."
+            )
+            return
+
         # 4. Send typing indicator + placeholder
         await update.effective_chat.send_action(ChatAction.TYPING)
         placeholder = await update.message.reply_text("Processing your prompt...")

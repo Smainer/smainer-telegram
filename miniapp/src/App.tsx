@@ -1,5 +1,4 @@
-import { useAccount, useConnect } from '@starknet-react/core';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { WalletConnect } from './components/WalletConnect';
 import { ChatInterface } from './components/ChatInterface';
@@ -7,6 +6,45 @@ import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
 import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
 import type { ConnectedWallet, InferenceRequest } from './types';
+
+class WalletSectionBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('Wallet section crashed:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-tg-separator bg-tg-secondary-bg p-4 text-center">
+          <h3 className="text-base font-semibold text-tg-text mb-2">Wallet Connect Unavailable</h3>
+          <p className="text-sm text-tg-text-hint mb-4">
+            Open the dedicated wallet page to connect, then return to the bot.
+          </p>
+          <a
+            href="/connect.html"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-smainer-green text-white font-medium"
+          >
+            Open Connect Page
+          </a>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -30,9 +68,6 @@ export default function App() {
   const displayLastName = tgUser?.last_name || tgUser?.lastName || '';
   const displayInitial = displayFirstName ? displayFirstName.charAt(0) : '👤';
   const displayUsername = tgUser?.username || (tgUser?.id ? `user${tgUser.id}` : 'user');
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-
   // Initialize Relayer API connection
   const relayerAPI = useRelayerAPI({
     baseUrl: import.meta.env.VITE_RELAYER_URL || 'https://api.smainer.io',
@@ -61,48 +96,23 @@ export default function App() {
     setIsLoading(false);
   }, [miniApp, isInTelegram, connectMode]);
 
-  useEffect(() => {
-    // Update connected wallet when Starknet account changes
-    if (isConnected && address) {
-      setConnectedWallet({
-        address,
-        type: 'argentx', // TODO: Detect actual wallet type
-        balance_strk: '0', // TODO: Fetch actual balances
-        balance_smainer: '0',
-      });
-    } else {
-      setConnectedWallet(null);
-    }
-  }, [isConnected, address]);
-
-  // Send wallet data to Telegram bot when connected in connect mode
-  useEffect(() => {
-    if (connectMode && address && isConnected) {
+  const handleWalletConnect = (wallet: ConnectedWallet) => {
+    setConnectedWallet(wallet);
+    if (connectMode) {
       const tgWebApp = (window as any).Telegram?.WebApp;
       if (tgWebApp?.sendData) {
         const walletData = {
           action: 'wallet_connect',
-          address: address,
-          wallet_type: 'starknet' // TODO: Detect actual wallet type (argentx, braavos, etc.)
+          address: wallet.address,
+          wallet_type: wallet.type,
         };
-        
         try {
           tgWebApp.sendData(JSON.stringify(walletData));
-          console.log('Wallet data sent to Telegram bot:', walletData);
         } catch (error) {
           console.error('Failed to send wallet data to Telegram bot:', error);
         }
       }
     }
-  }, [connectMode, address, isConnected]);
-
-  // Track wallet connectors availability
-  useEffect(() => {
-    addDebugBootStep('connectors_count', 'success', `${connectors.length} connectors found`);
-  }, [connectors.length]);
-
-  const handleWalletConnect = (wallet: ConnectedWallet) => {
-    setConnectedWallet(wallet);
     // Only auto-navigate to chat in full app mode, not in connect mode
     if (!connectMode) {
       setCurrentView('chat');
@@ -186,10 +196,12 @@ export default function App() {
             </div>
           )}
 
-          <WalletConnect 
-            onConnect={handleWalletConnect}
-            onDisconnect={handleWalletDisconnect}
-          />
+          <WalletSectionBoundary>
+            <WalletConnect 
+              onConnect={handleWalletConnect}
+              onDisconnect={handleWalletDisconnect}
+            />
+          </WalletSectionBoundary>
 
           {/* Only show connection status in full app mode */}
           {!connectMode && (

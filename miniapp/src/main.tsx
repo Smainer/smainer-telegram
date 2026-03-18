@@ -5,7 +5,7 @@ import './index.css'
 
 class AppErrorBoundary extends React.Component<
   { children: React.ReactNode },
-  { hasError: boolean; message?: string }
+  { hasError: boolean; message?: string; stackHint?: string }
 > {
   constructor(props: { children: React.ReactNode }) {
     super(props)
@@ -13,7 +13,11 @@ class AppErrorBoundary extends React.Component<
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, message: error.message }
+    return {
+      hasError: true,
+      message: error.message,
+      stackHint: error.stack ? error.stack.split('\n').slice(0, 2).join('\n') : undefined,
+    }
   }
 
   componentDidCatch(error: Error) {
@@ -32,6 +36,11 @@ class AppErrorBoundary extends React.Component<
             <p style={{ margin: 0, lineHeight: 1.4, fontSize: '13px', color: '#b8bfd6' }}>
               Reopen the miniapp, or use the wallet connect page if this keeps happening.
             </p>
+            {this.state.stackHint ? (
+              <pre style={{ marginTop: '12px', whiteSpace: 'pre-wrap', background: '#101426', padding: '10px', borderRadius: '8px', fontSize: '12px', color: '#b8bfd6' }}>
+                {this.state.stackHint}
+              </pre>
+            ) : null}
           </div>
         </div>
       )
