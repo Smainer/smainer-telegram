@@ -100,29 +100,87 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
         </p>
       </div>
 
-      <div className="space-y-3">
-        {connectors.map((connector) => (
+      {/* Show message if no connectors are available */}
+      {connectors.length === 0 ? (
+        <div className="space-y-4">
+          <div className="p-6 border border-destructive rounded-lg bg-destructive/5">
+            <div className="text-center">
+              <div className="text-4xl mb-3">🔌</div>
+              <h3 className="text-lg font-semibold text-destructive mb-2">
+                No Supported Wallets Found
+              </h3>
+              <p className="text-sm text-destructive/80 mb-4">
+                No supported Starknet wallet was detected in this environment.
+              </p>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p className="font-medium">To use Smainer AI, please:</p>
+                <ul className="list-disc list-inside space-y-1 text-left">
+                  <li>Install Argent X or Braavos wallet extension</li>
+                  <li>Open this app in a browser (Chrome, Firefox, etc.)</li>
+                  <li>Make sure the wallet extension is enabled</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          {/* Direct links to wallet installations */}
+          <div className="space-y-2">
+            <a 
+              href="https://chrome.google.com/webstore/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">🔷</span>
+                <span className="font-medium">Install Argent X</span>
+              </div>
+              <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+            
+            <a 
+              href="https://chrome.google.com/webstore/detail/braavos-smart-wallet/jnlgamecbpmbajjfhmmmlhejkemejdma"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">🛡️</span>
+                <span className="font-medium">Install Braavos</span>
+              </div>
+              <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {connectors.map((connector) => (
+            <WalletOption
+              key={connector.id}
+              name={connector.name}
+              icon={getWalletIcon(connector.id)}
+              isLoading={isConnecting}
+              onClick={() => handleConnect(() => connect({ connector }))}
+            />
+          ))}
+          
+          {/* Telegram Wallet option (mock for now) */}
           <WalletOption
-            key={connector.id}
-            name={connector.name}
-            icon={getWalletIcon(connector.id)}
+            name="Telegram Wallet"
+            icon="📱"
             isLoading={isConnecting}
-            onClick={() => handleConnect(() => connect({ connector }))}
+            onClick={() => {
+              // TODO: Implement Telegram Wallet connection
+              console.log('Telegram Wallet connection coming soon');
+            }}
+            disabled
           />
-        ))}
-        
-        {/* Telegram Wallet option (mock for now) */}
-        <WalletOption
-          name="Telegram Wallet"
-          icon="📱"
-          isLoading={isConnecting}
-          onClick={() => {
-            // TODO: Implement Telegram Wallet connection
-            console.log('Telegram Wallet connection coming soon');
-          }}
-          disabled
-        />
-      </div>
+        </div>
+      )}
       
       <div className="mt-6 p-4 bg-muted/50 rounded-lg">
         <p className="text-xs text-muted-foreground text-center">

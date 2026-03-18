@@ -1,10 +1,11 @@
-import { useInitData, useMiniApp, useThemeParams } from '@telegram-apps/sdk-react';
-import { useAccount } from '@starknet-react/core';
+import { useAccount, useConnect } from '@starknet-react/core';
 import { useState, useEffect } from 'react';
 
 import { WalletConnect } from './components/WalletConnect';
 import { ChatInterface } from './components/ChatInterface';
+import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
 import { useRelayerAPI } from './hooks/useRelayerAPI';
+import { useTelegramData } from './hooks/useTelegramData';
 import type { ConnectedWallet, InferenceRequest } from './types';
 
 export default function App() {
@@ -15,19 +16,10 @@ export default function App() {
   // Detect connect mode from URL params
   const connectMode = new URLSearchParams(window.location.search).get('mode') === 'connect';
 
-  // These hooks throw outside Telegram — catch gracefully
-  let initData: ReturnType<typeof useInitData> | undefined;
-  let miniApp: ReturnType<typeof useMiniApp> | undefined;
-  try { 
-    initData = useInitData(); 
-    miniApp = useMiniApp();
-    useThemeParams();
-  } catch (error) { 
-    console.log('Running outside Telegram, using fallback mode');
-    initData = undefined; 
-    miniApp = undefined;
-  }
+  // Safe Telegram data access
+  const { initData, miniApp, isInTelegram } = useTelegramData();
   const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
 
   // Initialize Relayer API connection
   const relayerAPI = useRelayerAPI({
@@ -40,12 +32,22 @@ export default function App() {
     if (miniApp) {
       try {
         miniApp.ready();
+        addDebugBootStep('telegram_miniapp_ready', 'success');
       } catch (error) {
         console.log('Mini app initialization failed:', error);
+        addDebugBootStep('telegram_miniapp_ready', 'error', String(error));
       }
+    } else {
+      addDebugBootStep('telegram_detected', isInTelegram ? 'success' : 'error');
     }
+    
+    // Track connect mode
+    if (connectMode) {
+      addDebugBootStep('connect_mode_detected', 'success');
+    }
+    
     setIsLoading(false);
-  }, [miniApp]);
+  }, [miniApp, isInTelegram, connectMode]);
 
   useEffect(() => {
     // Update connected wallet when Starknet account changes
@@ -81,6 +83,11 @@ export default function App() {
       }
     }
   }, [connectMode, address, isConnected]);
+
+  // Track wallet connectors availability
+  useEffect(() => {
+    addDebugBootStep('connectors_count', 'success', `${connectors.length} connectors found`);
+  }, [connectors.length]);
 
   const handleWalletConnect = (wallet: ConnectedWallet) => {
     setConnectedWallet(wallet);
@@ -393,6 +400,9 @@ export default function App() {
           </div>
         )}
       </div>
+      
+      {/* Debug overlay for development and error diagnostics */}
+      <DebugOverlay />
     </main>
   );
 }
