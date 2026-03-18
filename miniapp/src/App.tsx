@@ -33,7 +33,7 @@ class WalletSectionBoundary extends React.Component<
             Open the dedicated wallet page to connect, then return to the bot.
           </p>
           <a
-            href="/connect.html"
+            href="/?mode=connect"
             className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-smainer-green text-white font-medium"
           >
             Open Connect Page
