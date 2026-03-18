@@ -148,6 +148,32 @@ export default function App() {
     );
   }
 
+  if (!connectMode && isInTelegram && !connectedWallet) {
+    return (
+      <main className="min-h-screen p-4 bg-tg-bg">
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-smainer-green mb-2">⚡ Smainer AI</h1>
+            <p className="text-tg-text-hint">Secure wallet connection is required before opening the full app.</p>
+          </div>
+
+          <div className="rounded-lg border border-tg-separator bg-tg-secondary-bg p-5 space-y-4">
+            <h2 className="text-xl font-semibold text-tg-text">Connect Your Wallet</h2>
+            <p className="text-sm text-tg-text-hint">
+              Use the dedicated connect flow for the best Telegram WebView compatibility.
+            </p>
+            <a
+              href="/?mode=connect"
+              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-md bg-smainer-green text-white font-medium"
+            >
+              Open Wallet Connect
+            </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   // If no wallet connected, show connection interface
   if (!connectedWallet) {
     return (

@@ -8,6 +8,7 @@ from typing import Dict
 import redis.asyncio as aioredis
 from telegram import (
     KeyboardButton,
+    MenuButtonWebApp,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
@@ -94,6 +95,7 @@ class SmainerBot:
 
         await self._app.initialize()
         await self._app.start()
+        await self._configure_chat_menu_button()
         await self._app.updater.start_polling(drop_pending_updates=True)
         logger.info("Telegram bot polling started")
 
@@ -130,6 +132,21 @@ class SmainerBot:
         self._app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_prompt)
         )
+
+    async def _configure_chat_menu_button(self) -> None:
+        """Ensure Telegram's persistent 'Open App' button points to connect mode."""
+        assert self._app
+        try:
+            url = settings.miniapp_url.rstrip("/") + "/?mode=connect"
+            await self._app.bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="Open App",
+                    web_app=WebAppInfo(url=url),
+                )
+            )
+            logger.info("Configured Telegram menu button", extra={"miniapp_url": url})
+        except Exception as exc:
+            logger.warning("Failed to configure Telegram menu button: %s", exc)
 
     # ------------------------------------------------------------------
     # /start
