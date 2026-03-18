@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 
 interface ConnectLiteProps {}
 
+const WALLET_STORAGE_KEY = 'smainer_connected_wallet'
+
 type StarknetInjectedWallet = {
   enable: (options?: { starknetVersion?: string }) => Promise<string[] | string>
 }
@@ -65,7 +67,25 @@ export default function ConnectLite({}: ConnectLiteProps) {
     },
   ].filter((wallet) => wallet.provider)
 
+  const persistWalletState = (connectedAddress: string, walletType: string) => {
+    try {
+      window.localStorage.setItem(
+        WALLET_STORAGE_KEY,
+        JSON.stringify({
+          address: connectedAddress,
+          type: walletType,
+          balance_strk: '0',
+          balance_smainer: '0',
+        })
+      )
+    } catch {
+      // Best effort persistence only.
+    }
+  }
+
   const finalizeWalletLink = (connectedAddress: string, walletType: string) => {
+    persistWalletState(connectedAddress, walletType)
+
     if (isInTelegram && telegramWebApp?.sendData) {
       try {
         telegramWebApp.sendData(JSON.stringify({
@@ -156,44 +176,85 @@ export default function ConnectLite({}: ConnectLiteProps) {
 
   if (success) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        padding: '24px 16px', 
-        background: '#1f233b', 
-        color: '#e6e6e6', 
-        fontFamily: 'system-ui, sans-serif' 
-      }}>
-        <div style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ 
-            background: '#065f46', 
-            color: '#d1fae5', 
-            padding: '20px', 
-            borderRadius: '12px', 
-            marginBottom: '24px' 
+      <div style={{ minHeight: '100vh', padding: '18px 14px', background: '#070c15', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <div style={{
+            background: 'radial-gradient(120% 120% at 0% 0%, rgba(16, 185, 129, 0.26), transparent 56%), radial-gradient(120% 120% at 100% 0%, rgba(14, 165, 233, 0.25), transparent 60%), #0f172a',
+            border: '1px solid rgba(148, 163, 184, 0.28)',
+            borderRadius: '18px',
+            padding: '24px',
+            marginBottom: '14px',
+            textAlign: 'center'
           }}>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>✅ Wallet Connected!</h2>
-            <p style={{ margin: '0', fontSize: '14px' }}>
-              Your wallet has been linked to your Smainer account.
-              You can now close this window and return to the chat.
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '999px',
+              margin: '0 auto 14px auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(16, 185, 129, 0.14)',
+              border: '1px solid rgba(16, 185, 129, 0.35)'
+            }}>
+              <span style={{ fontSize: '24px' }}>✓</span>
+            </div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', lineHeight: 1.15 }}>Wallet Linked</h2>
+            <p style={{ margin: '0', color: '#cbd5e1', lineHeight: 1.5, fontSize: '14px' }}>
+              You are ready. Return to Telegram chat or open the full Smainer app now.
             </p>
           </div>
-          
-          <div style={{ 
-            background: '#374151', 
-            padding: '16px', 
-            borderRadius: '8px', 
-            fontSize: '12px',
-            textAlign: 'left'
-          }}>
-            <div><strong>Connected Address:</strong></div>
-            <div style={{ 
-              fontFamily: 'monospace', 
-              wordBreak: 'break-all', 
-              marginTop: '8px',
-              color: '#a78bfa'
-            }}>
+
+          <div style={{ background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.26)', padding: '14px', borderRadius: '14px', fontSize: '12px', textAlign: 'left' }}>
+            <div style={{ color: '#94a3b8', marginBottom: '6px', letterSpacing: '0.03em' }}>CONNECTED ADDRESS</div>
+            <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', color: '#7dd3fc' }}>
               {address}
             </div>
+          </div>
+
+          <div style={{ marginTop: '14px', display: 'grid', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  runtimeWindow.Telegram?.WebApp?.close?.()
+                } catch {
+                  window.history.back()
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '14px 18px',
+                borderRadius: '12px',
+                border: 'none',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '15px',
+                background: 'linear-gradient(135deg, #0ea5e9, #10b981)',
+                boxShadow: '0 12px 30px rgba(16, 185, 129, 0.32)'
+              }}
+            >
+              Return To Telegram Chat
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.assign('/')
+              }}
+              style={{
+                width: '100%',
+                padding: '13px 18px',
+                borderRadius: '12px',
+                border: '1px solid rgba(148, 163, 184, 0.35)',
+                color: '#e2e8f0',
+                fontWeight: 600,
+                fontSize: '14px',
+                background: 'rgba(15, 23, 42, 0.8)'
+              }}
+            >
+              Open Full Smainer App
+            </button>
           </div>
         </div>
       </div>
@@ -201,24 +262,27 @@ export default function ConnectLite({}: ConnectLiteProps) {
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      padding: '24px 16px', 
-      background: '#1f233b', 
-      color: '#e6e6e6', 
-      fontFamily: 'system-ui, sans-serif' 
-    }}>
+    <div style={{ minHeight: '100vh', padding: '18px 14px', background: '#070c15', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ margin: '0 0 16px 0', fontSize: '26px', color: '#a78bfa' }}>
-            Connect Your Wallet
+        <div style={{
+          marginBottom: '16px',
+          borderRadius: '18px',
+          border: '1px solid rgba(148, 163, 184, 0.26)',
+          background: 'radial-gradient(120% 120% at 0% 0%, rgba(16, 185, 129, 0.25), transparent 58%), radial-gradient(130% 130% at 100% 0%, rgba(14, 165, 233, 0.26), transparent 60%), #0f172a',
+          padding: '22px'
+        }}>
+          <div style={{ marginBottom: '8px', color: '#6ee7b7', fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+            Smainer Protocol
+          </div>
+          <h1 style={{ margin: '0', fontSize: '30px', lineHeight: 1.1 }}>
+            Connect Your Starknet Wallet
           </h1>
-          <p style={{ margin: '0', fontSize: '16px', lineHeight: '1.5', color: '#d1d5db' }}>
-            Connect with a Starknet wallet in one tap, or paste your address as a fallback.
+          <p style={{ margin: '10px 0 0 0', fontSize: '14px', lineHeight: '1.5', color: '#cbd5e1' }}>
+            One secure link. Instant access to private AI compute and on-chain settlement in Telegram.
           </p>
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <div style={{ display: 'grid', gap: '12px' }}>
             {injectedWallets.map((wallet) => (
               <button
@@ -228,14 +292,15 @@ export default function ConnectLite({}: ConnectLiteProps) {
                 disabled={isConnecting}
                 style={{
                   width: '100%',
-                  padding: '14px 20px',
-                  background: '#7c3aed',
+                  padding: '15px 18px',
+                  background: 'linear-gradient(135deg, #0ea5e9, #10b981)',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '12px',
                   fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: isConnecting ? 'wait' : 'pointer'
+                  fontWeight: 700,
+                  cursor: isConnecting ? 'wait' : 'pointer',
+                  boxShadow: '0 10px 30px rgba(16, 185, 129, 0.28)'
                 }}
               >
                 {isConnecting ? 'Connecting...' : `${wallet.icon} Connect with ${wallet.label}`}
@@ -247,13 +312,13 @@ export default function ConnectLite({}: ConnectLiteProps) {
               onClick={() => openBrowserLink(braavosConnectUrl)}
               style={{
                 width: '100%',
-                padding: '14px 20px',
-                background: '#334155',
+                padding: '13px 18px',
+                background: 'rgba(15, 23, 42, 0.92)',
                 color: '#ffffff',
-                border: '1px solid #475569',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
+                border: '1px solid rgba(148, 163, 184, 0.35)',
+                borderRadius: '12px',
+                fontSize: '15px',
+                fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
@@ -265,13 +330,13 @@ export default function ConnectLite({}: ConnectLiteProps) {
               onClick={() => openBrowserLink(browserConnectUrl)}
               style={{
                 width: '100%',
-                padding: '14px 20px',
+                padding: '13px 18px',
                 background: 'transparent',
                 color: '#cbd5e1',
-                border: '1px solid #475569',
-                borderRadius: '8px',
-                fontSize: '15px',
-                fontWeight: '600',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
@@ -280,13 +345,14 @@ export default function ConnectLite({}: ConnectLiteProps) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ marginBottom: '32px' }}>
+        <form onSubmit={handleSubmit} style={{ marginBottom: '14px', background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.22)', borderRadius: '14px', padding: '14px' }}>
           <div style={{ marginBottom: '16px' }}>
             <label htmlFor="address" style={{ 
               display: 'block', 
               marginBottom: '8px', 
               fontSize: '14px', 
-              fontWeight: '500' 
+              fontWeight: 600,
+              color: '#cbd5e1'
             }}>
               Manual Fallback: Starknet Wallet Address
             </label>
@@ -299,9 +365,9 @@ export default function ConnectLite({}: ConnectLiteProps) {
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                borderRadius: '8px',
-                border: error ? '2px solid #ef4444' : '1px solid #4b5563',
-                background: '#374151',
+                borderRadius: '10px',
+                border: error ? '2px solid #f87171' : '1px solid rgba(148, 163, 184, 0.35)',
+                background: '#111827',
                 color: '#e6e6e6',
                 fontSize: '16px',
                 fontFamily: 'monospace',
@@ -327,63 +393,33 @@ export default function ConnectLite({}: ConnectLiteProps) {
             type="submit"
             style={{
               width: '100%',
-              padding: '14px 20px',
-              background: '#7c3aed',
+              padding: '14px 18px',
+              background: 'linear-gradient(135deg, #0ea5e9, #10b981)',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '12px',
               fontSize: '16px',
-              fontWeight: '600',
+              fontWeight: 700,
               cursor: 'pointer',
-              transition: 'background-color 0.2s'
+              transition: 'transform 0.15s ease',
+              boxShadow: '0 10px 30px rgba(16, 185, 129, 0.28)'
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#6d28d9'}
-            onMouseOut={(e) => e.currentTarget.style.background = '#7c3aed'}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
           >
             Link Wallet
           </button>
         </form>
 
-        {/* Diagnostic Block */}
-        <div style={{ 
-          background: '#374151', 
-          padding: '16px', 
-          borderRadius: '8px', 
-          fontSize: '12px',
-          border: '1px solid #4b5563'
-        }}>
-          <div style={{ marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
-            🔍 Diagnostics
+        <details style={{ background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.22)', padding: '12px', borderRadius: '12px', fontSize: '12px' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#94a3b8' }}>Diagnostics</summary>
+          <div style={{ marginTop: '10px', color: '#cbd5e1', lineHeight: 1.6 }}>
+            <div><strong>Telegram WebApp:</strong> <span style={{ color: isInTelegram ? '#34d399' : '#f87171' }}>{isInTelegram ? 'Yes' : 'No'}</span></div>
+            <div><strong>Injected Wallets:</strong> {injectedWallets.length > 0 ? injectedWallets.map((wallet) => wallet.label).join(', ') : 'None detected'}</div>
+            <div><strong>URL:</strong> <span style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{currentUrl}</span></div>
+            <div><strong>User Agent:</strong> <span style={{ fontFamily: 'monospace' }}>{userAgent}</span></div>
           </div>
-          
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Telegram WebApp:</strong>{' '}
-            <span style={{ color: isInTelegram ? '#10b981' : '#ef4444' }}>
-              {isInTelegram ? 'Yes' : 'No'}
-            </span>
-          </div>
-
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Injected Wallets:</strong>{' '}
-            <span style={{ color: injectedWallets.length > 0 ? '#10b981' : '#f59e0b' }}>
-              {injectedWallets.length > 0 ? injectedWallets.map((wallet) => wallet.label).join(', ') : 'None detected'}
-            </span>
-          </div>
-          
-          <div style={{ marginBottom: '8px' }}>
-            <strong>URL:</strong>{' '}
-            <span style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-              {currentUrl}
-            </span>
-          </div>
-          
-          <div>
-            <strong>User Agent:</strong>{' '}
-            <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>
-              {userAgent}
-            </span>
-          </div>
-        </div>
+        </details>
       </div>
     </div>
   )

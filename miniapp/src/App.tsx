@@ -7,6 +7,38 @@ import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
 import type { ConnectedWallet, InferenceRequest } from './types';
 
+const WALLET_STORAGE_KEY = 'smainer_connected_wallet';
+
+function loadPersistedWallet(): ConnectedWallet | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(WALLET_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<ConnectedWallet>;
+    const isValidAddress = /^0x[0-9a-fA-F]{1,64}$/.test(parsed.address || '');
+    if (!isValidAddress) {
+      window.localStorage.removeItem(WALLET_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      address: parsed.address!,
+      type: parsed.type || 'manual',
+      balance_strk: parsed.balance_strk || '0',
+      balance_smainer: parsed.balance_smainer || '0',
+    };
+  } catch {
+    window.localStorage.removeItem(WALLET_STORAGE_KEY);
+    return null;
+  }
+}
+
 class WalletSectionBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean }
@@ -48,7 +80,7 @@ class WalletSectionBoundary extends React.Component<
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(null);
+  const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(() => loadPersistedWallet());
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'nft' | 'dashboard'>('home');
   
   // Detect connect mode from URL params
@@ -95,6 +127,18 @@ export default function App() {
     
     setIsLoading(false);
   }, [miniApp, isInTelegram, connectMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (connectedWallet) {
+      window.localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(connectedWallet));
+    } else {
+      window.localStorage.removeItem(WALLET_STORAGE_KEY);
+    }
+  }, [connectedWallet]);
 
   const handleWalletConnect = (wallet: ConnectedWallet) => {
     setConnectedWallet(wallet);
@@ -150,24 +194,28 @@ export default function App() {
 
   if (!connectMode && isInTelegram && !connectedWallet) {
     return (
-      <main className="min-h-screen p-4 bg-tg-bg">
-        <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-smainer-green mb-2">⚡ Smainer AI</h1>
-            <p className="text-tg-text-hint">Secure wallet connection is required before opening the full app.</p>
+      <main className="min-h-screen p-4 bg-[#090b12] text-[#f8fafc]">
+        <div className="max-w-md mx-auto pt-4">
+          <div className="mb-6 rounded-2xl border border-white/10 bg-[radial-gradient(120%_120%_at_10%_0%,rgba(16,185,129,0.25),transparent_55%),radial-gradient(120%_120%_at_100%_0%,rgba(6,182,212,0.20),transparent_55%),#0f172a] p-6">
+            <p className="text-xs uppercase tracking-[0.22em] text-emerald-300/90 mb-2">Smainer Protocol</p>
+            <h1 className="text-3xl font-semibold leading-tight">Private AI Inference</h1>
+            <p className="mt-3 text-sm text-slate-300 leading-relaxed">
+              Link your Starknet wallet once, then launch tasks instantly from Telegram with zero account setup.
+            </p>
           </div>
 
-          <div className="rounded-lg border border-tg-separator bg-tg-secondary-bg p-5 space-y-4">
-            <h2 className="text-xl font-semibold text-tg-text">Connect Your Wallet</h2>
-            <p className="text-sm text-tg-text-hint">
-              Use the dedicated connect flow for the best Telegram WebView compatibility.
+          <div className="rounded-2xl border border-white/10 bg-[#111827]/80 backdrop-blur p-5 space-y-4">
+            <h2 className="text-2xl font-semibold text-white">Unlock Full App</h2>
+            <p className="text-sm text-slate-300">
+              Open the dedicated connect flow for best Telegram wallet compatibility, then return here.
             </p>
             <a
               href="/?mode=connect"
-              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-md bg-smainer-green text-white font-medium"
+              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-[linear-gradient(135deg,#0ea5e9,#10b981)] text-white font-semibold tracking-wide shadow-[0_8px_30px_rgba(16,185,129,0.35)]"
             >
-              Open Wallet Connect
+              Open Secure Wallet Connect
             </a>
+            <p className="text-xs text-slate-400">Tip: after successful connect, tap Open App again to enter the full interface.</p>
           </div>
         </div>
       </main>
@@ -253,28 +301,49 @@ export default function App() {
   // If in connect mode and wallet is connected, show success message
   if (connectMode && connectedWallet) {
     return (
-      <main className="min-h-screen p-4 bg-tg-bg">
-        <div className="max-w-md mx-auto">
+      <main className="min-h-screen p-4 bg-[#090b12] text-[#f8fafc]">
+        <div className="max-w-md mx-auto pt-4">
           <div className="text-center">
-            <div className="w-16 h-16 bg-smainer-green/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-smainer-green" fill="currentColor" viewBox="0 0 20 20">
+            <div className="w-16 h-16 bg-emerald-500/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-400/20">
+              <svg className="w-8 h-8 text-emerald-300" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-smainer-green mb-2">
+            <h1 className="text-3xl font-semibold text-emerald-300 mb-2">
               ✅ Wallet Connected!
             </h1>
-            <p className="text-tg-text-hint mb-4">
-              Your wallet has been linked to Smainer Bot
+            <p className="text-slate-300 mb-4">
+              Your wallet has been linked. You can return to chat or open the full app now.
             </p>
-            <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg">
-              <p className="text-sm text-tg-text font-medium">
+            <div className="p-3 bg-[#111827]/90 border border-white/10 rounded-xl">
+              <p className="text-sm text-slate-100 font-medium">
                 {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
               </p>
             </div>
-            <p className="text-xs text-tg-text-hint mt-4">
-              This window will close automatically. You can now use AI features in the bot!
-            </p>
+
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={() => {
+                  try {
+                    miniApp?.close();
+                  } catch {
+                    window.history.back();
+                  }
+                }}
+                className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-[linear-gradient(135deg,#0ea5e9,#10b981)] text-white font-semibold tracking-wide shadow-[0_8px_30px_rgba(16,185,129,0.35)]"
+              >
+                Return To Telegram Chat
+              </button>
+
+              <button
+                onClick={() => {
+                  window.location.assign('/');
+                }}
+                className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-slate-100 font-medium"
+              >
+                Open Full Smainer App
+              </button>
+            </div>
           </div>
         </div>
       </main>
