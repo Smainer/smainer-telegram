@@ -139,7 +139,7 @@ class SmainerBot:
     ) -> None:
         connect_button = KeyboardButton(
             text="\U0001f517 Connect Wallet",
-            web_app=WebAppInfo(url=settings.miniapp_url + "?mode=connect"),
+            web_app=WebAppInfo(url=settings.miniapp_url + "/connect.html"),
         )
         keyboard = ReplyKeyboardMarkup(
             [[connect_button]],

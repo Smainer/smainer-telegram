@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Smainer – Connect Wallet</title>
+  <script src="https://telegram.org/js/telegram-web-app.js" async></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #1a1b2e;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      font-size: 40px;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .logo-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #a78bfa;
+      letter-spacing: -0.5px;
+    }
+    .logo-sub {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      width: 100%;
+      background: #2d2f50;
+      border: 1.5px solid #4c4f79;
+      color: #f1f5f9;
+      font-size: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: monospace;
+    }
+    input[type="text"]:focus { border-color: #a78bfa; }
+    input[type="text"]::placeholder { color: #64748b; }
+    .hint {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+    }
+    button[type="submit"] {
+      width: 100%;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: background 0.2s;
+    }
+    button[type="submit"]:hover { background: #6d28d9; }
+    button[type="submit"]:active { background: #5b21b6; }
+    .alert {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-top: 16px;
+      line-height: 1.4;
+    }
+    .alert-error { background: #3b1111; color: #fca5a5; border: 1px solid #7f1d1d; }
+    .alert-success { background: #052e16; color: #86efac; border: 1px solid #14532d; }
+    .diag {
+      margin-top: 28px;
+      background: #252742;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .diag-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #4c4f79;
+      margin-bottom: 8px;
+    }
+    .diag-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .diag-key { color: #6b7280; }
+    .diag-val { color: #94a3b8; word-break: break-all; text-align: right; max-width: 200px; }
+    .ok { color: #4ade80; }
+    .no { color: #fb7185; }
+    #success-screen { display: none; text-align: center; }
+    #success-icon { font-size: 64px; margin-bottom: 16px; }
+    #success-title { font-size: 22px; font-weight: 700; color: #4ade80; margin-bottom: 12px; }
+    #success-msg { font-size: 14px; color: #94a3b8; line-height: 1.6; }
+    #success-addr {
+      font-family: monospace;
+      font-size: 12px;
+      color: #a78bfa;
+      word-break: break-all;
+      margin-top: 16px;
+      background: #252742;
+      padding: 10px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Success screen (hidden until wallet connected) -->
+    <div id="success-screen">
+      <div id="success-icon">✅</div>
+      <div id="success-title">Wallet Connected!</div>
+      <div id="success-msg">
+        Your Starknet wallet has been linked to your Smainer account.<br>
+        You can close this window and return to the chat.
+      </div>
+      <div id="success-addr"></div>
+    </div>
+
+    <!-- Connect form (shown initially) -->
+    <div id="connect-screen">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-title">Smainer AI</div>
+        <div class="logo-sub">Connect your Starknet wallet</div>
+      </div>
+
+      <form id="connect-form">
+        <label for="addr-input">Starknet Wallet Address</label>
+        <input
+          id="addr-input"
+          type="text"
+          placeholder="0x04af3..."
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <p class="hint">Your address starts with 0x. Found in Argent X or Braavos wallet.</p>
+        <div id="alert" style="display:none;"></div>
+        <button type="submit">Link Wallet →</button>
+      </form>
+
+      <div class="diag">
+        <div class="diag-title">Diagnostics</div>
+        <div class="diag-row">
+          <span class="diag-key">Telegram detected</span>
+          <span class="diag-val" id="d-tg">checking…</span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-key">sendData available</span>
+          <span class="diag-val" id="d-send">checking…</span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-key">URL</span>
+          <span class="diag-val" id="d-url"></span>
+        </div>
+        <div class="diag-row">
+          <span class="diag-key">Browser</span>
+          <span class="diag-val" id="d-ua"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- DOM refs ----
+    var form = document.getElementById('connect-form');
+    var input = document.getElementById('addr-input');
+    var alertBox = document.getElementById('alert');
+    var connectScreen = document.getElementById('connect-screen');
+    var successScreen = document.getElementById('success-screen');
+    var successAddr = document.getElementById('success-addr');
+
+    // ---- Diagnostics (run immediately) ----
+    document.getElementById('d-url').textContent = window.location.href.substring(0, 60);
+    document.getElementById('d-ua').textContent = navigator.userAgent.substring(0, 50);
+
+    // Check Telegram after a short delay to allow SDK to initialise
+    setTimeout(function() {
+      var tg = window.Telegram && window.Telegram.WebApp;
+      var hasSend = tg && typeof window.Telegram.WebApp.sendData === 'function';
+      document.getElementById('d-tg').innerHTML = tg
+        ? '<span class="ok">YES</span>' : '<span class="no">NO (not in Telegram)</span>';
+      document.getElementById('d-send').innerHTML = hasSend
+        ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
+      // Expand the viewport so the miniapp fills the Telegram WebApp
+      if (tg) { try { window.Telegram.WebApp.expand(); } catch(e) {} }
+    }, 400);
+
+    // ---- Validation ----
+    var ADDRESS_RE = /^0x[0-9a-fA-F]{1,64}$/;
+
+    function showAlert(msg, type) {
+      alertBox.className = 'alert alert-' + type;
+      alertBox.textContent = msg;
+      alertBox.style.display = 'block';
+    }
+
+    // ---- Submit ----
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      alertBox.style.display = 'none';
+
+      var address = input.value.trim();
+      if (!address) {
+        showAlert('Please enter your wallet address.', 'error');
+        return;
+      }
+      if (!ADDRESS_RE.test(address)) {
+        showAlert('Invalid address format. Must start with 0x followed by up to 64 hex characters.', 'error');
+        return;
+      }
+
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (!tg || typeof tg.sendData !== 'function') {
+        showAlert(
+          'sendData not available. This page must be opened from inside Telegram via the bot. ' +
+          'Go to @smainer_ai_bot and tap Connect Wallet.',
+          'error'
+        );
+        return;
+      }
+
+      try {
+        tg.sendData(JSON.stringify({
+          action: 'wallet_connect',
+          address: address,
+          wallet_type: 'manual'
+        }));
+        // Show success
+        connectScreen.style.display = 'none';
+        successAddr.textContent = address;
+        successScreen.style.display = 'block';
+      } catch(err) {
+        showAlert('Failed to send: ' + (err && err.message ? err.message : String(err)), 'error');
+      }
+    });
+  </script>
+</body>
+</html>
