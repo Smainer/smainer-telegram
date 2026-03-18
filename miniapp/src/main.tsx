@@ -111,7 +111,7 @@ async function bootstrap() {
         <React.StrictMode>
           <AppErrorBoundary>
             <TelegramProvider>
-              <StarknetConfig config={starknetConfig}>
+              <StarknetConfig {...starknetConfig}>
                 <App />
               </StarknetConfig>
             </TelegramProvider>
