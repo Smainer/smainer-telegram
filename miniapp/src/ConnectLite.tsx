@@ -17,6 +17,18 @@ type WindowWithWallets = Window & {
   starknet_argentX?: StarknetInjectedWallet
 }
 
+function encodeAddressForStartPayload(address: string): string {
+  const normalized = address.trim().toLowerCase()
+  const hex = normalized.startsWith('0x') ? normalized.slice(2) : normalized
+  const padded = hex.padStart(64, '0')
+  const bytes = new Uint8Array(padded.match(/.{1,2}/g)!.map((pair) => parseInt(pair, 16)))
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
 export default function ConnectLite({}: ConnectLiteProps) {
   const [address, setAddress] = useState('')
   const [error, setError] = useState('')
@@ -72,7 +84,8 @@ export default function ConnectLite({}: ConnectLiteProps) {
     }
 
     if (shouldReturnToTelegram) {
-      window.location.assign(`https://t.me/${botUsername}?start=link_${connectedAddress}`)
+      const encodedAddress = encodeAddressForStartPayload(connectedAddress)
+      window.location.assign(`https://t.me/${botUsername}?start=linkb_${encodedAddress}`)
       return
     }
 

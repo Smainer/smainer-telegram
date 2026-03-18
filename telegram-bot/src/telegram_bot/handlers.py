@@ -1,5 +1,6 @@
 """Telegram bot command and message handlers."""
 
+import base64
 import json
 import logging
 from typing import Dict
@@ -139,8 +140,27 @@ class SmainerBot:
     ) -> None:
         if context.args:
             start_payload = context.args[0].strip()
-            if start_payload.startswith("link_"):
+            address: str | None = None
+
+            if start_payload.startswith("linkb_"):
+                encoded = start_payload[len("linkb_"):]
+                try:
+                    padding = "=" * (-len(encoded) % 4)
+                    raw = base64.urlsafe_b64decode(encoded + padding)
+                    if not raw or len(raw) > 32:
+                        raise ValueError("invalid address payload")
+                    address = "0x" + raw.hex()
+                except (ValueError, base64.binascii.Error):
+                    await update.message.reply_text(
+                        "Invalid wallet payload received. Please connect again.",
+                        reply_markup=ReplyKeyboardRemove(),
+                    )
+                    return
+            elif start_payload.startswith("link_"):
+                # Backward compatibility for older connect links.
                 address = start_payload[len("link_"):]
+
+            if address:
                 try:
                     await self._wallet.link_wallet(update.effective_user.id, address)
                     await update.message.reply_text(

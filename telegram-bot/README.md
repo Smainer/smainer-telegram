@@ -53,3 +53,17 @@ smainer-telegram-bot
 | `REDIS_URL` | Redis for session state | `redis://localhost:6379/1` |
 | `MIN_STRK_BALANCE` | Minimum balance to use bot | `1000000000000000000` (1 STRK) |
 | `DEFAULT_MODEL` | Default AI model | `llama3.1:8b` |
+
+## Start Deep-Link Wallet Linking
+
+- The bot accepts wallet-link payloads via `/start` arguments.
+- Current payload formats:
+- `linkb_<encoded_address>`: compact URL-safe payload used by the miniapp external return flow.
+- `link_<address>`: legacy plain-address payload kept for backward compatibility.
+- On valid payloads, the bot links the wallet immediately and confirms in chat.
+- On invalid payloads, the bot returns an error and asks the user to reconnect.
+
+## Security Notes
+
+- Deep-link payloads are convenience links, not ownership proofs.
+- For stronger protection against malicious wallet replacement links, add an explicit confirmation step before overwriting an existing linked wallet.

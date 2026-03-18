@@ -11,6 +11,17 @@ Starknet AI tasks through Telegram. Connect wallet, run compute tasks, pay with 
 - **💳 STRK Payment**: Pay for tasks with STRK tokens
 - **📱 Mobile Optimized**: Works within Telegram mobile app
 
+## Wallet Connect Flows (Current)
+
+- Telegram WebApp connect: in Telegram, wallet data is returned with `WebApp.sendData`.
+- External wallet connect: from `connect.html`, users can open `Open in Braavos App` or `Open in Browser Wallet`.
+- Return to bot: external connect runs with `?return=telegram` and redirects to `https://t.me/<bot>?start=linkb_<encoded_address>` after successful connection.
+- Desktop/browser support: injected wallets (Braavos, Argent X) are available in connect mode, with manual address entry as fallback.
+
+## Required Environment Variables (Wallet Return)
+
+- `VITE_TELEGRAM_BOT_USERNAME`: bot username used for deep-link return redirects.
+
 ## 🚀 Deployment
 
 ### Vercel Deployment (Recommended)
