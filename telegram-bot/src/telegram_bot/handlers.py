@@ -27,7 +27,7 @@ from .config import settings
 from .models import InferenceRequest, ModelTier, StreamChunk, TaskCallback
 from .payment import PaymentManager
 from .relayer_client import RelayerClient
-from .wallet import WalletManager
+from .wallet import BalanceUnavailableError, WalletManager
 
 logger = logging.getLogger(__name__)
 
@@ -415,7 +415,14 @@ class SmainerBot:
             return
 
         # 2. Check balance
-        has_funds = await self._wallet.has_sufficient_balance(user_id)
+        try:
+            has_funds = await self._wallet.has_sufficient_balance(user_id)
+        except BalanceUnavailableError:
+            await update.message.reply_text(
+                "Wallet balance check is temporarily unavailable. Please try again in a minute."
+            )
+            return
+
         if not has_funds:
             await update.message.reply_text(
                 "Insufficient $STRK balance. Top up your wallet and try again.\n"

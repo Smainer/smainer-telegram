@@ -3,6 +3,44 @@ import ReactDOM from 'react-dom/client'
 
 import './index.css'
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message?: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error.message }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('Miniapp render failed:', error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', padding: '16px', background: '#1f233b', color: '#e6e6e6', fontFamily: 'system-ui, sans-serif' }}>
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '22px' }}>Smainer Miniapp Render Error</h2>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.4 }}>
+              {this.state.message || 'The app failed while rendering.'}
+            </p>
+            <p style={{ margin: 0, lineHeight: 1.4, fontSize: '13px', color: '#b8bfd6' }}>
+              Reopen the miniapp, or use the wallet connect page if this keeps happening.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
 function renderBootstrapError(message: string, details?: string) {
   const root = document.getElementById('root')
   if (!root) {
@@ -46,7 +84,9 @@ async function bootstrap() {
       
       ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
-          <ConnectLite />
+          <AppErrorBoundary>
+            <ConnectLite />
+          </AppErrorBoundary>
         </React.StrictMode>,
       )
     } else {
@@ -60,11 +100,13 @@ async function bootstrap() {
 
       ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
-          <TelegramProvider>
-            <StarknetConfig config={starknetConfig}>
-              <App />
-            </StarknetConfig>
-          </TelegramProvider>
+          <AppErrorBoundary>
+            <TelegramProvider>
+              <StarknetConfig config={starknetConfig}>
+                <App />
+              </StarknetConfig>
+            </TelegramProvider>
+          </AppErrorBoundary>
         </React.StrictMode>,
       )
     }

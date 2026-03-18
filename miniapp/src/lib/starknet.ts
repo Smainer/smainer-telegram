@@ -1,7 +1,7 @@
 /* Starknet configuration and contract addresses */
 
 
-import { argent, braavos, publicProvider } from '@starknet-react/core';
+import { argent, braavos, jsonRpcProvider } from '@starknet-react/core';
 
 function parseContractAddress(envKey: string, required: boolean): string | undefined {
   const raw = import.meta.env[envKey] as string | undefined;
@@ -34,10 +34,19 @@ import { mainnet, sepolia } from '@starknet-react/chains';
 
 export const chains = [mainnet, sepolia];
 
+const fallbackRpcUrl = 'https://api.cartridge.gg/x/starknet/mainnet';
+const configuredRpcUrl = (import.meta.env.VITE_STARKNET_RPC_URL as string | undefined) || fallbackRpcUrl;
+
 // Starknet React configuration  
 export const starknetConfig = {
   chains,
-  provider: publicProvider(),
+  provider: jsonRpcProvider({
+    rpc: (chain) => ({
+      nodeUrl: chain.network === 'sepolia'
+        ? 'https://api.cartridge.gg/x/starknet/sepolia'
+        : configuredRpcUrl,
+    }),
+  }),
   connectors: [argent(), braavos()],
 };
 
