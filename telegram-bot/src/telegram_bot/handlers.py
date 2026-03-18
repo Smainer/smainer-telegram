@@ -179,7 +179,7 @@ class SmainerBot:
 
         connect_button = KeyboardButton(
             text="\U0001f517 Connect Wallet",
-            web_app=WebAppInfo(url=settings.miniapp_url + "/connect.html"),
+            web_app=WebAppInfo(url=settings.miniapp_url + "/?mode=connect"),
         )
         keyboard = ReplyKeyboardMarkup(
             [[connect_button]],
