@@ -103,7 +103,11 @@ export default function ConnectLite({}: ConnectLiteProps) {
       setIsConnecting(true)
       setError('')
       const accounts = await provider.enable({ starknetVersion: 'v5' })
-      const connectedAddress = typeof accounts === 'string' ? accounts : accounts[0]
+      const connectedAddress = typeof accounts === 'string'
+        ? accounts
+        : Array.isArray(accounts) && accounts.length > 0
+          ? accounts[0]
+          : undefined
 
       if (!connectedAddress || !ADDRESS_REGEX.test(connectedAddress.trim())) {
         throw new Error('Wallet returned an invalid Starknet address')

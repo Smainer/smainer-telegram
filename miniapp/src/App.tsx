@@ -18,6 +18,18 @@ export default function App() {
 
   // Safe Telegram data access
   const { initData, miniApp, isInTelegram } = useTelegramData();
+  const tgUser = initData?.user as {
+    id?: number;
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    firstName?: string;
+    lastName?: string;
+  } | undefined;
+  const displayFirstName = tgUser?.first_name || tgUser?.firstName || '';
+  const displayLastName = tgUser?.last_name || tgUser?.lastName || '';
+  const displayInitial = displayFirstName ? displayFirstName.charAt(0) : '👤';
+  const displayUsername = tgUser?.username || (tgUser?.id ? `user${tgUser.id}` : 'user');
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
 
@@ -154,20 +166,20 @@ export default function App() {
           </div>
 
           {/* Only show Telegram user info in full app mode */}
-          {!connectMode && initData?.user && (
+          {!connectMode && tgUser && (
             <div className="mb-6 p-4 bg-tg-secondary-bg border border-tg-separator rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-smainer-green/10 rounded-full flex items-center justify-center">
                   <span className="text-sm">
-                    {initData.user.firstName?.[0] || '👤'}
+                    {displayInitial}
                   </span>
                 </div>
                 <div>
                   <p className="font-medium text-tg-text">
-                    {initData.user.firstName} {initData.user.lastName}
+                    {displayFirstName} {displayLastName}
                   </p>
                   <p className="text-sm text-tg-text-hint">
-                    @{initData.user.username || `user${initData.user.id}`}
+                    @{displayUsername}
                   </p>
                 </div>
               </div>
