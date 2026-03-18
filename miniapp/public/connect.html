@@ -161,6 +161,8 @@
         />
         <p class="hint">Your address starts with 0x. Found in Argent X or Braavos wallet.</p>
         <div id="alert" style="display:none;"></div>
+        <button type="button" id="braavos-btn">Open in Braavos App</button>
+        <button type="button" id="browser-btn">Open in Browser Wallet</button>
         <button type="submit">Link Wallet →</button>
       </form>
 
@@ -194,6 +196,10 @@
     var connectScreen = document.getElementById('connect-screen');
     var successScreen = document.getElementById('success-screen');
     var successAddr = document.getElementById('success-addr');
+    var braavosBtn = document.getElementById('braavos-btn');
+    var browserBtn = document.getElementById('browser-btn');
+    var browserConnectUrl = window.location.origin + '/?mode=connect&return=telegram';
+    var braavosConnectUrl = 'https://link.braavos.app/dapp/' + window.location.host + '/?mode=connect&return=telegram';
 
     // ---- Diagnostics (run immediately) ----
     document.getElementById('d-url').textContent = window.location.href.substring(0, 60);
@@ -219,6 +225,25 @@
       alertBox.textContent = msg;
       alertBox.style.display = 'block';
     }
+
+    function openExternal(url) {
+      try {
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+          window.Telegram.WebApp.openLink(url);
+          return;
+        }
+      } catch(e) {}
+
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    braavosBtn.addEventListener('click', function() {
+      openExternal(braavosConnectUrl);
+    });
+
+    browserBtn.addEventListener('click', function() {
+      openExternal(browserConnectUrl);
+    });
 
     // ---- Submit ----
     form.addEventListener('submit', function(e) {

@@ -2,18 +2,121 @@ import React, { useState } from 'react'
 
 interface ConnectLiteProps {}
 
+type StarknetInjectedWallet = {
+  enable: (options?: { starknetVersion?: string }) => Promise<string[] | string>
+}
+
+type TelegramWebApp = {
+  sendData?: (data: string) => void
+  openLink?: (url: string) => void
+}
+
+type WindowWithWallets = Window & {
+  Telegram?: { WebApp?: TelegramWebApp }
+  starknet_braavos?: StarknetInjectedWallet
+  starknet_argentX?: StarknetInjectedWallet
+}
+
 export default function ConnectLite({}: ConnectLiteProps) {
   const [address, setAddress] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
 
   // Address validation regex
   const ADDRESS_REGEX = /^0x[0-9a-fA-F]{1,64}$/
+  const runtimeWindow = window as WindowWithWallets
+  const telegramWebApp = runtimeWindow.Telegram?.WebApp
+  const viteEnv = (import.meta as ImportMeta & { env?: { VITE_TELEGRAM_BOT_USERNAME?: string } }).env
 
   // Diagnostic information
-  const isInTelegram = Boolean(window.Telegram?.WebApp)
+  const isInTelegram = Boolean(telegramWebApp)
   const currentUrl = window.location.href
   const userAgent = navigator.userAgent.substring(0, 100) + (navigator.userAgent.length > 100 ? '...' : '')
+  const urlParams = new URLSearchParams(window.location.search)
+  const shouldReturnToTelegram = urlParams.get('return') === 'telegram'
+  const botUsername = viteEnv?.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'
+  const browserConnectUrl = `${window.location.origin}/?mode=connect&return=telegram`
+  const braavosConnectUrl = `https://link.braavos.app/dapp/${window.location.host}/?mode=connect&return=telegram`
+  const injectedWallets = [
+    {
+      id: 'braavos',
+      label: 'Braavos',
+      icon: '🛡️',
+      provider: runtimeWindow.starknet_braavos,
+    },
+    {
+      id: 'argentx',
+      label: 'Argent X',
+      icon: '🔷',
+      provider: runtimeWindow.starknet_argentX,
+    },
+  ].filter((wallet) => wallet.provider)
+
+  const finalizeWalletLink = (connectedAddress: string, walletType: string) => {
+    if (isInTelegram && telegramWebApp?.sendData) {
+      try {
+        telegramWebApp.sendData(JSON.stringify({
+          action: 'wallet_connect',
+          address: connectedAddress,
+          wallet_type: walletType,
+        }))
+        setAddress(connectedAddress)
+        setSuccess(true)
+        return
+      } catch (err) {
+        setError('Failed to send data to Telegram bot')
+        console.error('Telegram sendData error:', err)
+        return
+      }
+    }
+
+    if (shouldReturnToTelegram) {
+      window.location.assign(`https://t.me/${botUsername}?start=link_${connectedAddress}`)
+      return
+    }
+
+    setAddress(connectedAddress)
+    setSuccess(true)
+  }
+
+  const handleInjectedConnect = async (walletType: string, provider?: StarknetInjectedWallet) => {
+    if (!provider) {
+      setError(`${walletType} wallet is not available in this browser`)
+      return
+    }
+
+    try {
+      setIsConnecting(true)
+      setError('')
+      const accounts = await provider.enable({ starknetVersion: 'v5' })
+      const connectedAddress = typeof accounts === 'string' ? accounts : accounts[0]
+
+      if (!connectedAddress || !ADDRESS_REGEX.test(connectedAddress.trim())) {
+        throw new Error('Wallet returned an invalid Starknet address')
+      }
+
+      finalizeWalletLink(connectedAddress.trim(), walletType)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Wallet connection failed'
+      setError(message)
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
+  const openBrowserLink = (targetUrl: string) => {
+    try {
+      if (telegramWebApp?.openLink) {
+        telegramWebApp.openLink(targetUrl)
+        return
+      }
+    } catch {
+      // Fallback to standard browser navigation.
+    }
+
+    window.open(targetUrl, '_blank', 'noopener,noreferrer')
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,23 +134,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
 
     const trimmedAddress = address.trim()
 
-    // If running in Telegram WebApp, send data back
-    if (isInTelegram && window.Telegram?.WebApp?.sendData) {
-      try {
-        const data = {
-          action: 'wallet_connect',
-          address: trimmedAddress,
-          wallet_type: 'manual'
-        }
-        window.Telegram.WebApp.sendData(JSON.stringify(data))
-        setSuccess(true)
-      } catch (err) {
-        setError('Failed to send data to Telegram bot')
-        console.error('Telegram sendData error:', err)
-      }
-    } else {
-      setError('This feature only works inside Telegram WebApp')
-    }
+    finalizeWalletLink(trimmedAddress, 'manual')
   }
 
   if (success) {
@@ -110,8 +197,70 @@ export default function ConnectLite({}: ConnectLiteProps) {
             Connect Your Wallet
           </h1>
           <p style={{ margin: '0', fontSize: '16px', lineHeight: '1.5', color: '#d1d5db' }}>
-            Enter your Starknet wallet address to link it with your Smainer account for compute rewards and task submissions.
+            Connect with a Starknet wallet in one tap, or paste your address as a fallback.
           </p>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {injectedWallets.map((wallet) => (
+              <button
+                key={wallet.id}
+                type="button"
+                onClick={() => handleInjectedConnect(wallet.id, wallet.provider)}
+                disabled={isConnecting}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  background: '#7c3aed',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: isConnecting ? 'wait' : 'pointer'
+                }}
+              >
+                {isConnecting ? 'Connecting...' : `${wallet.icon} Connect with ${wallet.label}`}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => openBrowserLink(braavosConnectUrl)}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: '#334155',
+                color: '#ffffff',
+                border: '1px solid #475569',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              🛡️ Open in Braavos App
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openBrowserLink(browserConnectUrl)}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: 'transparent',
+                color: '#cbd5e1',
+                border: '1px solid #475569',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Open in Browser Wallet
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ marginBottom: '32px' }}>
@@ -122,7 +271,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
               fontSize: '14px', 
               fontWeight: '500' 
             }}>
-              Starknet Wallet Address
+              Manual Fallback: Starknet Wallet Address
             </label>
             <input
               id="address"
@@ -194,6 +343,13 @@ export default function ConnectLite({}: ConnectLiteProps) {
             <strong>Telegram WebApp:</strong>{' '}
             <span style={{ color: isInTelegram ? '#10b981' : '#ef4444' }}>
               {isInTelegram ? 'Yes' : 'No'}
+            </span>
+          </div>
+
+          <div style={{ marginBottom: '8px' }}>
+            <strong>Injected Wallets:</strong>{' '}
+            <span style={{ color: injectedWallets.length > 0 ? '#10b981' : '#f59e0b' }}>
+              {injectedWallets.length > 0 ? injectedWallets.map((wallet) => wallet.label).join(', ') : 'None detected'}
             </span>
           </div>
           

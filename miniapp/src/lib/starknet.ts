@@ -1,7 +1,7 @@
 /* Starknet configuration and contract addresses */
 
 
-import { StarknetConfig, publicProvider } from '@starknet-react/core';
+import { argent, braavos, publicProvider } from '@starknet-react/core';
 
 function parseContractAddress(envKey: string, required: boolean): string | undefined {
   const raw = import.meta.env[envKey] as string | undefined;
@@ -26,7 +26,7 @@ export const CONTRACT_ADDRESSES = {
   NFT_FACTORY: parseContractAddress('VITE_NFT_FACTORY_ADDRESS', false),  
   USER_PROFILE: parseContractAddress('VITE_USER_PROFILE_ADDRESS', false),
   DATA_STORAGE: parseContractAddress('VITE_DATA_STORAGE_ADDRESS', false),
-  ESCROW: parseContractAddress('VITE_SMAINER_CONTRACT_ADDRESS', true),
+  ESCROW: parseContractAddress('VITE_SMAINER_CONTRACT_ADDRESS', false),
 } as const;
 
 // Starknet chain configuration
@@ -38,6 +38,7 @@ export const chains = [mainnet, sepolia];
 export const starknetConfig = {
   chains,
   provider: publicProvider(),
+  connectors: [argent(), braavos()],
 };
 
 // Token decimals

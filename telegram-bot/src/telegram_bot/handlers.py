@@ -137,6 +137,26 @@ class SmainerBot:
     async def _cmd_start(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
+        if context.args:
+            start_payload = context.args[0].strip()
+            if start_payload.startswith("link_"):
+                address = start_payload[len("link_"):]
+                try:
+                    await self._wallet.link_wallet(update.effective_user.id, address)
+                    await update.message.reply_text(
+                        f"\u2705 Wallet connected: `{address}`\n\n"
+                        "Send any message to start an AI prompt.",
+                        parse_mode=ParseMode.MARKDOWN,
+                        reply_markup=ReplyKeyboardRemove(),
+                    )
+                    return
+                except ValueError:
+                    await update.message.reply_text(
+                        "Invalid Starknet address received from wallet connect. Please try again.",
+                        reply_markup=ReplyKeyboardRemove(),
+                    )
+                    return
+
         connect_button = KeyboardButton(
             text="\U0001f517 Connect Wallet",
             web_app=WebAppInfo(url=settings.miniapp_url + "/connect.html"),
