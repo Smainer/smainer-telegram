@@ -56,13 +56,13 @@ export default function ConnectLite({}: ConnectLiteProps) {
     {
       id: 'braavos',
       label: 'Braavos',
-      icon: '🛡️',
+      icon: 'B',
       provider: runtimeWindow.starknet_braavos,
     },
     {
       id: 'argentx',
       label: 'Argent X',
-      icon: '🔷',
+      icon: 'A',
       provider: runtimeWindow.starknet_argentX,
     },
   ].filter((wallet) => wallet.provider)
@@ -179,7 +179,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
       <div style={{ minHeight: '100vh', padding: '18px 14px', background: '#070c15', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
           <div style={{
-            background: 'radial-gradient(120% 120% at 0% 0%, rgba(16, 185, 129, 0.26), transparent 56%), radial-gradient(120% 120% at 100% 0%, rgba(14, 165, 233, 0.25), transparent 60%), #0f172a',
+            background: '#0f172a',
             border: '1px solid rgba(148, 163, 184, 0.28)',
             borderRadius: '18px',
             padding: '24px',
@@ -230,8 +230,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
                 color: '#fff',
                 fontWeight: 700,
                 fontSize: '15px',
-                background: 'linear-gradient(135deg, #0ea5e9, #10b981)',
-                boxShadow: '0 12px 30px rgba(16, 185, 129, 0.32)'
+                background: '#B5A082'
               }}
             >
               Return To Telegram Chat
@@ -268,7 +267,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
           marginBottom: '16px',
           borderRadius: '18px',
           border: '1px solid rgba(148, 163, 184, 0.26)',
-          background: 'radial-gradient(120% 120% at 0% 0%, rgba(16, 185, 129, 0.25), transparent 58%), radial-gradient(130% 130% at 100% 0%, rgba(14, 165, 233, 0.26), transparent 60%), #0f172a',
+          background: '#0f172a',
           padding: '22px'
         }}>
           <div style={{ marginBottom: '8px', color: '#6ee7b7', fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
@@ -293,14 +292,13 @@ export default function ConnectLite({}: ConnectLiteProps) {
                 style={{
                   width: '100%',
                   padding: '15px 18px',
-                  background: 'linear-gradient(135deg, #0ea5e9, #10b981)',
+                  background: '#06B6D4',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '12px',
                   fontSize: '16px',
                   fontWeight: 700,
-                  cursor: isConnecting ? 'wait' : 'pointer',
-                  boxShadow: '0 10px 30px rgba(16, 185, 129, 0.28)'
+                  cursor: isConnecting ? 'wait' : 'pointer'
                 }}
               >
                 {isConnecting ? 'Connecting...' : `${wallet.icon} Connect with ${wallet.label}`}
@@ -322,7 +320,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
                 cursor: 'pointer'
               }}
             >
-              🛡️ Open in Braavos App
+              Open in Braavos App
             </button>
 
             <button
@@ -394,18 +392,14 @@ export default function ConnectLite({}: ConnectLiteProps) {
             style={{
               width: '100%',
               padding: '14px 18px',
-              background: 'linear-gradient(135deg, #0ea5e9, #10b981)',
+              background: '#B5A082',
               color: '#ffffff',
               border: 'none',
               borderRadius: '12px',
               fontSize: '16px',
               fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'transform 0.15s ease',
-              boxShadow: '0 10px 30px rgba(16, 185, 129, 0.28)'
+              cursor: 'pointer'
             }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
           >
             Link Wallet
           </button>

@@ -59,7 +59,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               <h3 className="text-lg font-semibold text-destructive">Wrong Network</h3>
               <p className="text-sm text-destructive/80 mt-2">Please switch to {expectedChainStr === 'SN_MAIN' ? 'Mainnet' : 'Sepolia'} to continue.</p>
             </div>
-            <button onClick={handleDisconnect} className="w-full px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors">
+            <button onClick={handleDisconnect} className="w-full px-4 py-2 bg-destructive text-destructive-foreground font-semibold rounded-md hover:bg-destructive/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive">
               Disconnect Wallet
             </button>
           </div>
@@ -71,8 +71,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       <div className="w-full max-w-md mx-auto">
         <div className="bg-card border rounded-lg p-6">
           <div className="text-center mb-4">
-            <div className="w-12 h-12 bg-smainer-green/10 rounded-full flex items-center justify-center mx-auto mb-2">
-              <svg className="w-6 h-6 text-smainer-green" fill="currentColor" viewBox="0 0 20 20">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+              <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             </div>
@@ -82,7 +82,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           
           <button
             onClick={handleDisconnect}
-            className="w-full px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors"
+            className="w-full px-4 py-2 bg-destructive text-destructive-foreground font-semibold rounded-md hover:bg-destructive/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
           >
             Disconnect Wallet
           </button>
@@ -147,7 +147,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               className="w-full flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <span className="text-xl">🛡️</span>
+                <span className="text-xl font-bold text-primary">B</span>
                 <span className="font-medium">Install Braavos</span>
               </div>
               <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,10 +231,10 @@ function WalletOption({ name, icon, isLoading, onClick, disabled = false }: Wall
 function getWalletIcon(walletId: string): string {
   switch (walletId.toLowerCase()) {
     case 'argentx':
-      return '🔷';
+      return 'A';
     case 'braavos':
-      return '🛡️';
+      return 'B';
     default:
-      return '💳';
+      return 'W';
   }
 }

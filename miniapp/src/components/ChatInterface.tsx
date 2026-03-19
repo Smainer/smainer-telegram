@@ -33,7 +33,7 @@ export function ChatInterface({
     {
       id: '1',
       type: 'system',
-      content: 'Welcome to Smainer AI! Choose a model and start your AI inference. You can also mint NFTs from generated images.',
+      content: 'Smainer AI: Private inference on decentralized infrastructure. Select your model and submit computation requests. Generated images can be minted as verified NFTs.',
       timestamp: new Date(),
     }
   ]);
@@ -193,14 +193,14 @@ export function ChatInterface({
             }}
             placeholder={selectedModel ? "Type your message..." : "Select a model first..."}
             disabled={!selectedModel || isGenerating}
-            className="flex-1 min-h-[40px] max-h-32 px-3 py-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="flex-1 min-h-[40px] max-h-32 px-4 py-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             rows={1}
           />
           
           <button
             type="submit"
             disabled={!currentMessage.trim() || !selectedModel || isGenerating}
-            className="px-4 py-2 bg-smainer-green hover:bg-smainer-green/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md transition-colors flex items-center space-x-2"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-semibold rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center space-x-2"
           >
             {isGenerating ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -246,7 +246,7 @@ function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
         isUser 
-          ? 'bg-smainer-green text-white' 
+          ? 'bg-primary text-primary-foreground' 
           : isSystem
           ? 'bg-muted text-muted-foreground text-center'
           : 'bg-card border'
@@ -263,9 +263,9 @@ function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
             {message.nftMintable && (
               <button
                 onClick={() => onMintNFT(message.imageUrl!)}
-                className="mt-2 w-full px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors"
+                className="mt-2 w-full px-3 py-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                🎨 Mint as NFT
+                Mint as NFT
               </button>
             )}
           </div>

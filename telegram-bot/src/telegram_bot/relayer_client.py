@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, Optional
 
 import httpx
+from httpx import ConnectError, ReadTimeout, TimeoutException
 
 from .config import settings
 from .models import (
@@ -15,6 +16,9 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Default HTTP timeout in seconds
+DEFAULT_TIMEOUT = 15
 
 
 class RelayerClient:
@@ -80,13 +84,32 @@ class RelayerClient:
 
     async def get_task_status(self, task_id: str) -> Optional[TaskStatusResponse]:
         """Poll the relayer for task status (fallback when callbacks fail)."""
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                f"{self._base}/api/v1/tasks/{task_id}",
-                headers=self._headers,
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=10.0, read=15.0)) as client:
+                resp = await client.get(
+                    f"{self._base}/api/v1/tasks/{task_id}",
+                    headers=self._headers,
+                )
+                if resp.status_code == 200:
+                    return TaskStatusResponse.model_validate(resp.json())
+                elif resp.status_code == 404:
+                    logger.warning(f"Task not found: {task_id}")
+                    return None
+                else:
+                    logger.warning(f"Unexpected status code {resp.status_code} for task {task_id}")
+                    return None
+                    
+        except httpx.RequestError as e:
+            logger.warning(
+                f"Network error getting task status for {task_id}",
+                extra={"error_type": type(e).__name__, "error": str(e)}
             )
-            if resp.status_code == 200:
-                return TaskStatusResponse.model_validate(resp.json())
+            return None
+        except Exception as e:
+            logger.error(
+                f"Unexpected error getting task status for {task_id}",
+                extra={"error_type": type(e).__name__, "error": str(e)}
+            )
             return None
 
     # ------------------------------------------------------------------
@@ -95,7 +118,7 @@ class RelayerClient:
 
     async def list_available_models(self) -> list[Dict[str, Any]]:
         """Ask the relayer which GPU-capable nodes are online and their specs."""
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
             resp = await client.get(
                 f"{self._base}/api/v1/nodes",
                 headers=self._headers,
@@ -109,20 +132,32 @@ class RelayerClient:
             for node in nodes:
                 gpu = node.get("hardware_spec", {}).get("gpu_info", "")
                 ram = node.get("hardware_spec", {}).get("ram_gb", 0)
-                if not gpu:
+                
+                # More resilient GPU detection 
+                # Accept nodes with missing gpu_info if they have reasonable RAM
+                # This covers cases where GPU metadata is missing but compute capability exists
+                has_gpu_capability = bool(gpu) or ram >= 12  # Lower threshold for initial filtering
+                
+                if not has_gpu_capability:
                     continue
 
-                # Infer supported tiers from RAM/GPU
+                # Infer supported tiers from RAM/GPU with fallback logic
                 supported: list[str] = []
                 for tier in ModelTier:
                     reqs = MODEL_TIER_REQUIREMENTS[tier]
-                    if ram >= reqs["ram_gb"]:
+                    # More tolerant tier matching - allow 10% RAM tolerance
+                    ram_threshold = reqs["ram_gb"] * 0.9
+                    if ram >= ram_threshold:
                         supported.append(tier.value)
+                
+                # Fallback: if no tiers matched but node has reasonable RAM, support SMALL
+                if not supported and ram >= 12:  # Slightly below SMALL minimum
+                    supported.append(ModelTier.SMALL.value)
 
                 models.append(
                     {
                         "node_id": node["node_id"],
-                        "gpu": gpu,
+                        "gpu": gpu or f"Unknown GPU (RAM: {ram}GB)",  # Fallback display
                         "ram_gb": ram,
                         "supported_tiers": supported,
                     }

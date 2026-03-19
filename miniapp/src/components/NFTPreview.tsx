@@ -185,7 +185,6 @@ export function NFTPreview({ imageUrl, onClose, onMint }: NFTPreviewProps) {
                   </>
                 ) : (
                   <>
-                    <span>🎨</span>
                     <span>Mint NFT</span>
                   </>
                 )}

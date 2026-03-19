@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { WalletConnect } from './components/WalletConnect';
 import { ChatInterface } from './components/ChatInterface';
 import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
-import { useRelayerAPI } from './hooks/useRelayerAPI';
+            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 import { useTelegramData } from './hooks/useTelegramData';
 import type { ConnectedWallet, InferenceRequest } from './types';
 
@@ -65,8 +65,10 @@ class WalletSectionBoundary extends React.Component<
             Open the dedicated wallet page to connect, then return to the bot.
           </p>
           <a
-            href="/?mode=connect"
-            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-smainer-green text-white font-medium"
+            href={(import.meta.env.VITE_FRONTEND_URL || 'https://smainer.io') + '/?mode=connect'}
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary hover:bg-primary-hover text-white font-medium"
           >
             Open Connect Page
           </a>
@@ -187,31 +189,33 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-tg-bg">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-smainer-green"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   if (!connectMode && isInTelegram && !connectedWallet) {
     return (
-      <main className="min-h-screen p-4 bg-[#090b12] text-[#f8fafc]">
+      <main className="min-h-screen p-4 bg-slate-950 text-slate-100">
         <div className="max-w-md mx-auto pt-4">
-          <div className="mb-6 rounded-2xl border border-white/10 bg-[radial-gradient(120%_120%_at_10%_0%,rgba(16,185,129,0.25),transparent_55%),radial-gradient(120%_120%_at_100%_0%,rgba(6,182,212,0.20),transparent_55%),#0f172a] p-6">
-            <p className="text-xs uppercase tracking-[0.22em] text-emerald-300/90 mb-2">Smainer Protocol</p>
+          <div className="mb-6 rounded-lg border border-slate-700 bg-slate-900 p-6">
+            <p className="text-xs uppercase tracking-[0.16em] text-primary mb-2">Smainer Protocol</p>
             <h1 className="text-3xl font-semibold leading-tight">Private AI Inference</h1>
             <p className="mt-3 text-sm text-slate-300 leading-relaxed">
               Link your Starknet wallet once, then launch tasks instantly from Telegram with zero account setup.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[#111827]/80 backdrop-blur p-5 space-y-4">
+          <div className="rounded-lg border border-slate-700 bg-slate-900 p-6 space-y-4">
             <h2 className="text-2xl font-semibold text-white">Unlock Full App</h2>
             <p className="text-sm text-slate-300">
               Open the dedicated connect flow for best Telegram wallet compatibility, then return here.
             </p>
             <a
-              href="/?mode=connect"
-              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-[linear-gradient(135deg,#0ea5e9,#10b981)] text-white font-semibold tracking-wide shadow-[0_8px_30px_rgba(16,185,129,0.35)]"
+              href={(import.meta.env.VITE_FRONTEND_URL || 'https://smainer.io') + '/?mode=connect'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Open Secure Wallet Connect
             </a>
@@ -230,20 +234,16 @@ export default function App() {
           <div className="text-center mb-8">
             {connectMode ? (
               <>
-                <h1 className="text-3xl font-bold text-smainer-green mb-2">
-                  🔗 Connect Wallet
-                </h1>
+                <h1 className="text-3xl font-semibold text-primary mb-2">Connect Wallet</h1>
                 <p className="text-tg-text-hint">
-                  Connect your wallet to Smainer Bot
+                  Link your Starknet wallet to continue securely.
                 </p>
               </>
             ) : (
               <>
-                <h1 className="text-3xl font-bold text-smainer-green mb-2">
-                  ⚡ Smainer AI
-                </h1>
+                <h1 className="text-3xl font-semibold text-primary mb-2">Smainer AI</h1>
                 <p className="text-tg-text-hint">
-                  High-Performance AI Inference on Starknet
+                  Private inference on decentralized infrastructure.
                 </p>
               </>
             )}
@@ -253,7 +253,7 @@ export default function App() {
           {!connectMode && tgUser && (
             <div className="mb-6 p-4 bg-tg-secondary-bg border border-tg-separator rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-smainer-green/10 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                   <span className="text-sm">
                     {displayInitial}
                   </span>
@@ -301,21 +301,21 @@ export default function App() {
   // If in connect mode and wallet is connected, show success message
   if (connectMode && connectedWallet) {
     return (
-      <main className="min-h-screen p-4 bg-[#090b12] text-[#f8fafc]">
+      <main className="min-h-screen p-4 bg-slate-950 text-slate-100">
         <div className="max-w-md mx-auto pt-4">
           <div className="text-center">
-            <div className="w-16 h-16 bg-emerald-500/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-400/20">
-              <svg className="w-8 h-8 text-emerald-300" fill="currentColor" viewBox="0 0 20 20">
+            <div className="w-16 h-16 bg-primary/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/30">
+              <svg className="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             </div>
-            <h1 className="text-3xl font-semibold text-emerald-300 mb-2">
-              ✅ Wallet Connected!
+            <h1 className="text-3xl font-semibold text-primary mb-2">
+              Wallet Connected
             </h1>
             <p className="text-slate-300 mb-4">
               Your wallet has been linked. You can return to chat or open the full app now.
             </p>
-            <div className="p-3 bg-[#111827]/90 border border-white/10 rounded-xl">
+            <div className="p-3 bg-slate-900 border border-slate-700 rounded-lg">
               <p className="text-sm text-slate-100 font-medium">
                 {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
               </p>
@@ -330,16 +330,18 @@ export default function App() {
                     window.history.back();
                   }
                 }}
-                className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-[linear-gradient(135deg,#0ea5e9,#10b981)] text-white font-semibold tracking-wide shadow-[0_8px_30px_rgba(16,185,129,0.35)]"
+                className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 Return To Telegram Chat
               </button>
 
               <button
                 onClick={() => {
-                  window.location.assign('/');
+                  // Get frontend URL from env or use fallback
+                  const frontendUrl = import.meta.env.VITE_FRONTEND_URL || 'https://smainer.io';
+                  window.open(frontendUrl, '_blank');
                 }}
-                className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-slate-100 font-medium"
+                className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-100 font-semibold transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 Open Full Smainer App
               </button>
@@ -357,7 +359,7 @@ export default function App() {
       {currentView !== 'chat' && (
         <div className="bg-tg-secondary-bg border-b border-tg-separator p-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-smainer-green">⚡ Smainer</h1>
+            <h1 className="text-xl font-bold text-primary">Smainer</h1>
             
             <div className="flex items-center space-x-2">
               <div className="text-xs text-tg-text-hint">
@@ -370,18 +372,18 @@ export default function App() {
           {/* Navigation Tabs */}
           <div className="flex space-x-1 mt-3">
             {[
-              { id: 'home', label: '🏠 Home', view: 'home' },
-              { id: 'chat', label: '🤖 AI Chat', view: 'chat' },
-              { id: 'nft', label: '🎨 NFTs', view: 'nft' },
-              { id: 'dashboard', label: '📊 Dashboard', view: 'dashboard' },
+              { id: 'home', label: 'Home', view: 'home' },
+              { id: 'chat', label: 'AI Chat', view: 'chat' },
+              { id: 'nft', label: 'NFTs', view: 'nft' },
+              { id: 'dashboard', label: 'Dashboard', view: 'dashboard' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setCurrentView(tab.view as any)}
-                className={`flex-1 px-3 py-2 text-xs rounded transition-colors ${
+                className={`flex-1 px-3 py-2 text-xs rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   currentView === tab.view
-                    ? 'bg-smainer-green text-white'
-                    : 'text-tg-text-hint hover:bg-tg-bg'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 {tab.label}
@@ -397,34 +399,31 @@ export default function App() {
           <div className="p-4">
             <div className="max-w-md mx-auto space-y-4">
               <div className="text-center mb-6">
-                <h2 className="text-lg font-semibold text-tg-text mb-2">Welcome to Smainer AI</h2>
+                <h2 className="text-lg font-semibold text-tg-text mb-2">Smainer Control Center</h2>
                 <p className="text-sm text-tg-text-hint">
-                  Choose an action to get started with AI-powered features
+                  Select a workflow to run private inference, mint outputs, or review account status.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <button 
                   onClick={() => setCurrentView('chat')}
-                  className="w-full p-4 bg-smainer-green hover:bg-smainer-green/90 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  className="w-full p-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center space-x-2"
                 >
-                  <span>🤖</span>
                   <span>Start AI Chat</span>
                 </button>
                 
                 <button 
                   onClick={() => setCurrentView('nft')}
-                  className="w-full p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  className="w-full p-4 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex items-center justify-center space-x-2"
                 >
-                  <span>🎨</span>
                   <span>Create & Mint NFTs</span>
                 </button>
                 
                 <button 
                   onClick={() => setCurrentView('dashboard')}
-                  className="w-full p-4 border border-tg-separator hover:bg-tg-secondary-bg rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  className="w-full p-4 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center space-x-2"
                 >
-                  <span>📊</span>
                   <span>View Dashboard</span>
                 </button>
               </div>
@@ -432,13 +431,13 @@ export default function App() {
               {/* Stats */}
               <div className="mt-8 grid grid-cols-2 gap-4">
                 <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg text-center">
-                  <div className="text-lg font-bold text-smainer-green">
+                  <div className="text-lg font-bold text-primary">
                     {relayerAPI.availableModels.length}
                   </div>
                   <div className="text-xs text-tg-text-hint">AI Models</div>
                 </div>
                 <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg text-center">
-                  <div className="text-lg font-bold text-smainer-green">0</div>
+                  <div className="text-lg font-bold text-primary">0</div>
                   <div className="text-xs text-tg-text-hint">NFTs Minted</div>
                 </div>
               </div>
@@ -463,14 +462,13 @@ export default function App() {
             <div className="max-w-md mx-auto text-center">
               <h2 className="text-lg font-semibold text-tg-text mb-4">NFT Gallery</h2>
               <div className="p-8 border border-tg-separator rounded-lg">
-                <div className="text-4xl mb-4">🎨</div>
                 <h3 className="font-medium text-tg-text mb-2">Create AI-Generated NFTs</h3>
                 <p className="text-sm text-tg-text-hint mb-4">
                   Generate images with AI and mint them as NFTs on Starknet
                 </p>
                 <button 
                   onClick={() => setCurrentView('chat')}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+                  className="px-6 py-2 bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Start Creating
                 </button>

@@ -15,13 +15,13 @@ export function ModelSelector({ models, selectedModel, onSelectModel }: ModelSel
   const getModelTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'text':
-        return '📝';
+        return 'TXT';
       case 'image':
-        return '🎨';
+        return 'IMG';
       case 'multimodal':
-        return '🔄';
+        return 'MUL';
       default:
-        return '🤖';
+        return 'AI';
     }
   };
 
@@ -40,7 +40,7 @@ export function ModelSelector({ models, selectedModel, onSelectModel }: ModelSel
         <div className="flex items-center space-x-2">
           {selectedModel ? (
             <>
-              <span className="text-lg">{getModelTypeIcon(selectedModel.type)}</span>
+              <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">{getModelTypeIcon(selectedModel.type)}</span>
               <div className="text-left">
                 <div className="font-medium text-sm">{selectedModel.display_name}</div>
                 <div className="text-xs text-muted-foreground">
@@ -106,13 +106,13 @@ function ModelOption({ model, isSelected, onClick }: ModelOptionProps) {
   const getModelTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'text':
-        return '📝';
+        return 'TXT';
       case 'image':
-        return '🎨';
+        return 'IMG';
       case 'multimodal':
-        return '🔄';
+        return 'MUL';
       default:
-        return '🤖';
+        return 'AI';
     }
   };
 
@@ -136,13 +136,13 @@ function ModelOption({ model, isSelected, onClick }: ModelOptionProps) {
       }`}
     >
       <div className="flex items-start space-x-3">
-        <div className="text-xl mt-0.5">{getModelTypeIcon(model.type)}</div>
+        <div className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded mt-0.5">{getModelTypeIcon(model.type)}</div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-sm truncate">{model.display_name}</h4>
             {isSelected && (
-              <div className="w-4 h-4 bg-smainer-green rounded-full flex items-center justify-center ml-2">
+              <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center ml-2">
                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>

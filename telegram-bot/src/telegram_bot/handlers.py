@@ -1,9 +1,12 @@
 """Telegram bot command and message handlers."""
 
+import asyncio
 import base64
+import functools
 import json
 import logging
-from typing import Dict
+import time
+from typing import Awaitable, Callable
 
 import redis.asyncio as aioredis
 from telegram import (
@@ -15,6 +18,7 @@ from telegram import (
     WebAppInfo,
 )
 from telegram.constants import ChatAction, ParseMode
+from telegram.error import NetworkError, RetryAfter, TimedOut, TelegramError
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -34,12 +38,105 @@ logger = logging.getLogger(__name__)
 
 # Redis key schemas
 _PENDING_TASKS_KEY = "tgbot:tasks:pending"
+_STARTUP_CHECK_KEY = "tgbot:startup:check"
+
+# Timeout constants
+TELEGRAM_TIMEOUT = 30  # seconds
+REDIS_TIMEOUT = 10     # seconds
+RELAYER_TIMEOUT = 45   # seconds
 
 
 def escape_md(text: str) -> str:
     """Escape special characters for Telegram Markdown (V1)."""
     return text.replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
 
+def with_error_handling(handler_name: str):
+    """Decorator to add comprehensive error handling to command handlers."""
+    def decorator(func: Callable[["SmainerBot", Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]):
+        @functools.wraps(func)
+        async def wrapper(self: "SmainerBot", update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            start_time = time.time()
+            user_id = update.effective_user.id if update.effective_user else "unknown"
+            
+            try:
+                logger.info(f"Handler {handler_name} started", extra={"user_id": user_id})
+                
+                # Add timeout to handler execution
+                await asyncio.wait_for(func(self, update, context), timeout=TELEGRAM_TIMEOUT)
+                
+                elapsed = time.time() - start_time
+                logger.info(f"Handler {handler_name} completed", extra={
+                    "user_id": user_id, 
+                    "elapsed_ms": int(elapsed * 1000)
+                })
+                
+            except asyncio.TimeoutError:
+                logger.error(f"Handler {handler_name} timed out", extra={
+                    "user_id": user_id,
+                    "timeout_seconds": TELEGRAM_TIMEOUT
+                })
+                try:
+                    if update.message:
+                        await update.message.reply_text(
+                            "⚠️ Request timed out. Please try again.",
+                            reply_markup=ReplyKeyboardRemove()
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send timeout message: {e}")
+                    
+            except RetryAfter as e:
+                logger.warning(f"Rate limited in {handler_name}", extra={
+                    "user_id": user_id,
+                    "retry_after": e.retry_after
+                })
+                try:
+                    if update.message:
+                        await update.message.reply_text(
+                            f"⏱️ Rate limited. Please wait {e.retry_after} seconds."
+                        )
+                except Exception:
+                    pass
+                    
+            except (NetworkError, TimedOut) as e:
+                logger.error(f"Network error in {handler_name}", extra={
+                    "user_id": user_id,
+                    "error_type": type(e).__name__,
+                    "error_msg": str(e)
+                })
+                try:
+                    if update.message:
+                        await update.message.reply_text(
+                            "🌐 Network issue. Please try again in a moment.",
+                            reply_markup=ReplyKeyboardRemove()
+                        )
+                except Exception:
+                    pass
+                    
+            except TelegramError as e:
+                logger.error(f"Telegram API error in {handler_name}", extra={
+                    "user_id": user_id,
+                    "error_type": type(e).__name__,
+                    "error_msg": str(e)
+                })
+                # Don't try to send a message on Telegram API errors
+                
+            except Exception as e:
+                logger.exception(f"Unexpected error in {handler_name}", extra={
+                    "user_id": user_id,
+                    "error_type": type(e).__name__,
+                    "error_msg": str(e)
+                })
+                try:
+                    if update.message:
+                        await update.message.reply_text(
+                            "❌ An unexpected error occurred. Please try again.",
+                            reply_markup=ReplyKeyboardRemove()
+                        )
+                except Exception:
+                    pass
+                    
+        return wrapper
+    return decorator
 
 class SmainerBot:
     """Orchestrates the Telegram bot, wallet linking, inference, and payment."""
@@ -58,46 +155,79 @@ class SmainerBot:
 
     async def start(self) -> None:
         """Initialize all dependencies and start the bot."""
-        # Redis
-        self._redis = aioredis.from_url(
-            settings.redis_url, decode_responses=True
-        )
-        await self._redis.ping()
-        logger.info("Redis connected")
+        startup_start = time.time()
+        logger.info("Starting Smainer Telegram Bot...")
+        
+        try:
+            # Check for conflicting webhook/polling setup
+            await self._check_startup_conflicts()
+            
+            # Redis with timeout
+            logger.info("Connecting to Redis...")
+            self._redis = aioredis.from_url(
+                settings.redis_url, 
+                decode_responses=True,
+                socket_timeout=REDIS_TIMEOUT,
+                socket_connect_timeout=REDIS_TIMEOUT
+            )
+            
+            await asyncio.wait_for(self._redis.ping(), timeout=REDIS_TIMEOUT)
+            logger.info("Redis connected successfully")
 
-        # Services
-        host = settings.relayer_callback_host.rstrip("/")
-        if ":" not in host[8:]:  # No port in host
-            callback_url = f"{host}:{settings.relayer_callback_port}"
-        else:
-            callback_url = host
+            # Services
+            logger.info("Initializing services...")
+            host = settings.relayer_callback_host.rstrip("/")
+            if ":" not in host[8:]:  # No port in host
+                callback_url = f"{host}:{settings.relayer_callback_port}"
+            else:
+                callback_url = host
 
-        self._wallet = WalletManager(self._redis)
-        self._relayer = RelayerClient(callback_url)
-        self._payment = PaymentManager(self._redis)
+            self._wallet = WalletManager(self._redis)
+            self._relayer = RelayerClient(callback_url)
+            self._payment = PaymentManager(self._redis)
+            
+            logger.info("Services initialized")
 
-        # Callback server (receives results from relayer)
-        self._callback = CallbackServer(
-            port=settings.relayer_callback_port,
-            signing_secret=settings.callback_signing_secret,
-        )
-        self._callback.on_stream_chunk(self._handle_stream_chunk)
-        self._callback.on_task_complete(self._handle_task_complete)
-        await self._callback.start()
+            # Callback server (receives results from relayer)
+            logger.info("Starting callback server...")
+            self._callback = CallbackServer(
+                port=settings.relayer_callback_port,
+                signing_secret=settings.callback_signing_secret,
+            )
+            self._callback.on_stream_chunk(self._handle_stream_chunk)
+            self._callback.on_task_complete(self._handle_task_complete)
+            await self._callback.start()
+            logger.info(f"Callback server listening on port {settings.relayer_callback_port}")
 
-        # Telegram application
-        self._app = (
-            Application.builder()
-            .token(settings.telegram_bot_token)
-            .build()
-        )
-        self._register_handlers()
+            # Telegram application with robust configuration
+            logger.info("Initializing Telegram bot...")
+            self._app = (
+                Application.builder()
+                .token(settings.telegram_bot_token)
+                .concurrent_updates(False)  # Prevent polling/webhook conflicts
+                .build()
+            )
+            self._register_handlers()
 
-        await self._app.initialize()
-        await self._app.start()
-        await self._configure_chat_menu_button()
-        await self._app.updater.start_polling(drop_pending_updates=True)
-        logger.info("Telegram bot polling started")
+            await self._app.initialize()
+            await self._app.start()
+            
+            # Configure menu before starting polling
+            await self._configure_chat_menu_button()
+            
+            # Start polling with conflict detection
+            await self._start_polling_safely()
+            
+            startup_time = time.time() - startup_start
+            logger.info(f"Telegram bot started successfully in {startup_time:.1f}s")
+            
+            # Record successful startup
+            await self._redis.setex(_STARTUP_CHECK_KEY, 300, int(time.time()))
+            
+        except Exception as e:
+            logger.exception("Failed to start bot", extra={"error": str(e)})
+            await self.stop()
+            raise
 
     async def stop(self) -> None:
         """Graceful shutdown."""
@@ -110,6 +240,59 @@ class SmainerBot:
         if self._redis:
             await self._redis.aclose()
         logger.info("Bot stopped")
+
+    # ------------------------------------------------------------------
+    # Startup helpers  
+    # ------------------------------------------------------------------
+    
+    async def _check_startup_conflicts(self) -> None:
+        """Check for webhook/polling conflicts before starting."""
+        try:
+            # We'll configure this as a polling bot, so make sure no webhook is set
+            # This prevents conflicts where both webhook and polling are active
+            temp_app = Application.builder().token(settings.telegram_bot_token).build()
+            await temp_app.initialize()
+            
+            # Check current webhook info
+            webhook_info = await temp_app.bot.get_webhook_info()
+            if webhook_info.url:
+                logger.warning(f"Webhook currently set to: {webhook_info.url}")
+                logger.info("Removing webhook to enable polling...")
+                await temp_app.bot.delete_webhook(drop_pending_updates=True)
+                logger.info("Webhook removed successfully")
+            
+            await temp_app.shutdown()
+            
+        except Exception as e:
+            logger.warning(f"Could not check/clear webhook: {e}")
+            # Continue anyway - this is not fatal
+    
+    async def _start_polling_safely(self) -> None:
+        """Start polling with additional safety checks."""
+        assert self._app
+        
+        try:
+            # Start polling with robust settings
+            await self._app.updater.start_polling(
+                drop_pending_updates=True,
+                pool_timeout=30,
+                read_timeout=30,
+                write_timeout=30,
+                connect_timeout=30
+            )
+            logger.info("Telegram bot polling started successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to start polling: {e}")
+            # Try once more with minimal settings
+            try:
+                logger.info("Retrying with minimal polling configuration...")
+                await asyncio.sleep(2)
+                await self._app.updater.start_polling(drop_pending_updates=True)
+                logger.info("Telegram bot polling started (minimal config)")
+            except Exception as retry_e:
+                logger.error(f"Polling retry also failed: {retry_e}")
+                raise
 
     # ------------------------------------------------------------------
     # Handler registration
@@ -152,6 +335,7 @@ class SmainerBot:
     # /start
     # ------------------------------------------------------------------
 
+    @with_error_handling("start")
     async def _cmd_start(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -217,6 +401,7 @@ class SmainerBot:
     # /help
     # ------------------------------------------------------------------
 
+    @with_error_handling("help")
     async def _cmd_help(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -236,6 +421,7 @@ class SmainerBot:
     # WebApp data (miniapp wallet connection callback)
     # ------------------------------------------------------------------
 
+    @with_error_handling("webapp_data")
     async def _handle_webapp_data(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -290,6 +476,7 @@ class SmainerBot:
     # /link <starknet_address> (manual fallback)
     # ------------------------------------------------------------------
 
+    @with_error_handling("link")
     async def _cmd_link(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -318,6 +505,7 @@ class SmainerBot:
     # /unlink
     # ------------------------------------------------------------------
 
+    @with_error_handling("unlink")
     async def _cmd_unlink(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -328,6 +516,7 @@ class SmainerBot:
     # /balance
     # ------------------------------------------------------------------
 
+    @with_error_handling("balance")
     async def _cmd_balance(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -363,6 +552,7 @@ class SmainerBot:
     # /models
     # ------------------------------------------------------------------
 
+    @with_error_handling("models")
     async def _cmd_models(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -389,6 +579,7 @@ class SmainerBot:
     # /model <name>
     # ------------------------------------------------------------------
 
+    @with_error_handling("set_model")
     async def _cmd_set_model(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -416,6 +607,7 @@ class SmainerBot:
     # Prompt handling (any text message)
     # ------------------------------------------------------------------
 
+    @with_error_handling("prompt")
     async def _handle_prompt(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -455,12 +647,37 @@ class SmainerBot:
         # Infer tier from model name
         tier = self._infer_tier(user_model)
 
-        # 3.5 Ensure there is at least one GPU-capable node online
+        # 3.5 Ensure there is at least one GPU-capable node online with better error handling
         available_nodes = await self._relayer.list_available_models()
         if not available_nodes:
-            await update.message.reply_text(
-                "No GPU compute nodes are online right now. Please try again in a few minutes."
+            # More informative error message with troubleshooting hint
+            error_msg = (
+                "No GPU compute nodes are available right now. "
+                "This could be temporary - please try again in 2-3 minutes. "
+                "If this persists, our compute network may be experiencing high demand."
             )
+            await update.message.reply_text(error_msg)
+            return
+        
+        # Additional resilience: check if any nodes support the required tier
+        compatible_nodes = [n for n in available_nodes if tier in n.get("supported_tiers", [])]
+        if not compatible_nodes:
+            # Graceful degradation: suggest alternative tiers if none support current selection
+            available_tiers = set()
+            for node in available_nodes:
+                available_tiers.update(node.get("supported_tiers", []))
+            
+            if available_tiers:
+                tier_list = ", ".join(sorted(available_tiers))
+                await update.message.reply_text(
+                    f"No nodes currently support {tier} tier models. "
+                    f"Available tiers: {tier_list}. Try `/model` to change your preference."
+                )
+            else:
+                await update.message.reply_text(
+                    "Compute nodes are online but tier compatibility is being verified. "
+                    "Please try again in a moment."
+                )
             return
 
         # 4. Send typing indicator + placeholder

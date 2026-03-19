@@ -100,7 +100,7 @@ export function CostEstimator({ model, estimatedTokens, userBalance }: CostEstim
         </div>
         <div className="flex justify-between text-sm font-medium border-t border-border/50 pt-2">
           <span>Total:</span>
-          <span className="text-smainer-green">
+          <span className="text-success">
             {selectedCost.toFixed(4)} {paymentMethod}
           </span>
         </div>
@@ -142,11 +142,11 @@ function PaymentMethodButton({ method, isSelected, cost, symbol, onClick }: Paym
   const getMethodIcon = (method: string) => {
     switch (method) {
       case 'STRK':
-        return '⭐';
+        return 'STRK';
       case 'SMAINER':
-        return '⚡';
+        return 'SMR';
       default:
-        return '💎';
+        return 'TOK';
     }
   };
 
@@ -155,12 +155,12 @@ function PaymentMethodButton({ method, isSelected, cost, symbol, onClick }: Paym
       onClick={onClick}
       className={`flex-1 p-2 rounded-md border transition-colors ${
         isSelected
-          ? 'border-smainer-green bg-smainer-green/10 text-smainer-green'
+          ? 'border-primary bg-primary/10 text-primary'
           : 'border-border hover:bg-accent hover:text-accent-foreground'
       }`}
     >
       <div className="flex items-center justify-center space-x-2">
-        <span className="text-sm">{getMethodIcon(method)}</span>
+        <span className="text-xs font-mono">{getMethodIcon(method)}</span>
         <div className="text-left">
           <div className="font-medium text-xs">{symbol}</div>
           <div className="text-xs opacity-75">
