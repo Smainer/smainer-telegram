@@ -122,7 +122,7 @@ function MainApp() {
   } | undefined;
   const displayFirstName = tgUser?.first_name || tgUser?.firstName || '';
   const displayLastName = tgUser?.last_name || tgUser?.lastName || '';
-  const displayInitial = displayFirstName ? displayFirstName.charAt(0) : '👤';
+  const displayInitial = displayFirstName ? displayFirstName.charAt(0) : '?';
   const displayUsername = tgUser?.username || (tgUser?.id ? `user${tgUser.id}` : 'user');
   // Initialize Relayer API connection
   const relayerAPI = useRelayerAPI({
@@ -164,12 +164,14 @@ function MainApp() {
     if (typeof window === 'undefined') return;
 
     const applyRemoteWallet = (address: string, walletType: string) => {
-      if (connectedWallet?.address === address) return;
-      setConnectedWallet({
-        address,
-        type: (walletType as ConnectedWallet['type']) || 'braavos',
-        balance_strk: '0',
-        balance_smainer: '0',
+      setConnectedWallet((prev) => {
+        if (prev?.address === address) return prev;
+        return {
+          address,
+          type: (walletType as ConnectedWallet['type']) || 'braavos',
+          balance_strk: '0',
+          balance_smainer: '0',
+        };
       });
     };
 
@@ -209,7 +211,7 @@ function MainApp() {
       channel?.close();
       window.removeEventListener('storage', onStorage);
     };
-  }, [connectedWallet]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — set up once, applyRemoteWallet references are stable
 
   const handleWalletConnect = (wallet: ConnectedWallet) => {
     setConnectedWallet(wallet);
@@ -273,9 +275,9 @@ function MainApp() {
       <main className="min-h-screen p-4 bg-tg-bg">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-semibold text-primary mb-2">Smainer AI</h1>
+            <h1 className="text-3xl font-semibold text-primary mb-2">Smainer Protocol</h1>
             <p className="text-tg-text-hint">
-              Private inference on decentralized infrastructure.
+              Private compute on Starknet. Pay per task in $STRK.
             </p>
           </div>
 
@@ -317,7 +319,7 @@ function MainApp() {
             </div>
             {relayerAPI.availableModels.length > 0 && (
               <p className="text-xs text-tg-text-hint mt-1">
-                {relayerAPI.availableModels.length} AI models available
+                {relayerAPI.availableModels.length} compute nodes online
               </p>
             )}
           </div>
@@ -389,17 +391,13 @@ function AppLayout({
   currentView: string
   navigate: NavigateFunction
 }) {
-  if (currentView === 'chat') {
-    return null; // Chat has its own full-screen layout
-  }
-
   return (
     <div className="bg-tg-secondary-bg border-b border-tg-separator p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {currentView !== 'home' && (
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/home')}
               className="p-1 text-tg-text-hint hover:text-tg-text"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,7 +427,7 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
         <div className="text-center mb-6">
           <h2 className="text-lg font-semibold text-tg-text mb-2">Smainer Control Center</h2>
           <p className="text-sm text-tg-text-hint">
-            Select a workflow to run private inference, mint outputs, or review account status.
+            Select a workflow to run private compute, mint results, or check status.
           </p>
         </div>
 
@@ -438,7 +436,7 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
             onClick={() => navigate('/chat')}
             className="w-full p-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center space-x-2"
           >
-            <span>Start AI Chat</span>
+            <span>Run Compute Task</span>
           </button>
           
           <button 
@@ -462,7 +460,7 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
             <div className="text-lg font-bold text-primary">
               {relayerAPI.availableModels.length}
             </div>
-            <div className="text-xs text-tg-text-hint">AI Models</div>
+            <div className="text-xs text-tg-text-hint">Compute Nodes</div>
           </div>
           <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg text-center">
             <div className="text-lg font-bold text-primary">0</div>
@@ -481,9 +479,9 @@ function NFTView({ navigate }: { navigate: NavigateFunction }) {
       <div className="max-w-md mx-auto text-center">
         <h2 className="text-lg font-semibold text-tg-text mb-4">NFT Gallery</h2>
         <div className="p-8 border border-tg-separator rounded-lg">
-          <h3 className="font-medium text-tg-text mb-2">Create AI-Generated NFTs</h3>
+            <h3 className="font-medium text-tg-text mb-2">Mint Compute Results</h3>
           <p className="text-sm text-tg-text-hint mb-4">
-            Generate images with AI and mint them as NFTs on Starknet
+            Turn generated outputs into verified NFTs on Starknet
           </p>
           <button 
             onClick={() => navigate('/chat')}
@@ -542,15 +540,19 @@ function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: Conne
 
 // Bottom navigation component
 function BottomNavigation({ currentView, navigate }: { currentView: string, navigate: NavigateFunction }) {
-  if (currentView === 'chat') {
-    return null; // Chat handles its own navigation
-  }
-
   const tabs = [
-    { id: 'home', label: 'Home', path: '/home', icon: '🏠' },
-    { id: 'chat', label: 'AI Chat', path: '/chat', icon: '💬' },
-    { id: 'nft', label: 'NFTs', path: '/nft', icon: '🎨' },
-    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: '📊' },
+    { id: 'home', label: 'Home', path: '/home', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+    )},
+    { id: 'chat', label: 'Compute', path: '/chat', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+    )},
+    { id: 'nft', label: 'NFTs', path: '/nft', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+    )},
+    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+    )},
   ];
 
   return (
@@ -566,7 +568,7 @@ function BottomNavigation({ currentView, navigate }: { currentView: string, navi
                 : 'text-tg-text-hint hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <span className="text-base mb-1">{tab.icon}</span>
+            <span className="mb-1">{tab.icon}</span>
             <span>{tab.label}</span>
           </button>
         ))}

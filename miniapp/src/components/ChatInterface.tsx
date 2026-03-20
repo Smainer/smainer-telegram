@@ -67,6 +67,8 @@ export function ChatInterface({
     setCurrentMessage('');
     setIsGenerating(true);
 
+    const loadingId = `loading-${Date.now()}`;
+
     try {
       const inferenceRequest: InferenceRequest = {
         model_name: selectedModel.name,
@@ -84,7 +86,7 @@ export function ChatInterface({
 
       // Add loading message
       const loadingMessage: ChatMessage = {
-        id: `loading-${Date.now()}`,
+        id: loadingId,
         type: 'assistant',
         content: 'Running computation...',
         timestamp: new Date(),
@@ -93,15 +95,15 @@ export function ChatInterface({
 
       setMessages(prev => [...prev, loadingMessage]);
 
-      // Simulate streaming response (replace with actual WebSocket in production)
+      // Demo response — replace with real task polling in production
       setTimeout(() => {
         const isImageGeneration = currentMessage.toLowerCase().includes('image') || 
                                 currentMessage.toLowerCase().includes('picture') ||
                                 currentMessage.toLowerCase().includes('generate');
         
         const responseContent = isImageGeneration 
-          ? 'Here\'s your generated image:'
-          : 'This is a sample AI response. In production, this would be streamed from the actual model.';
+          ? '[Demo] Generated image result:'
+          : `[Demo] Task ${taskId.slice(0, 8)}... completed. Live results require an active compute node.`;
         
         const responseMessage: ChatMessage = {
           id: `response-${Date.now()}`,
@@ -113,7 +115,7 @@ export function ChatInterface({
           imageUrl: isImageGeneration ? '/api/placeholder-image.jpg' : undefined,
         };
 
-        setMessages(prev => prev.filter(m => m.id !== loadingMessage.id).concat(responseMessage));
+        setMessages(prev => prev.filter(m => m.id !== loadingId).concat(responseMessage));
         setIsGenerating(false);
         setActiveTaskId(null);
       }, 3000);
@@ -128,7 +130,7 @@ export function ChatInterface({
         timestamp: new Date(),
       };
 
-      setMessages(prev => prev.filter(m => m.id !== `loading-${Date.now()}`).concat(errorMessage));
+      setMessages(prev => prev.filter(m => m.id !== loadingId).concat(errorMessage));
       setIsGenerating(false);
       setActiveTaskId(null);
     }

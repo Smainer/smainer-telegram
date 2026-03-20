@@ -204,7 +204,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       
       <div className="mt-6 p-4 bg-muted/50 rounded-lg">
         <p className="text-xs text-muted-foreground text-center">
-          Your wallet will be used to pay for AI inference and manage your NFTs. 
+          Your wallet will be used to pay for compute tasks in $STRK. 
           No private keys are stored by Smainer.
         </p>
       </div>

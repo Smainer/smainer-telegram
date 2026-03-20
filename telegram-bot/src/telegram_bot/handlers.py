@@ -366,7 +366,7 @@ class SmainerBot:
                     await self._wallet.link_wallet(update.effective_user.id, address)
                     await update.message.reply_text(
                         f"\u2705 Wallet connected: `{address}`\n\n"
-                        "Send any message to start an AI prompt.",
+                        "Send any message to run a compute task.",
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=ReplyKeyboardRemove(),
                     )
@@ -471,7 +471,7 @@ class SmainerBot:
         )
         await update.message.reply_text(
             f"\u2705 Wallet connected: `{address}`\n\n"
-            "Send any message to start an AI prompt.",
+            "Send any message to run a compute task.",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=ReplyKeyboardRemove(),
         )
