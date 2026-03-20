@@ -49,7 +49,7 @@ export function ModelSelector({ models, selectedModel, onSelectModel }: ModelSel
               </div>
             </>
           ) : (
-            <span className="text-muted-foreground">Select AI Model...</span>
+            <span className="text-muted-foreground">Choose Compute Model...</span>
           )}
         </div>
         
@@ -72,7 +72,7 @@ export function ModelSelector({ models, selectedModel, onSelectModel }: ModelSel
             
             {models.length === 0 ? (
               <div className="px-2 py-3 text-center text-sm text-muted-foreground">
-                No models available
+                No compute nodes online. Try again in 2 minutes.
               </div>
             ) : (
               <div className="space-y-1">

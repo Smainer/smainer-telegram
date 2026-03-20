@@ -110,7 +110,7 @@ export function NFTPreview({ imageUrl, onClose, onMint }: NFTPreviewProps) {
                 id="nft-description"
                 value={nftDescription}
                 onChange={(e) => setNftDescription(e.target.value)}
-                placeholder="Describe your NFT creation..."
+                placeholder="Describe this computed result..."
                 className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
                 rows={3}
                 maxLength={200}

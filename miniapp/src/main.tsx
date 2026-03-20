@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import './index.css'
 
@@ -78,30 +79,44 @@ async function bootstrap() {
   }
 
   try {
-    // Check if we're in connect mode from URL parameters
+    // Check if we're in connect mode from URL parameters (backward compatibility)
     const urlParams = new URLSearchParams(window.location.search)
-    const isConnectMode = urlParams.get('mode') === 'connect'
+    const isLegacyConnectMode = urlParams.get('mode') === 'connect'
 
     const rootElement = document.getElementById('root')
     if (!rootElement) {
       throw new Error('Missing #root element')
     }
 
-    if (isConnectMode) {
-      // Connect mode: Load only ConnectLite component (no Starknet imports)
-      const { default: ConnectLite } = await import('./ConnectLite.tsx')
+    // Redirect legacy ?mode=connect to new /connect route
+    if (isLegacyConnectMode && window.location.pathname === '/') {
+      window.location.replace('/connect')
+      return
+    }
+
+    // Load components based on current route
+    const isConnectRoute = window.location.pathname === '/connect'
+
+    if (isConnectRoute) {
+      // Connect route: Load only ConnectLite component (no Starknet imports)
+      const { default: ConnectLite } = await import('./ConnectLite')
       
       ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
           <AppErrorBoundary>
-            <ConnectLite />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/connect" element={<ConnectLite />} />
+                <Route path="*" element={<Navigate to="/connect" replace />} />
+              </Routes>
+            </BrowserRouter>
           </AppErrorBoundary>
         </React.StrictMode>,
       )
     } else {
-      // Normal mode: Load full app with Starknet and all providers
+      // Normal routes: Load full app with Starknet and all providers
       const [{ default: App }, { TelegramProvider }, { StarknetConfig }, { starknetConfig }] = await Promise.all([
-        import('./App.tsx'),
+        import('./App'),
         import('./components/providers/TelegramProvider'),
         import('@starknet-react/core'),
         import('./lib/starknet'),
@@ -112,7 +127,9 @@ async function bootstrap() {
           <AppErrorBoundary>
             <TelegramProvider>
               <StarknetConfig {...starknetConfig}>
-                <App />
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
               </StarknetConfig>
             </TelegramProvider>
           </AppErrorBoundary>

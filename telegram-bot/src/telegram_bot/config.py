@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     )
     miniapp_connect_url: str = Field(
         default="",
-        description="Optional full URL for connect flow. If unset, uses MINIAPP_URL + '/?mode=connect'",
+        description="Optional full URL for connect flow. If unset, uses MINIAPP_URL + '/connect'",
     )
     miniapp_open_url: str = Field(
         default="",
@@ -130,7 +130,7 @@ class Settings(BaseSettings):
         """Return the Connect Wallet URL used by /start keyboard button."""
         if self.miniapp_connect_url:
             return self.miniapp_connect_url.rstrip("/")
-        return self.miniapp_url.rstrip("/") + "/?mode=connect"
+        return self.miniapp_url.rstrip("/") + "/connect"
 
     def get_miniapp_open_url(self) -> str:
         """Return the URL used by Telegram persistent menu button."""

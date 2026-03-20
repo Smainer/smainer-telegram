@@ -50,8 +50,8 @@ export default function ConnectLite({}: ConnectLiteProps) {
   const urlParams = new URLSearchParams(window.location.search)
   const shouldReturnToTelegram = urlParams.get('return') === 'telegram'
   const botUsername = viteEnv?.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'
-  const browserConnectUrl = `${window.location.origin}/?mode=connect&return=telegram`
-  const braavosConnectUrl = `https://link.braavos.app/dapp/${window.location.host}/?mode=connect&return=telegram`
+  const browserConnectUrl = `${window.location.origin}/connect?return=telegram`
+  const braavosConnectUrl = `https://link.braavos.app/dapp/${window.location.host}/connect?return=telegram`
   const injectedWallets = [
     {
       id: 'braavos',
@@ -104,8 +104,25 @@ export default function ConnectLite({}: ConnectLiteProps) {
     }
   }
 
+  const broadcastWallet = (connectedAddress: string, walletType: string) => {
+    try {
+      const channel = new BroadcastChannel('smainer-wallet')
+      channel.postMessage({
+        action: 'wallet_connect',
+        address: connectedAddress,
+        wallet_type: walletType,
+      })
+      channel.close()
+    } catch {
+      // BroadcastChannel not supported — localStorage event is the fallback
+    }
+  }
+
   const finalizeWalletLink = (connectedAddress: string, walletType: string) => {
+    // Always persist to localStorage so the main App tab can read it
     persistWalletState(connectedAddress, walletType)
+    // Notify other tabs/windows immediately
+    broadcastWallet(connectedAddress, walletType)
 
     if (isInTelegram && telegramWebApp?.sendData) {
       try {
@@ -218,11 +235,11 @@ export default function ConnectLite({}: ConnectLiteProps) {
               background: 'rgba(16, 185, 129, 0.14)',
               border: '1px solid rgba(16, 185, 129, 0.35)'
             }}>
-              <span style={{ fontSize: '24px' }}>✓</span>
+              <span style={{ fontSize: '24px', color: '#22C55E' }}>✓</span>
             </div>
             <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', lineHeight: 1.15 }}>Wallet Linked</h2>
             <p style={{ margin: '0', color: '#cbd5e1', lineHeight: 1.5, fontSize: '14px' }}>
-              You are ready. Return to Telegram chat or open the full Smainer app now.
+              Submit tasks in Telegram or open full app.
             </p>
           </div>
 
@@ -234,28 +251,51 @@ export default function ConnectLite({}: ConnectLiteProps) {
           </div>
 
           <div style={{ marginTop: '14px', display: 'grid', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  runtimeWindow.Telegram?.WebApp?.close?.()
-                } catch {
-                  window.history.back()
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '14px 18px',
-                borderRadius: '12px',
-                border: 'none',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '15px',
-                background: '#B5A082'
-              }}
-            >
-              Return To Telegram Chat
-            </button>
+            {isInTelegram ? (
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const webApp = runtimeWindow.Telegram?.WebApp as any;
+                    webApp?.close?.();
+                  } catch {
+                    window.history.back()
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  background: '#B5A082'
+                }}
+              >
+                Return To Telegram Chat
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const encodedAddr = encodeAddressForStartPayload(address)
+                  window.location.assign(`https://t.me/${botUsername}?start=linkb_${encodedAddr}`)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  background: '#B5A082'
+                }}
+              >
+                Return to Telegram
+              </button>
+            )}
 
             <button
               type="button"
@@ -295,74 +335,78 @@ export default function ConnectLite({}: ConnectLiteProps) {
             Smainer Protocol
           </div>
           <h1 style={{ margin: '0', fontSize: '30px', lineHeight: 1.1 }}>
-            Connect Your Starknet Wallet
+            Link Starknet Wallet
           </h1>
           <p style={{ margin: '10px 0 0 0', fontSize: '14px', lineHeight: '1.5', color: '#cbd5e1' }}>
-            One secure link. Instant access to private AI compute and on-chain settlement in Telegram.
+            {isInTelegram
+              ? 'Paste your Starknet wallet address below to connect. Wallet extensions are not available inside Telegram.'
+              : 'Submit compute tasks for $STRK. Verified on-chain.'}
           </p>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {injectedWallets.map((wallet) => (
+        {!isInTelegram && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {injectedWallets.map((wallet) => (
+                <button
+                  key={wallet.id}
+                  type="button"
+                  onClick={() => handleInjectedConnect(wallet.id, wallet.provider)}
+                  disabled={isConnecting}
+                  style={{
+                    width: '100%',
+                    padding: '15px 18px',
+                    background: '#06B6D4',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    cursor: isConnecting ? 'wait' : 'pointer'
+                  }}
+                >
+                  {isConnecting ? 'Requesting Access...' : `${wallet.icon} Connect with ${wallet.label}`}
+                </button>
+              ))}
+
               <button
-                key={wallet.id}
                 type="button"
-                onClick={() => handleInjectedConnect(wallet.id, wallet.provider)}
-                disabled={isConnecting}
+                onClick={() => openBrowserLink(braavosConnectUrl)}
                 style={{
                   width: '100%',
-                  padding: '15px 18px',
-                  background: '#06B6D4',
+                  padding: '13px 18px',
+                  background: 'rgba(15, 23, 42, 0.92)',
                   color: '#ffffff',
-                  border: 'none',
+                  border: '1px solid rgba(148, 163, 184, 0.35)',
                   borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  cursor: isConnecting ? 'wait' : 'pointer'
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
                 }}
               >
-                {isConnecting ? 'Connecting...' : `${wallet.icon} Connect with ${wallet.label}`}
+                Open in Braavos App
               </button>
-            ))}
 
-            <button
-              type="button"
-              onClick={() => openBrowserLink(braavosConnectUrl)}
-              style={{
-                width: '100%',
-                padding: '13px 18px',
-                background: 'rgba(15, 23, 42, 0.92)',
-                color: '#ffffff',
-                border: '1px solid rgba(148, 163, 184, 0.35)',
-                borderRadius: '12px',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Open in Braavos App
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openBrowserLink(browserConnectUrl)}
-              style={{
-                width: '100%',
-                padding: '13px 18px',
-                background: 'transparent',
-                color: '#cbd5e1',
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Open in Browser Wallet
-            </button>
+              <button
+                type="button"
+                onClick={() => openBrowserLink(browserConnectUrl)}
+                style={{
+                  width: '100%',
+                  padding: '13px 18px',
+                  background: 'transparent',
+                  color: '#cbd5e1',
+                  border: '1px solid rgba(148, 163, 184, 0.3)',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Open in Browser Wallet
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ marginBottom: '14px', background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.22)', borderRadius: '14px', padding: '14px' }}>
           <div style={{ marginBottom: '16px' }}>
@@ -373,7 +417,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
               fontWeight: 600,
               color: '#cbd5e1'
             }}>
-              Manual Fallback: Starknet Wallet Address
+              {isInTelegram ? 'Paste your Starknet address from Braavos or Argent X' : 'Starknet Address'}
             </label>
             <input
               id="address"

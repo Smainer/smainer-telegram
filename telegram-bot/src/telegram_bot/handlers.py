@@ -379,11 +379,11 @@ class SmainerBot:
                     return
 
         connect_button = KeyboardButton(
-            text="\U0001f517 Connect Wallet",
+            text="Connect Wallet",
             web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
         )
         open_button = KeyboardButton(
-            text="\U0001f680 Open App",
+            text="Open App",
             web_app=WebAppInfo(url=settings.get_miniapp_open_url()),
         )
         keyboard = ReplyKeyboardMarkup(
@@ -393,9 +393,9 @@ class SmainerBot:
         )
         await update.message.reply_text(
             "*Welcome to Smainer*\n\n"
-            "Private AI inference on decentralized hardware, paid in $STRK.\n\n"
-            "Tap the button below to connect your Starknet wallet, "
-            "then send any message as an AI prompt.\n\n"
+            "Private compute on Starknet hardware. Pay per task in $STRK.\n\n"
+            "Connect your Starknet wallet below, "
+            "then send any message to run compute tasks.\n\n"
             "/help for all commands",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=keyboard,
@@ -417,7 +417,7 @@ class SmainerBot:
             "/models — Show available AI models\n"
             "/model `<name>` — Set your preferred model\n"
             "/help — This message\n\n"
-            "Just send any text to get an AI response.",
+            "Send any text to run compute tasks.",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -563,7 +563,7 @@ class SmainerBot:
         nodes = await self._relayer.list_available_models()
         if not nodes:
             await update.message.reply_text(
-                "No GPU nodes currently online. Try again later."
+                "No compute nodes online. Try in 2 minutes."
             )
             return
 
@@ -622,7 +622,7 @@ class SmainerBot:
         address = await self._wallet.get_linked_address(user_id)
         if not address:
             await update.message.reply_text(
-                "Link your wallet first: /link `<starknet_address>`",
+                "Connect wallet to submit tasks: /link `<address>`",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
@@ -632,7 +632,7 @@ class SmainerBot:
             has_funds = await self._wallet.has_sufficient_balance(user_id)
         except BalanceUnavailableError:
             await update.message.reply_text(
-                "Wallet balance check is temporarily unavailable. Please try again in a minute."
+                "Balance check failed. Wait 1 minute, then try again."
             )
             return
 
@@ -655,11 +655,7 @@ class SmainerBot:
         available_nodes = await self._relayer.list_available_models()
         if not available_nodes:
             # More informative error message with troubleshooting hint
-            error_msg = (
-                "No GPU compute nodes are available right now. "
-                "This could be temporary - please try again in 2-3 minutes. "
-                "If this persists, our compute network may be experiencing high demand."
-            )
+            error_msg = "No compute nodes online. Try again in 2 minutes."
             await update.message.reply_text(error_msg)
             return
         
@@ -686,7 +682,7 @@ class SmainerBot:
 
         # 4. Send typing indicator + placeholder
         await update.effective_chat.send_action(ChatAction.TYPING)
-        placeholder = await update.message.reply_text("Processing your prompt...")
+        placeholder = await update.message.reply_text("Running compute task...")
 
         # 5. Submit to relayer
         req = InferenceRequest(
@@ -723,7 +719,7 @@ class SmainerBot:
         )
 
         await placeholder.edit_text(
-            f"Task submitted (`{task_id[:8]}...`). Waiting for inference...",
+            f"Task submitted (`{task_id[:8]}...`). Computing results...",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -763,7 +759,7 @@ class SmainerBot:
             
             # Escape to prevent MD syntax breakage
             safe_text = escape_md(response_text)
-            footer = f"\n\n_Inference: {exec_time:.1f}s_"
+            footer = f"\n\n_Computed in {exec_time:.1f}s_"
 
             # Telegram message limit is 4096 chars
             text = safe_text[:3900] + footer
@@ -781,7 +777,7 @@ class SmainerBot:
             await self._app.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text=f"Inference failed: {error}",
+                text=f"Compute failed: {error}",
             )
             await self._payment.fail_payment(callback.task_id)
 

@@ -115,9 +115,9 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   return (
     <div className="w-full max-w-md mx-auto space-y-4">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold text-foreground mb-2">Connect Your Wallet</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-2">Connect Wallet</h2>
         <p className="text-muted-foreground text-sm">
-          Connect your Starknet wallet to start using Smainer AI
+          Connect Starknet wallet to submit compute tasks
         </p>
       </div>
 
@@ -126,15 +126,14 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
         <div className="space-y-4">
           <div className="p-6 border border-destructive rounded-lg bg-destructive/5">
             <div className="text-center">
-              <div className="text-4xl mb-3">🔌</div>
               <h3 className="text-lg font-semibold text-destructive mb-2">
-                No Supported Wallets Found
+                No Wallet Detected
               </h3>
               <p className="text-sm text-destructive/80 mb-4">
-                No supported Starknet wallet was detected in this environment.
+                No Starknet wallet found in this browser.
               </p>
               <div className="text-sm text-muted-foreground space-y-2">
-                <p className="font-medium">To use Smainer AI, please:</p>
+                <p className="font-medium">To submit compute tasks:</p>
                 <ul className="list-disc list-inside space-y-1 text-left">
                   <li>Install Argent X or Braavos wallet extension</li>
                   <li>Open this app in a browser (Chrome, Firefox, etc.)</li>
@@ -153,7 +152,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               className="w-full flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <span className="text-xl">🔷</span>
+                <span className="text-xl font-bold text-blue-600">A</span>
                 <span className="font-medium">Install Argent X</span>
               </div>
               <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +191,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           {/* Telegram Wallet option (mock for now) */}
           <WalletOption
             name="Telegram Wallet"
-            icon="📱"
+            icon="T"
             isLoading={isConnecting}
             onClick={() => {
               // TODO: Implement Telegram Wallet connection

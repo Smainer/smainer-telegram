@@ -10,7 +10,7 @@ export interface User {
 
 export interface ConnectedWallet {
   address: string;
-  type: 'telegram' | 'argentx' | 'braavos';
+  type: 'telegram' | 'argentx' | 'braavos' | 'manual';
   balance_strk: string;
   balance_smainer: string;
 }

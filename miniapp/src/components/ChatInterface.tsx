@@ -33,7 +33,7 @@ export function ChatInterface({
     {
       id: '1',
       type: 'system',
-      content: 'Smainer AI: Private inference on decentralized infrastructure. Select your model and submit computation requests. Generated images can be minted as verified NFTs.',
+      content: 'Private compute on Starknet. Select model and submit tasks.',
       timestamp: new Date(),
     }
   ]);
@@ -86,7 +86,7 @@ export function ChatInterface({
       const loadingMessage: ChatMessage = {
         id: `loading-${Date.now()}`,
         type: 'assistant',
-        content: 'Generating response...',
+        content: 'Running computation...',
         timestamp: new Date(),
         taskId,
       };
@@ -124,7 +124,7 @@ export function ChatInterface({
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         type: 'system',
-        content: 'Failed to generate response. Please try again.',
+        content: 'Compute failed. Check model selection and try again.',
         timestamp: new Date(),
       };
 
@@ -145,7 +145,7 @@ export function ChatInterface({
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
         <div className="flex flex-col space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">AI Inference</h3>
+            <h3 className="text-lg font-semibold">Compute Tasks</h3>
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               <span>Connected</span>
@@ -191,7 +191,7 @@ export function ChatInterface({
                 handleSubmit(e);
               }
             }}
-            placeholder={selectedModel ? "Type your message..." : "Select a model first..."}
+            placeholder={selectedModel ? "Describe your compute task..." : "Choose compute model above"}
             disabled={!selectedModel || isGenerating}
             className="flex-1 min-h-[40px] max-h-32 px-4 py-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             rows={1}

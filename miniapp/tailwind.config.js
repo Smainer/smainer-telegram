@@ -79,6 +79,26 @@ module.exports = {
           button: "var(--tg-theme-button-color, #10b981)",
           "button-text": "var(--tg-theme-button-text-color, #ffffff)",
           "secondary-bg": "var(--tg-theme-secondary-bg-color, #f1f1f1)",
+        },
+        // New brand color system
+        brand: {
+          DEFAULT: "var(--brand-champagne)",
+          champagne: "var(--brand-champagne)",
+          hover: "var(--brand-champagne-hover)",
+          light: "var(--brand-champagne-light)",
+          dark: "var(--brand-champagne-dark)",
+        },
+        surface: {
+          primary: "var(--surface-primary)",
+          secondary: "var(--surface-secondary)",
+          tertiary: "var(--surface-tertiary)",
+          accent: "var(--surface-accent)",
+        },
+        text: {
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
+          disabled: "var(--text-disabled)",
         }
       },
       borderRadius: {
