@@ -18,15 +18,11 @@ function getConnectPageUrl(): string {
 }
 
 function loadPersistedWallet(): ConnectedWallet | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
+  if (typeof window === 'undefined') return null;
 
   try {
     const raw = window.localStorage.getItem(WALLET_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
+    if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Partial<ConnectedWallet>;
     const isValidAddress = /^0x[0-9a-fA-F]{1,64}$/.test(parsed.address || '');
@@ -67,18 +63,18 @@ class WalletSectionBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="card p-6 text-center">
-          <h3 className="text-base font-semibold text-white mb-2">Connect Page Required</h3>
-          <p className="text-sm text-[var(--text-muted)] mb-4">
-            Connect wallet on dedicated page, then return here.
+        <div className="glass p-6 text-center">
+          <h3 className="text-lg font-semibold text-white mb-2">Connect Wallet</h3>
+          <p className="text-sm text-[var(--text-secondary)] mb-4">
+            Open the dedicated connect page for best compatibility.
           </p>
           <a
             href={getConnectPageUrl()}
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold transition-all duration-200"
+            className="btn btn-primary"
           >
-            Open Connect Page
+            Connect Wallet
           </a>
         </div>
       );
@@ -86,6 +82,89 @@ class WalletSectionBoundary extends React.Component<
 
     return this.props.children;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ICONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function IconHome({ active }: { active?: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path 
+        d="M3 12L12 4L21 12" 
+        stroke={active ? '#3B82F6' : 'currentColor'} 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      />
+      <path 
+        d="M5 10V19C5 19.5523 5.44772 20 6 20H9V15C9 14.4477 9.44772 14 10 14H14C14.5523 14 15 14.4477 15 15V20H18C18.5523 20 19 19.5523 19 19V10" 
+        stroke={active ? '#3B82F6' : 'currentColor'} 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+        fill={active ? 'rgba(59, 130, 246, 0.15)' : 'none'}
+      />
+    </svg>
+  );
+}
+
+function IconCompute({ active }: { active?: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect 
+        x="3" y="6" width="18" height="12" rx="2" 
+        stroke={active ? '#3B82F6' : 'currentColor'} 
+        strokeWidth="2"
+        fill={active ? 'rgba(59, 130, 246, 0.15)' : 'none'}
+      />
+      <path d="M7 10H12" stroke={active ? '#3B82F6' : 'currentColor'} strokeWidth="2" strokeLinecap="round"/>
+      <path d="M7 14H10" stroke={active ? '#3B82F6' : 'currentColor'} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="17" cy="12" r="2" fill={active ? '#3B82F6' : 'currentColor'} />
+    </svg>
+  );
+}
+
+function IconNFT({ active }: { active?: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="4" width="7" height="7" rx="2" stroke={active ? '#3B82F6' : 'currentColor'} strokeWidth="2" fill={active ? 'rgba(59, 130, 246, 0.15)' : 'none'} />
+      <rect x="13" y="4" width="7" height="7" rx="2" stroke={active ? '#3B82F6' : 'currentColor'} strokeWidth="2" fill={active ? 'rgba(59, 130, 246, 0.15)' : 'none'} />
+      <rect x="4" y="13" width="7" height="7" rx="2" stroke={active ? '#3B82F6' : 'currentColor'} strokeWidth="2" fill={active ? 'rgba(59, 130, 246, 0.15)' : 'none'} />
+      <rect x="13" y="13" width="7" height="7" rx="2" fill={active ? '#3B82F6' : 'currentColor'} />
+    </svg>
+  );
+}
+
+function IconStats({ active }: { active?: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="12" width="4" height="8" rx="1" fill={active ? '#3B82F6' : 'currentColor'} opacity={active ? 1 : 0.6} />
+      <rect x="10" y="8" width="4" height="12" rx="1" fill={active ? '#3B82F6' : 'currentColor'} opacity={active ? 1 : 0.8} />
+      <rect x="16" y="4" width="4" height="16" rx="1" fill={active ? '#3B82F6' : 'currentColor'} />
+    </svg>
+  );
+}
+
+function SmainerLogo({ size = 40 }: { size?: number }) {
+  const scale = size / 40;
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <g transform={`scale(${scale})`}>
+        {/* S-formation of compute blocks */}
+        <rect x="6" y="5" width="9" height="6" rx="2" fill="#FFFFFF" />
+        <rect x="17" y="5" width="9" height="6" rx="2" fill="#FFFFFF" />
+        <rect x="28" y="5" width="9" height="6" rx="2" fill="#3B82F6" />
+        <rect x="17" y="13" width="9" height="6" rx="2" fill="#3B82F6" />
+        <rect x="28" y="13" width="9" height="6" rx="2" fill="#FFFFFF" opacity="0.6" />
+        <rect x="6" y="21" width="9" height="6" rx="2" fill="#FFFFFF" opacity="0.6" />
+        <rect x="17" y="21" width="9" height="6" rx="2" fill="#FFFFFF" />
+        <rect x="3" y="29" width="9" height="6" rx="2" fill="#3B82F6" />
+        <rect x="14" y="29" width="9" height="6" rx="2" fill="#FFFFFF" />
+      </g>
+    </svg>
+  );
 }
 
 export default function App() {
@@ -101,23 +180,9 @@ export default function App() {
   );
 }
 
-// S-Logo SVG Component (the actual compute blocks pattern)
-function SLogo({ size = 40 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      {/* S-formation of compute blocks */}
-      <rect x="8" y="6" width="8" height="6" rx="2" fill="#FFFFFF" />
-      <rect x="18" y="6" width="8" height="6" rx="2" fill="#FFFFFF" />
-      <rect x="28" y="6" width="8" height="6" rx="2" fill="#3B82F6" />
-      <rect x="18" y="14" width="8" height="6" rx="2" fill="#3B82F6" />
-      <rect x="28" y="14" width="8" height="6" rx="2" fill="#FFFFFF" />
-      <rect x="8" y="22" width="8" height="6" rx="2" fill="#FFFFFF" />
-      <rect x="18" y="22" width="8" height="6" rx="2" fill="#FFFFFF" />
-      <rect x="4" y="30" width="8" height="6" rx="2" fill="#FFFFFF" />
-      <rect x="14" y="30" width="8" height="6" rx="2" fill="#3B82F6" />
-    </svg>
-  );
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN APP
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 function MainApp() {
   const navigate = useNavigate();
@@ -125,10 +190,8 @@ function MainApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(() => loadPersistedWallet());
   
-  // Get current view from URL
   const currentView = location.pathname.replace('/', '') as 'home' | 'chat' | 'nft' | 'dashboard';
 
-  // Safe Telegram data access
   const { initData, miniApp, isInTelegram } = useTelegramData();
   const tgUser = initData?.user as {
     id?: number;
@@ -138,19 +201,18 @@ function MainApp() {
     firstName?: string;
     lastName?: string;
   } | undefined;
+  
   const displayFirstName = tgUser?.first_name || tgUser?.firstName || '';
   const displayLastName = tgUser?.last_name || tgUser?.lastName || '';
-  const displayInitial = displayFirstName ? displayFirstName.charAt(0) : '?';
+  const displayInitial = displayFirstName ? displayFirstName.charAt(0).toUpperCase() : '?';
   const displayUsername = tgUser?.username || (tgUser?.id ? `user${tgUser.id}` : 'user');
   
-  // Initialize Relayer API connection
   const relayerAPI = useRelayerAPI({
     baseUrl: import.meta.env.VITE_RELAYER_URL || 'https://api.smainer.io',
     walletAddress: connectedWallet?.address,
   });
 
   useEffect(() => {
-    // Initialize the mini app
     if (miniApp) {
       try {
         miniApp.ready();
@@ -163,13 +225,13 @@ function MainApp() {
       addDebugBootStep('telegram_detected', isInTelegram ? 'success' : 'error');
     }
     
-    setIsLoading(false);
+    // Shorter loading for better UX
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
   }, [miniApp, isInTelegram]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
+    if (typeof window === 'undefined') return;
 
     if (connectedWallet) {
       window.localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(connectedWallet));
@@ -178,7 +240,7 @@ function MainApp() {
     }
   }, [connectedWallet]);
 
-  // Cross-tab wallet sync via BroadcastChannel + storage event
+  // Cross-tab wallet sync
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -194,7 +256,6 @@ function MainApp() {
       });
     };
 
-    // BroadcastChannel listener (same origin, any tab)
     let channel: BroadcastChannel | null = null;
     try {
       channel = new BroadcastChannel('smainer-wallet');
@@ -206,11 +267,8 @@ function MainApp() {
           setConnectedWallet(null);
         }
       };
-    } catch {
-      // BroadcastChannel not supported
-    }
+    } catch { /* BroadcastChannel not supported */ }
 
-    // localStorage 'storage' event (fires in *other* tabs on same origin)
     const onStorage = (e: StorageEvent) => {
       if (e.key !== WALLET_STORAGE_KEY) return;
       if (!e.newValue) {
@@ -222,7 +280,7 @@ function MainApp() {
         if (parsed.address && /^0x[0-9a-fA-F]{1,64}$/.test(parsed.address)) {
           applyRemoteWallet(parsed.address, parsed.type || 'braavos');
         }
-      } catch { /* ignore corrupt storage */ }
+      } catch { /* ignore */ }
     };
     window.addEventListener('storage', onStorage);
 
@@ -230,115 +288,93 @@ function MainApp() {
       channel?.close();
       window.removeEventListener('storage', onStorage);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — set up once, applyRemoteWallet references are stable
+  }, []);
 
   const handleWalletConnect = (wallet: ConnectedWallet) => {
     setConnectedWallet(wallet);
-    
-    // Auto-update localStorage with latest wallet info
     window.localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(wallet));
 
-    // Notify other tabs of new wallet connection
     try {
       const channel = new BroadcastChannel('smainer-wallet');
-      channel.postMessage({
-        action: 'wallet_connect',
-        address: wallet.address,
-        wallet_type: wallet.type,
-      });
+      channel.postMessage({ action: 'wallet_connect', address: wallet.address, wallet_type: wallet.type });
       channel.close();
-    } catch { /* BroadcastChannel not supported */ }
+    } catch { /* ignore */ }
 
-    // Navigate to chat after successful connection
     navigate('/chat');
   };
 
   const handleWalletDisconnect = () => {
     setConnectedWallet(null);
     navigate('/home');
-    // Notify other tabs of disconnect
     try {
       const channel = new BroadcastChannel('smainer-wallet');
       channel.postMessage({ action: 'wallet_disconnect' });
       channel.close();
-    } catch { /* BroadcastChannel not supported */ }
+    } catch { /* ignore */ }
   };
 
   const handleSubmitInferenceTask = async (request: InferenceRequest): Promise<string> => {
-    try {
-      const taskId = await relayerAPI.submitInferenceTask(request);
-      
-      // Show task submitted notification
-      console.log('AI task submitted! You will receive the result shortly.');
-      
-      return taskId;
-    } catch (error) {
-      console.error('Failed to submit inference task:', error);
-      alert(`Failed to submit task: ${error}`);
-      
-      throw error;
-    }
+    const taskId = await relayerAPI.submitInferenceTask(request);
+    console.log('Task submitted:', taskId);
+    return taskId;
   };
 
-  // ─── Loading State ───
+  // ─── Loading Screen ───
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#09090B' }}>
-        <div className="flex items-center justify-center mb-4">
-          <SLogo size={48} />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--void)]">
+        <div className="animate-in delay-1">
+          <SmainerLogo size={64} />
         </div>
-        <h1 className="text-xl font-mono font-semibold text-white tracking-tight mb-6">
-          SMAINER
-        </h1>
-        <div className="flex space-x-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-white loading-dot" />
-          <div className="w-1.5 h-1.5 rounded-full bg-white loading-dot" />
-          <div className="w-1.5 h-1.5 rounded-full bg-white loading-dot" />
+        <h1 className="mt-6 text-2xl font-bold text-white animate-in delay-2">SMAINER</h1>
+        <p className="mt-2 text-sm text-[var(--text-muted)] animate-in delay-3">Private Compute</p>
+        <div className="mt-8 flex gap-2">
+          <div className="w-2 h-2 rounded-full bg-[var(--blue)] loading-dot" />
+          <div className="w-2 h-2 rounded-full bg-[var(--blue)] loading-dot" />
+          <div className="w-2 h-2 rounded-full bg-[var(--blue)] loading-dot" />
         </div>
       </div>
     );
   }
 
-  // ─── Not Connected — Onboarding ───
+  // ─── Onboarding (Not Connected) ───
   if (!connectedWallet) {
     return (
-      <main className="min-h-screen p-4" style={{ background: '#09090B' }}>
-        <div className="max-w-md mx-auto pt-12">
-          {/* Hero */}
-          <div className="text-center mb-8 animate-fade-in">
-            <div className="flex items-center justify-center mb-6">
-              <SLogo size={64} />
+      <main className="min-h-screen bg-[var(--void)] overflow-hidden">
+        {/* Hero Glow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--blue)] opacity-10 blur-[120px]" />
+        </div>
+
+        <div className="relative z-10 px-6 pt-16 pb-8 max-w-md mx-auto min-h-screen flex flex-col">
+          {/* Logo & Title */}
+          <div className="text-center mb-12 animate-in">
+            <div className="inline-flex items-center justify-center mb-6">
+              <SmainerLogo size={72} />
             </div>
-            <h1 className="text-2xl font-mono font-semibold text-white tracking-tight mb-3">
-              SMAINER
-            </h1>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Private compute on Starknet
-            </p>
+            <h1 className="text-3xl font-bold text-white tracking-tight mb-3">SMAINER</h1>
+            <p className="text-base text-[var(--text-secondary)]">Private compute on Starknet</p>
           </div>
 
-          {/* User info card */}
+          {/* User Card (if in Telegram) */}
           {tgUser && (
-            <div className="card p-4 mb-6 animate-fade-in stagger-1">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
-                  <span className="text-sm font-mono font-semibold text-[#3B82F6]">
-                    {displayInitial}
-                  </span>
+            <div className="glass p-4 mb-6 animate-in delay-1">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[var(--blue)] flex items-center justify-center">
+                  <span className="text-lg font-bold text-white">{displayInitial}</span>
                 </div>
-                <div>
-                  <p className="font-medium text-white text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-white truncate">
                     {displayFirstName} {displayLastName}
                   </p>
-                  <p className="text-xs font-mono text-[var(--text-muted)]">
-                    @{displayUsername}
-                  </p>
+                  <p className="text-sm text-[var(--text-muted)]">@{displayUsername}</p>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="animate-fade-in stagger-2">
+          {/* Wallet Connect */}
+          <div className="flex-1 animate-in delay-2">
             <WalletSectionBoundary>
               <WalletConnect 
                 onConnect={handleWalletConnect}
@@ -347,19 +383,23 @@ function MainApp() {
             </WalletSectionBoundary>
           </div>
 
-          {/* Connection status */}
-          <div className="mt-6 card p-3 animate-fade-in stagger-3">
-            <div className="flex items-center justify-center space-x-2 text-xs">
-              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
-              <span className="text-[var(--text-muted)] font-mono">
-                Relayer {relayerAPI.isConnected ? 'Online' : 'Offline'}
-              </span>
+          {/* Network Status */}
+          <div className="mt-auto pt-8 animate-in delay-3">
+            <div className="glass p-4">
+              <div className="flex items-center justify-between">
+                <div className="status">
+                  <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
+                  <span className="text-sm text-[var(--text-muted)]">
+                    {relayerAPI.isConnected ? 'Network Online' : 'Connecting...'}
+                  </span>
+                </div>
+                {relayerAPI.availableModels.length > 0 && (
+                  <span className="pill">
+                    {relayerAPI.availableModels.length} node{relayerAPI.availableModels.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
             </div>
-            {relayerAPI.availableModels.length > 0 && (
-              <p className="text-[10px] text-[var(--text-muted)] text-center mt-1 font-mono">
-                {relayerAPI.availableModels.length} node{relayerAPI.availableModels.length !== 1 ? 's' : ''} active
-              </p>
-            )}
           </div>
         </div>
       </main>
@@ -368,198 +408,129 @@ function MainApp() {
 
   // ─── Main App (Connected) ───
   return (
-    <main className="min-h-screen flex flex-col" style={{ background: '#09090B' }}>
-      <AppLayout 
-        connectedWallet={connectedWallet}
-        relayerAPI={relayerAPI}
-        currentView={currentView}
-        navigate={navigate}
-      />
+    <main className="min-h-screen flex flex-col bg-[var(--void)]">
+      {/* Header */}
+      <header className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--void)]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <SmainerLogo size={28} />
+            <span className="text-lg font-bold text-white">SMAINER</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="pill">
+              {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
+            </div>
+            <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
+          </div>
+        </div>
+      </header>
       
-      {/* Route Content */}
+      {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {currentView === 'home' && (
-          <HomeView 
-            navigate={navigate}
-            relayerAPI={relayerAPI}
-          />
-        )}
-        
+        {currentView === 'home' && <HomeView navigate={navigate} relayerAPI={relayerAPI} />}
         {currentView === 'chat' && (
           <ChatInterface
             walletAddress={connectedWallet.address}
             availableModels={relayerAPI.availableModels}
             onSubmitTask={handleSubmitInferenceTask}
-            onTaskUpdate={(taskId, status) => {
-              console.log('Task update:', taskId, status);
-            }}
           />
         )}
-        
-        {currentView === 'nft' && (
-          <NFTView navigate={navigate} />
-        )}
-        
-        {currentView === 'dashboard' && (
-          <DashboardView 
-            connectedWallet={connectedWallet}
-            relayerAPI={relayerAPI}
-          />
-        )}
+        {currentView === 'nft' && <NFTView navigate={navigate} />}
+        {currentView === 'dashboard' && <DashboardView connectedWallet={connectedWallet} relayerAPI={relayerAPI} onDisconnect={handleWalletDisconnect} />}
       </div>
       
-      {/* Bottom Navigation */}
-      <BottomNavigation currentView={currentView} navigate={navigate} />
-      
+      {/* Navigation */}
+      <NavBar currentView={currentView} navigate={navigate} />
       <DebugOverlay />
     </main>
   );
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME VIEW
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-// ─── Header ───
-function AppLayout({ 
-  connectedWallet, 
-  relayerAPI, 
-  currentView,
-  navigate 
-}: { 
-  connectedWallet: ConnectedWallet
-  relayerAPI: any
-  currentView: string
-  navigate: NavigateFunction
-}) {
-  return (
-    <div className="px-4 py-3 border-b border-[var(--border-subtle)]" style={{ background: '#09090B' }}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <SLogo size={20} />
-            <h1 className="text-base font-mono font-semibold text-white tracking-tight">
-              SMAINER
-            </h1>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <div className="px-2.5 py-1 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-subtle)]">
-            <span className="text-[11px] font-mono text-[var(--text-muted)]">
-              {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
-            </span>
-          </div>
-          <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Home View ───
 function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relayerAPI: any }) {
+  const nodesOnline = relayerAPI.availableModels.length;
+  
   return (
-    <div className="px-4 py-6 pb-24 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto px-5 py-6 pb-28">
       <div className="max-w-md mx-auto space-y-6">
-        
-        {/* Title section */}
-        <div className="animate-fade-in">
-          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">Dashboard</p>
-          <h2 className="text-xl font-semibold text-white">Control Center</h2>
+        {/* Header */}
+        <div className="animate-in">
+          <p className="text-label mb-1">Dashboard</p>
+          <h2 className="text-2xl font-bold text-white">Control Center</h2>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 animate-fade-in stagger-1">
-          <div className="card p-5 text-center">
-            <div className="stat-number text-3xl font-bold text-white mb-2">
-              {relayerAPI.availableModels.length}
-            </div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
-              Nodes Online
-            </div>
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 gap-4 animate-in delay-1">
+          <div className="glass p-5 text-center">
+            <div className="text-stat text-4xl text-white mb-1">{nodesOnline}</div>
+            <div className="text-label">Nodes Online</div>
           </div>
-          <div className="card p-5 text-center">
-            <div className="stat-number text-3xl font-bold text-white mb-2">
-              0
-            </div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
-              Tasks Run
-            </div>
+          <div className="glass p-5 text-center">
+            <div className="text-stat text-4xl text-white mb-1">0</div>
+            <div className="text-label">Tasks Run</div>
           </div>
         </div>
 
-        {/* Action cards */}
-        <div className="space-y-3 animate-fade-in stagger-2">
-          {/* Primary CTA - Run Compute Task */}
-          <button 
-            onClick={() => navigate('/chat')}
-            className="group w-full card-interactive p-5 text-left border-l-4 border-l-[#3B82F6]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-white mb-1">Run Compute Task</h3>
-                <p className="text-xs text-[var(--text-muted)]">Submit private tasks to GPU nodes</p>
-              </div>
-              <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-[#3B82F6]">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="2" y="4" width="16" height="10" rx="2" fill="white" />
-                  <rect x="4" y="6" width="8" height="1" rx="0.5" fill="#3B82F6" />
-                  <rect x="4" y="8" width="6" height="1" rx="0.5" fill="#3B82F6" />
-                  <circle cx="15" cy="7" r="1" fill="#3B82F6" />
-                </svg>
-              </div>
+        {/* Primary CTA */}
+        <button 
+          onClick={() => navigate('/chat')}
+          className="w-full card-glow card-interactive p-5 text-left animate-in delay-2"
+          style={{ borderLeft: '3px solid var(--blue)' }}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1">Run Compute Task</h3>
+              <p className="text-sm text-[var(--text-muted)]">Submit private inference to GPU nodes</p>
             </div>
-          </button>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[var(--blue)]">
+              <IconCompute active />
+            </div>
+          </div>
+          {nodesOnline > 0 && (
+            <div className="mt-4 flex items-center gap-2">
+              <div className="status-dot status-dot-online animate-glow" />
+              <span className="text-sm text-[var(--success)]">{nodesOnline} node{nodesOnline !== 1 ? 's' : ''} ready</span>
+            </div>
+          )}
+        </button>
 
-          {/* Secondary CTA - Mint NFTs */}
+        {/* Secondary Actions */}
+        <div className="grid grid-cols-2 gap-4 animate-in delay-3">
           <button 
             onClick={() => navigate('/nft')}
-            className="group w-full card-interactive p-5 text-left"
+            className="card-interactive p-4 text-left"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-white mb-1">Mint NFTs</h3>
-                <p className="text-xs text-[var(--text-muted)]">Turn compute results into on-chain assets</p>
-              </div>
-              <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="3" y="3" width="6" height="6" rx="1" fill="white" />
-                  <rect x="11" y="3" width="6" height="6" rx="1" fill="white" />
-                  <rect x="3" y="11" width="6" height="6" rx="1" fill="white" />
-                  <rect x="11" y="11" width="6" height="6" rx="1" fill="#3B82F6" />
-                </svg>
-              </div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--surface-glass)] mb-3">
+              <IconNFT />
             </div>
+            <h4 className="font-semibold text-white mb-1">NFTs</h4>
+            <p className="text-xs text-[var(--text-muted)]">Mint results on-chain</p>
           </button>
-
-          {/* Tertiary - Dashboard */}
+          
           <button 
             onClick={() => navigate('/dashboard')}
-            className="group w-full card-interactive p-5 text-left"
+            className="card-interactive p-4 text-left"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-white mb-1">Dashboard</h3>
-                <p className="text-xs text-[var(--text-muted)]">Wallet balance and network status</p>
-              </div>
-              <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="3" y="10" width="3" height="6" rx="1" fill="white" />
-                  <rect x="8.5" y="7" width="3" height="9" rx="1" fill="white" />
-                  <rect x="14" y="4" width="3" height="12" rx="1" fill="white" />
-                </svg>
-              </div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--surface-glass)] mb-3">
+              <IconStats />
             </div>
+            <h4 className="font-semibold text-white mb-1">Dashboard</h4>
+            <p className="text-xs text-[var(--text-muted)]">Balance & status</p>
           </button>
         </div>
 
-        {/* Network status row */}
-        <div className="card p-4 animate-fade-in stagger-3">
+        {/* Network Status */}
+        <div className="glass p-4 animate-in delay-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
-              <span className="text-xs font-mono text-[var(--text-muted)]">
-                {relayerAPI.isConnected ? 'Network Active' : 'Network Offline'}
+            <div className="status">
+              <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
+              <span className="text-sm text-[var(--text-muted)]">
+                {relayerAPI.isConnected ? 'Network Active' : 'Connecting...'}
               </span>
             </div>
-            <span className="text-xs font-mono text-[var(--text-disabled)]">Starknet L2</span>
+            <span className="pill">Starknet L2</span>
           </div>
         </div>
       </div>
@@ -567,180 +538,162 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
   );
 }
 
-// ─── NFT View ───
+/* ═══════════════════════════════════════════════════════════════════════════
+   NFT VIEW
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 function NFTView({ navigate }: { navigate: NavigateFunction }) {
   return (
-    <div className="px-4 py-6 pb-24 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto px-5 py-6 pb-28">
       <div className="max-w-md mx-auto">
-        <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1 animate-fade-in">Gallery</p>
-        <h2 className="text-xl font-semibold text-white mb-6 animate-fade-in">NFT Collection</h2>
+        {/* Header */}
+        <div className="mb-8 animate-in">
+          <p className="text-label mb-1">Gallery</p>
+          <h2 className="text-2xl font-bold text-white">NFT Collection</h2>
+        </div>
         
-        <div className="card p-8 text-center animate-slide-up">
-          {/* NFT placeholder icon */}
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect x="4" y="4" width="10" height="10" rx="2" fill="white" />
-              <rect x="18" y="4" width="10" height="10" rx="2" fill="white" />
-              <rect x="4" y="18" width="10" height="10" rx="2" fill="white" />
-              <rect x="18" y="18" width="10" height="10" rx="2" fill="#3B82F6" />
+        {/* Empty State */}
+        <div className="glass p-8 text-center animate-in delay-1">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-3xl flex items-center justify-center bg-[var(--surface-glass)]">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect x="6" y="6" width="12" height="12" rx="3" fill="white" opacity="0.6" />
+              <rect x="22" y="6" width="12" height="12" rx="3" fill="white" opacity="0.6" />
+              <rect x="6" y="22" width="12" height="12" rx="3" fill="white" opacity="0.6" />
+              <rect x="22" y="22" width="12" height="12" rx="3" fill="var(--blue)" />
             </svg>
           </div>
           
-          <h3 className="font-semibold text-white mb-2">Mint Compute Results</h3>
-          <p className="text-sm text-[var(--text-muted)] mb-6 leading-relaxed">
-            Turn computed outputs into verified NFTs on Starknet
+          <h3 className="text-xl font-semibold text-white mb-2">Mint Compute Results</h3>
+          <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
+            Turn your AI-generated outputs into verified NFTs on Starknet
           </p>
           
-          <button 
-            onClick={() => navigate('/chat')}
-            className="px-6 py-3 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold transition-all duration-200"
-          >
+          <button onClick={() => navigate('/chat')} className="btn btn-primary w-full">
             Start Creating
           </button>
         </div>
+        
+        {/* Info Card */}
+        <div className="glass p-4 mt-6 animate-in delay-2">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--blue)] bg-opacity-20 flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--blue)">
+                <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 5a1 1 0 112 0v3a1 1 0 01-2 0V5zm1 7a1 1 0 100-2 1 1 0 000 2z"/>
+              </svg>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Each NFT includes cryptographic proof of the compute task that generated it.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Dashboard View ───
-function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: ConnectedWallet, relayerAPI: any }) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD VIEW
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function DashboardView({ 
+  connectedWallet, 
+  relayerAPI, 
+  onDisconnect 
+}: { 
+  connectedWallet: ConnectedWallet
+  relayerAPI: any
+  onDisconnect: () => void
+}) {
   return (
-    <div className="px-4 py-6 pb-24 overflow-y-auto">
-      <div className="max-w-md mx-auto space-y-5">
-        <div className="animate-fade-in">
-          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">Account</p>
-          <h2 className="text-xl font-semibold text-white">Dashboard</h2>
+    <div className="flex-1 overflow-y-auto px-5 py-6 pb-28">
+      <div className="max-w-md mx-auto space-y-6">
+        {/* Header */}
+        <div className="animate-in">
+          <p className="text-label mb-1">Account</p>
+          <h2 className="text-2xl font-bold text-white">Dashboard</h2>
         </div>
         
-        {/* Balance card */}
-        <div className="card p-5 animate-fade-in stagger-1">
-          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Wallet Balance</p>
-          <div className="flex items-baseline space-x-2">
-            <span className="stat-number text-3xl font-bold text-white">
-              {connectedWallet.balance_strk}
-            </span>
-            <span className="text-sm font-mono text-[var(--text-muted)]">STRK</span>
+        {/* Balance Card */}
+        <div className="glass p-6 animate-in delay-1">
+          <p className="text-label mb-4">Wallet Balance</p>
+          <div className="flex items-baseline gap-2 mb-4">
+            <span className="text-stat text-5xl text-white">{connectedWallet.balance_strk || '0'}</span>
+            <span className="text-lg text-[var(--text-muted)]">STRK</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
-            <div className="text-xs font-mono text-[var(--text-disabled)]">
-              {connectedWallet.address.slice(0, 10)}...{connectedWallet.address.slice(-8)}
-            </div>
+          <div className="pt-4 border-t border-[var(--border-subtle)]">
+            <p className="text-mono text-sm text-[var(--text-muted)] break-all">
+              {connectedWallet.address}
+            </p>
           </div>
         </div>
 
-        {/* Network status */}
-        <div className="card p-5 animate-fade-in stagger-2">
-          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Network</p>
-          <div className="space-y-3">
+        {/* Network Status */}
+        <div className="glass p-5 animate-in delay-2">
+          <p className="text-label mb-4">Network Status</p>
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--text-secondary)]">Relayer</span>
-              <div className="flex items-center space-x-2">
-                <span className={`text-sm font-mono ${relayerAPI.isConnected ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+              <span className="text-[var(--text-secondary)]">Relayer</span>
+              <div className="status">
+                <span className={`text-sm font-medium ${relayerAPI.isConnected ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                   {relayerAPI.isConnected ? 'Connected' : 'Offline'}
                 </span>
-                <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
+                <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--text-secondary)]">Compute Nodes</span>
-              <span className="text-sm font-mono text-white">{relayerAPI.availableModels.length}</span>
+              <span className="text-[var(--text-secondary)]">Compute Nodes</span>
+              <span className="text-white font-medium">{relayerAPI.availableModels.length}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--text-secondary)]">Chain</span>
-              <span className="text-sm font-mono text-[var(--text-muted)]">Starknet L2</span>
+              <span className="text-[var(--text-secondary)]">Chain</span>
+              <span className="pill">Starknet L2</span>
             </div>
           </div>
         </div>
+
+        {/* Disconnect */}
+        <button 
+          onClick={onDisconnect}
+          className="w-full btn btn-ghost text-[var(--error)] animate-in delay-3"
+        >
+          Disconnect Wallet
+        </button>
       </div>
     </div>
   );
 }
 
-// ─── Bottom Navigation ───
-function BottomNavigation({ currentView, navigate }: { currentView: string, navigate: NavigateFunction }) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAVIGATION BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function NavBar({ currentView, navigate }: { currentView: string, navigate: NavigateFunction }) {
   const tabs = [
-    { 
-      id: 'home', 
-      label: 'Home', 
-      path: '/home', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" />
-        </svg>
-      )
-    },
-    { 
-      id: 'chat', 
-      label: 'Compute', 
-      path: '/chat', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <rect x="2" y="4" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
-          <rect x="4" y="6" width="8" height="1" rx="0.5" fill="currentColor" />
-          <rect x="4" y="8" width="6" height="1" rx="0.5" fill="currentColor" />
-          <circle cx="15" cy="7" r="1" fill="currentColor" />
-        </svg>
-      )
-    },
-    { 
-      id: 'nft', 
-      label: 'NFTs', 
-      path: '/nft', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <rect x="3" y="3" width="6" height="6" rx="1" />
-          <rect x="11" y="3" width="6" height="6" rx="1" />
-          <rect x="3" y="11" width="6" height="6" rx="1" />
-          <rect x="11" y="11" width="6" height="6" rx="1" />
-        </svg>
-      )
-    },
-    { 
-      id: 'dashboard', 
-      label: 'Stats', 
-      path: '/dashboard', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <rect x="3" y="10" width="3" height="6" rx="1" />
-          <rect x="8.5" y="7" width="3" height="9" rx="1" />
-          <rect x="14" y="4" width="3" height="12" rx="1" />
-        </svg>
-      )
-    },
+    { id: 'home', label: 'Home', path: '/home', Icon: IconHome },
+    { id: 'chat', label: 'Compute', path: '/chat', Icon: IconCompute },
+    { id: 'nft', label: 'NFTs', path: '/nft', Icon: IconNFT },
+    { id: 'dashboard', label: 'Stats', path: '/dashboard', Icon: IconStats },
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-      <div className="bg-[#09090B] border-t border-[var(--border-subtle)] px-4 py-2">
-        <div className="flex">
-          {tabs.map((tab) => (
+    <nav className="nav-bar safe-area-bottom">
+      <div className="flex px-2 py-2">
+        {tabs.map(({ id, label, path, Icon }) => {
+          const isActive = currentView === id;
+          return (
             <button
-              key={tab.id}
-              onClick={() => navigate(tab.path)}
-              className={`relative flex-1 flex flex-col items-center py-2 transition-all duration-200 ${
-                currentView === tab.id ? '' : 'opacity-60 hover:opacity-80'
-              }`}
+              key={id}
+              onClick={() => navigate(path)}
+              className={`nav-item flex-1 ${isActive ? 'nav-item-active' : ''}`}
             >
-              <div className={`mb-1 transition-colors duration-200 ${
-                currentView === tab.id 
-                  ? 'text-[#3B82F6]' 
-                  : 'text-[var(--text-muted)]'
-              }`}>
-                {tab.icon}
-              </div>
-              
-              <span className={`text-[10px] font-mono transition-colors duration-200 ${
-                currentView === tab.id 
-                  ? 'text-[#3B82F6] font-medium' 
-                  : 'text-[var(--text-muted)]'
-              }`}>
-                {tab.label}
+              <Icon active={isActive} />
+              <span className={`text-[11px] font-medium ${isActive ? 'text-[var(--blue)]' : 'text-[var(--text-muted)]'}`}>
+                {label}
               </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
-    </div>
+    </nav>
   );
 }

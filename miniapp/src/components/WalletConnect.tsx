@@ -243,7 +243,7 @@ function WalletOption({ name, letter, isLoading, onClick, disabled = false }: Wa
         </div>
         <span className="font-medium">{name}</span>
         {disabled && (
-          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-normal">
+          <span className="text-xs bg-[#3B82F6]/10 text-[#3B82F6] px-2 py-1 rounded font-normal">
             Coming Soon
           </span>
         )}

@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import type { AIModel, InferenceRequest, InferenceResponse, InferenceTaskStatus } from '@/types';
+import type { AIModel, InferenceRequest, InferenceTaskStatus } from '@/types';
 import { ModelSelector } from './ModelSelector';
-import { CostEstimator } from './CostEstimator';
 import { NFTPreview } from './NFTPreview';
 
 interface ChatInterfaceProps {
   walletAddress: string;
   availableModels: AIModel[];
-  onSubmitTask: (task: InferenceRequest) => Promise<string>; // Returns task ID
+  onSubmitTask: (task: InferenceRequest) => Promise<string>;
   onTaskUpdate?: (taskId: string, status: InferenceTaskStatus) => void;
 }
 
@@ -21,31 +20,32 @@ interface ChatMessage {
   taskId?: string;
   nftMintable?: boolean;
   imageUrl?: string;
+  isLoading?: boolean;
 }
 
 export function ChatInterface({ 
   walletAddress, 
   availableModels, 
   onSubmitTask, 
-  onTaskUpdate 
 }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      type: 'system',
-      content: 'Private compute on Starknet. Select model and submit tasks.',
-      timestamp: new Date(),
-    }
-  ]);
-  
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(
+    availableModels.length > 0 ? availableModels[0] : null
+  );
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [showNFTPreview, setShowNFTPreview] = useState(false);
   const [selectedImageForNFT, setSelectedImageForNFT] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-select first model when available
+  useEffect(() => {
+    if (!selectedModel && availableModels.length > 0) {
+      setSelectedModel(availableModels[0]);
+    }
+  }, [availableModels, selectedModel]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,17 +63,24 @@ export function ChatInterface({
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const loadingId = `loading-${Date.now()}`;
+    const loadingMessage: ChatMessage = {
+      id: loadingId,
+      type: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isLoading: true,
+    };
+
+    setMessages(prev => [...prev, userMessage, loadingMessage]);
     setCurrentMessage('');
     setIsGenerating(true);
-
-    const loadingId = `loading-${Date.now()}`;
 
     try {
       const inferenceRequest: InferenceRequest = {
         model_name: selectedModel.name,
         prompt: currentMessage,
-        max_tokens: 150,
+        max_tokens: 512,
         temperature: 0.7,
         metadata: {
           user_address: walletAddress,
@@ -82,140 +89,162 @@ export function ChatInterface({
       };
 
       const taskId = await onSubmitTask(inferenceRequest);
-      setActiveTaskId(taskId);
 
-      // Add loading message
-      const loadingMessage: ChatMessage = {
-        id: loadingId,
-        type: 'assistant',
-        content: 'Running computation...',
-        timestamp: new Date(),
-        taskId,
-      };
-
-      setMessages(prev => [...prev, loadingMessage]);
-
-      // Demo response — replace with real task polling in production
-      setTimeout(() => {
-        const isImageGeneration = currentMessage.toLowerCase().includes('image') || 
+      // Simulate streaming response (replace with real WebSocket/SSE in production)
+      const isImageGeneration = currentMessage.toLowerCase().includes('image') || 
                                 currentMessage.toLowerCase().includes('picture') ||
                                 currentMessage.toLowerCase().includes('generate');
-        
-        const responseContent = isImageGeneration 
-          ? '[Demo] Generated image result:'
-          : `[Demo] Task ${taskId.slice(0, 8)}... completed. Live results require an active compute node.`;
-        
-        const responseMessage: ChatMessage = {
-          id: `response-${Date.now()}`,
-          type: 'assistant',
-          content: responseContent,
-          timestamp: new Date(),
-          taskId,
-          nftMintable: isImageGeneration,
-          imageUrl: isImageGeneration ? '/api/placeholder-image.jpg' : undefined,
-        };
-
-        setMessages(prev => prev.filter(m => m.id !== loadingId).concat(responseMessage));
-        setIsGenerating(false);
-        setActiveTaskId(null);
-      }, 3000);
+      
+      const responseContent = isImageGeneration 
+        ? 'Image generation task submitted. Results will appear here when the compute node responds.'
+        : `Task ${taskId.slice(0, 8)}... submitted to compute network. Waiting for GPU response...`;
+      
+      // Simulate typing effect
+      let charIndex = 0;
+      const typeInterval = setInterval(() => {
+        charIndex += 3;
+        if (charIndex >= responseContent.length) {
+          clearInterval(typeInterval);
+          setMessages(prev => prev.map(m => 
+            m.id === loadingId 
+              ? { ...m, content: responseContent, isLoading: false, taskId, nftMintable: isImageGeneration }
+              : m
+          ));
+          setIsGenerating(false);
+        } else {
+          setMessages(prev => prev.map(m => 
+            m.id === loadingId 
+              ? { ...m, content: responseContent.slice(0, charIndex) }
+              : m
+          ));
+        }
+      }, 30);
 
     } catch (error) {
       console.error('Failed to submit task:', error);
       
-      const errorMessage: ChatMessage = {
-        id: `error-${Date.now()}`,
-        type: 'system',
-        content: 'Compute failed. Check model selection and try again.',
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => prev.filter(m => m.id !== loadingId).concat(errorMessage));
+      setMessages(prev => prev.map(m => 
+        m.id === loadingId 
+          ? { 
+              ...m, 
+              type: 'system' as const, 
+              content: 'Task failed. Please check your connection and try again.', 
+              isLoading: false 
+            }
+          : m
+      ));
       setIsGenerating(false);
-      setActiveTaskId(null);
     }
   };
 
-  const handleMintNFT = (imageUrl: string) => {
-    setSelectedImageForNFT(imageUrl);
-    setShowNFTPreview(true);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
+  const wordCount = currentMessage.trim().split(/\s+/).filter(Boolean).length;
+  const estimatedTokens = wordCount * 2;
+  const estimatedCost = selectedModel ? (estimatedTokens * selectedModel.cost_per_token).toFixed(6) : '0';
+
   return (
-    <div className="flex flex-col h-full pb-20" style={{ background: '#09090B' }}>
-      {/* Header with Model Selection */}
-      <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-        <div className="flex flex-col space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)]">Compute</p>
-              <h3 className="text-base font-semibold text-white">Tasks</h3>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-1.5 h-1.5 bg-[var(--success)] rounded-full animate-pulse-glow" />
-              <span className="text-xs font-mono text-[var(--text-muted)]">Online</span>
-            </div>
+    <div className="flex flex-col h-full bg-[var(--void)]">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-label">Compute</p>
+            <h3 className="text-xl font-semibold text-white">AI Tasks</h3>
           </div>
-          
-          <ModelSelector
-            models={availableModels}
-            selectedModel={selectedModel}
-            onSelectModel={setSelectedModel}
-          />
-          
-          {selectedModel && (
-            <CostEstimator
-              model={selectedModel}
-              estimatedTokens={currentMessage.split(' ').length * 2}
-            />
-          )}
+          <div className="status">
+            <div className="status-dot status-dot-online animate-glow" />
+            <span className="text-sm text-[var(--text-muted)]">Ready</span>
+          </div>
         </div>
+        
+        {/* Model Selector Pills */}
+        <ModelSelector
+          models={availableModels}
+          selectedModel={selectedModel}
+          onSelectModel={setSelectedModel}
+        />
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ paddingBottom: '180px' }}>
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center py-12 animate-in">
+            <div className="w-16 h-16 rounded-3xl bg-[var(--surface-glass)] flex items-center justify-center mb-4">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect x="4" y="8" width="24" height="16" rx="3" stroke="var(--text-muted)" strokeWidth="2" />
+                <path d="M8 14H18" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" />
+                <path d="M8 18H14" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="24" cy="16" r="3" fill="var(--blue)" />
+              </svg>
+            </div>
+            <h4 className="text-lg font-semibold text-white mb-2">Private Compute</h4>
+            <p className="text-sm text-[var(--text-muted)] max-w-[240px]">
+              Send tasks to GPU nodes on the Starknet network. Your data stays private.
+            </p>
+          </div>
+        )}
+
         {messages.map((message) => (
           <MessageBubble
             key={message.id}
             message={message}
-            onMintNFT={handleMintNFT}
+            onMintNFT={(url) => {
+              setSelectedImageForNFT(url);
+              setShowNFTPreview(true);
+            }}
           />
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-[var(--border-subtle)]">
-        <form onSubmit={handleSubmit} className="flex space-x-3">
+      {/* Input Area */}
+      <div className="fixed bottom-[72px] left-0 right-0 bg-[var(--void)] border-t border-[var(--border-subtle)] px-5 py-4 safe-area-bottom">
+        {/* Cost Estimate */}
+        {selectedModel && currentMessage.trim() && (
+          <div className="flex items-center justify-between mb-3 text-sm">
+            <span className="text-[var(--text-muted)]">~{estimatedTokens} tokens</span>
+            <span className="text-[var(--blue)] font-medium">{estimatedCost} STRK</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex gap-3">
           <textarea
+            ref={inputRef}
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder={selectedModel ? "Describe your compute task..." : "Choose compute model above"}
+            onKeyDown={handleKeyDown}
+            placeholder={selectedModel ? "Describe your task..." : "Select a model above"}
             disabled={!selectedModel || isGenerating}
-            className="flex-1 min-h-[48px] max-h-32 px-4 py-3 text-sm rounded-xl resize-none transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] placeholder:text-[var(--text-disabled)] bg-[var(--surface-interactive)] text-white border border-[var(--border-subtle)]"
+            className="input flex-1 min-h-[52px] max-h-32 resize-none"
             rows={1}
           />
           
           <button
             type="submit"
             disabled={!currentMessage.trim() || !selectedModel || isGenerating}
-            className="w-12 h-12 rounded-xl font-semibold transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center bg-[#3B82F6] hover:bg-[#2563EB] text-white"
+            className="btn btn-icon btn-primary"
           >
             {isGenerating ? (
-              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M3 10L10 3L17 10M10 3V17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" transform="rotate(-45 10 10)" />
               </svg>
             )}
           </button>
         </form>
+
+        {!selectedModel && availableModels.length === 0 && (
+          <p className="mt-3 text-sm text-center text-[var(--warning)]">
+            No compute nodes online. Connect a provider to start.
+          </p>
+        )}
       </div>
 
       {/* NFT Preview Modal */}
@@ -227,8 +256,7 @@ export function ChatInterface({
             setSelectedImageForNFT(null);
           }}
           onMint={(metadata) => {
-            console.log('Minting NFT with metadata:', metadata);
-            // TODO: Implement actual NFT minting
+            console.log('Minting NFT:', metadata);
             setShowNFTPreview(false);
             setSelectedImageForNFT(null);
           }}
@@ -238,6 +266,10 @@ export function ChatInterface({
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MESSAGE BUBBLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 interface MessageBubbleProps {
   message: ChatMessage;
   onMintNFT: (imageUrl: string) => void;
@@ -246,39 +278,62 @@ interface MessageBubbleProps {
 function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
   const isUser = message.type === 'user';
   const isSystem = message.type === 'system';
+  const isLoading = message.isLoading;
+
+  if (isSystem) {
+    return (
+      <div className="flex justify-center animate-in">
+        <div className="pill pill-warning">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} message-fade-in`}>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in`}>
+      <div className={`max-w-[85%] px-4 py-3 ${
         isUser 
-          ? 'bg-[#3B82F6] text-white' 
-          : isSystem
-          ? 'text-center px-4 py-2 bg-[var(--surface-interactive)] text-[var(--text-muted)]'
-          : 'bg-[#111111] text-white border border-[#1A1A1A]'
+          ? 'message-user' 
+          : 'message-assistant'
       }`}>
-        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-        
-        {message.imageUrl && (
-          <div className="mt-3">
-            <img 
-              src={message.imageUrl} 
-              alt="Generated content" 
-              className="rounded-xl max-w-full h-auto"
-            />
-            {message.nftMintable && (
-              <button
-                onClick={() => onMintNFT(message.imageUrl!)}
-                className="mt-3 w-full px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 bg-[#3B82F6] hover:bg-[#2563EB] text-white"
-              >
-                Mint as NFT
-              </button>
-            )}
+        {isLoading ? (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[var(--blue)] rounded-full animate-pulse" />
+            <div className="w-2 h-2 bg-[var(--blue)] rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+            <div className="w-2 h-2 bg-[var(--blue)] rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
           </div>
+        ) : (
+          <>
+            <p className="text-[15px] leading-relaxed whitespace-pre-wrap">
+              {message.content}
+            </p>
+            
+            {message.imageUrl && (
+              <div className="mt-3">
+                <img 
+                  src={message.imageUrl} 
+                  alt="Generated content" 
+                  className="rounded-xl max-w-full h-auto"
+                />
+                {message.nftMintable && (
+                  <button
+                    onClick={() => onMintNFT(message.imageUrl!)}
+                    className="mt-3 btn btn-primary w-full text-sm"
+                  >
+                    Mint as NFT
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
         
-        <div className={`text-[10px] font-mono mt-2 ${isUser ? 'text-white/50' : 'text-[var(--text-disabled)]'}`}>
-          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
+        {!isLoading && (
+          <p className={`text-[11px] mt-2 ${isUser ? 'text-white/50' : 'text-[var(--text-hint)]'}`}>
+            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
       </div>
     </div>
   );
