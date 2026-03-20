@@ -1,8 +1,5 @@
 {
   "framework": "vite",
-  "rewrites": [
-    { "source": "/:path*", "destination": "/index.html" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
