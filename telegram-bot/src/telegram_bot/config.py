@@ -141,6 +141,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_miniapp_urls(self) -> "Settings":
         """Validate MiniApp URLs early to prevent runtime 404 misconfiguration."""
+        env = self.environment.lower()
         for value, name in (
             (self.miniapp_url, "MINIAPP_URL"),
             (self.miniapp_connect_url, "MINIAPP_CONNECT_URL"),
@@ -151,6 +152,8 @@ class Settings(BaseSettings):
             parsed = urlsplit(value)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 raise ValueError(f"{name} must be a valid absolute http(s) URL")
+            if env in {"production", "prod"} and parsed.scheme != "https":
+                raise ValueError(f"{name} must use https in production")
         return self
 
 

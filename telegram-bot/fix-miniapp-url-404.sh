@@ -14,7 +14,7 @@ if [ $# -lt 1 ]; then
 fi
 
 BASE_URL="$1"
-SERVICE_NAME="${SERVICE_NAME:-telegram-bot}"
+SERVICE_NAME="${SERVICE_NAME:-smainer-telegram-bot}"
 ENV_FILE="${ENV_FILE:-.env}"
 
 if [[ ! "$BASE_URL" =~ ^https?:// ]]; then
@@ -56,8 +56,16 @@ if command -v systemctl >/dev/null 2>&1; then
   if systemctl status "$SERVICE_NAME" >/dev/null 2>&1; then
     sudo systemctl restart "$SERVICE_NAME"
     sudo systemctl status "$SERVICE_NAME" --no-pager -l | head -n 20
+  elif systemctl status "smainer-telegram-bot" >/dev/null 2>&1; then
+    echo "Service $SERVICE_NAME not found. Falling back to smainer-telegram-bot"
+    sudo systemctl restart "smainer-telegram-bot"
+    sudo systemctl status "smainer-telegram-bot" --no-pager -l | head -n 20
+  elif systemctl status "telegram-bot" >/dev/null 2>&1; then
+    echo "Service $SERVICE_NAME not found. Falling back to telegram-bot"
+    sudo systemctl restart "telegram-bot"
+    sudo systemctl status "telegram-bot" --no-pager -l | head -n 20
   else
-    echo "Service $SERVICE_NAME not found. Restart your bot process manually."
+    echo "No known bot service found (tried: $SERVICE_NAME, smainer-telegram-bot, telegram-bot). Restart your bot process manually."
   fi
 else
   echo "systemctl not available. Restart your bot process manually."

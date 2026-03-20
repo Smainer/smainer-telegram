@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useConnect, useAccount, useDisconnect } from '@starknet-react/core';
 
 import type { ConnectedWallet } from '@/types';
@@ -14,27 +14,48 @@ interface WalletConnectProps {
 export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const { connect, connectors } = useConnect();
-  const { address, isConnected: starknetConnected, chainId } = useAccount();
+  const { address, isConnected: starknetConnected, chainId, status: accountStatus } = useAccount();
   const { disconnect } = useDisconnect();
+  const lastSyncedAddress = useRef<string | null>(null);
 
-  const handleConnect = async (connectFn: () => void) => {
+  // Auto-connect logic: check if we have a last used connector in localStorage
+  useEffect(() => {
+    if (!starknetConnected && !isConnecting) {
+      const lastConnectorId = localStorage.getItem('starknet-react.lastUsedConnector');
+      if (lastConnectorId) {
+        const connector = connectors.find(c => c.id === lastConnectorId);
+        if (connector && connector.available()) {
+          console.log('Attempting auto-connect to:', lastConnectorId);
+          connect({ connector });
+        }
+      }
+    }
+  }, [connect, connectors, isConnecting, starknetConnected]);
+
+  useEffect(() => {
+    if (starknetConnected && address && lastSyncedAddress.current !== address) {
+      const wallet: ConnectedWallet = {
+        address,
+        type: 'argentx',
+        balance_strk: '0',
+        balance_smainer: '0',
+      };
+      lastSyncedAddress.current = address;
+      onConnect(wallet);
+      setIsConnecting(false);
+      return;
+    }
+
+    if (!starknetConnected) {
+      lastSyncedAddress.current = null;
+      setIsConnecting(false);
+    }
+  }, [address, onConnect, starknetConnected]);
+
+  const handleConnect = async (connector: any) => {
     try {
       setIsConnecting(true);
-      connectFn();
-      
-      // TODO: After connection, fetch balances and create ConnectedWallet object
-      setTimeout(() => {
-        if (address) {
-          const wallet: ConnectedWallet = {
-            address,
-            type: 'argentx', // Determine actual wallet type
-            balance_strk: '0',
-            balance_smainer: '0',
-          };
-          onConnect(wallet);
-        }
-        setIsConnecting(false);
-      }, 1000);
+      await connect({ connector });
     } catch (error) {
       console.error('Wallet connection failed:', error);
       setIsConnecting(false);
@@ -164,7 +185,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               name={connector.name}
               icon={getWalletIcon(connector.id)}
               isLoading={isConnecting}
-              onClick={() => handleConnect(() => connect({ connector }))}
+              onClick={() => handleConnect(connector)}
             />
           ))}
           

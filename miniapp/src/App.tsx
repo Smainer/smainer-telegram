@@ -9,6 +9,13 @@ import type { ConnectedWallet, InferenceRequest } from './types';
 
 const WALLET_STORAGE_KEY = 'smainer_connected_wallet';
 
+function getConnectPageUrl(): string {
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/?mode=connect`;
+  }
+  return (import.meta.env.VITE_FRONTEND_URL || 'https://smainer-miniapp.vercel.app') + '/?mode=connect';
+}
+
 function loadPersistedWallet(): ConnectedWallet | null {
   if (typeof window === 'undefined') {
     return null;
@@ -65,7 +72,7 @@ class WalletSectionBoundary extends React.Component<
             Open the dedicated wallet page to connect, then return to the bot.
           </p>
           <a
-            href={(import.meta.env.VITE_FRONTEND_URL || 'https://smainer.io') + '/?mode=connect'}
+            href={getConnectPageUrl()}
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary hover:bg-primary-hover text-white font-medium"
@@ -144,6 +151,10 @@ export default function App() {
 
   const handleWalletConnect = (wallet: ConnectedWallet) => {
     setConnectedWallet(wallet);
+    
+    // Auto-update localStorage with latest wallet info
+    window.localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(wallet));
+
     if (connectMode) {
       const tgWebApp = (window as any).Telegram?.WebApp;
       if (tgWebApp?.sendData) {
@@ -211,15 +222,33 @@ export default function App() {
             <p className="text-sm text-slate-300">
               Open the dedicated connect flow for best Telegram wallet compatibility, then return here.
             </p>
-            <a
-              href={(import.meta.env.VITE_FRONTEND_URL || 'https://smainer.io') + '/?mode=connect'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Open Secure Wallet Connect
-            </a>
-            <p className="text-xs text-slate-400">Tip: after successful connect, tap Open App again to enter the full interface.</p>
+            <div className="space-y-3">
+              <a
+                href={getConnectPageUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                Open Secure Wallet Connect
+              </a>
+              
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                  <div className="w-full border-t border-slate-700"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-slate-900 px-2 text-xs text-slate-500 uppercase tracking-widest">or</span>
+                </div>
+              </div>
+
+              <WalletSectionBoundary>
+                <WalletConnect 
+                  onConnect={handleWalletConnect} 
+                  onDisconnect={handleWalletDisconnect} 
+                />
+              </WalletSectionBoundary>
+            </div>
+            <p className="text-xs text-slate-400 mt-4 text-center">Tip: after successful connect, tap Open App again to enter the full interface.</p>
           </div>
         </div>
       </main>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface ConnectLiteProps {}
 
@@ -66,6 +66,27 @@ export default function ConnectLite({}: ConnectLiteProps) {
       provider: runtimeWindow.starknet_argentX,
     },
   ].filter((wallet) => wallet.provider)
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(WALLET_STORAGE_KEY)
+      if (!raw) {
+        return
+      }
+
+      const parsed = JSON.parse(raw) as { address?: string }
+      const storedAddress = parsed.address?.trim()
+      if (!storedAddress || !ADDRESS_REGEX.test(storedAddress)) {
+        window.localStorage.removeItem(WALLET_STORAGE_KEY)
+        return
+      }
+
+      setAddress(storedAddress)
+      setSuccess(true)
+    } catch {
+      window.localStorage.removeItem(WALLET_STORAGE_KEY)
+    }
+  }, [])
 
   const persistWalletState = (connectedAddress: string, walletType: string) => {
     try {
