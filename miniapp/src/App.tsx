@@ -170,12 +170,12 @@ function SmainerLogo({ size = 40 }: { size?: number }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/" element={<MainApp />} />
       <Route path="/home" element={<MainApp />} />
       <Route path="/chat" element={<MainApp />} />
       <Route path="/nft" element={<MainApp />} />
       <Route path="/dashboard" element={<MainApp />} />
-      <Route path="*" element={<Navigate to="/home" replace />} />
+      <Route path="*" element={<MainApp />} />
     </Routes>
   );
 }
@@ -190,7 +190,9 @@ function MainApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(() => loadPersistedWallet());
   
-  const currentView = location.pathname.replace('/', '') as 'home' | 'chat' | 'nft' | 'dashboard';
+  // Default to 'home' for root path or empty path
+  const pathView = location.pathname.replace('/', '') || 'home';
+  const currentView = pathView as 'home' | 'chat' | 'nft' | 'dashboard';
 
   const { initData, miniApp, isInTelegram } = useTelegramData();
   const tgUser = initData?.user as {
@@ -305,7 +307,7 @@ function MainApp() {
 
   const handleWalletDisconnect = () => {
     setConnectedWallet(null);
-    navigate('/home');
+    navigate('/');
     try {
       const channel = new BroadcastChannel('smainer-wallet');
       channel.postMessage({ action: 'wallet_disconnect' });
@@ -669,7 +671,7 @@ function DashboardView({
 
 function NavBar({ currentView, navigate }: { currentView: string, navigate: NavigateFunction }) {
   const tabs = [
-    { id: 'home', label: 'Home', path: '/home', Icon: IconHome },
+    { id: 'home', label: 'Home', path: '/', Icon: IconHome },
     { id: 'chat', label: 'Compute', path: '/chat', Icon: IconCompute },
     { id: 'nft', label: 'NFTs', path: '/nft', Icon: IconNFT },
     { id: 'dashboard', label: 'Stats', path: '/dashboard', Icon: IconStats },
