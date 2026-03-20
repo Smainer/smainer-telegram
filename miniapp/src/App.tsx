@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { WalletConnect } from './components/WalletConnect';
 import { ChatInterface } from './components/ChatInterface';
 import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
-            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
 import type { ConnectedWallet, InferenceRequest } from './types';
 
