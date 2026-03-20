@@ -2,8 +2,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": null,
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/((?!assets).*)", "destination": "/index.html" }
+    { "source": "/:path*", "destination": "/index.html" }
   ],
   "headers": [
     {
