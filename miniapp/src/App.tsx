@@ -67,8 +67,8 @@ class WalletSectionBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="card-elevated p-6 text-center">
-          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Connect Page Required</h3>
+        <div className="card p-6 text-center">
+          <h3 className="text-base font-semibold text-white mb-2">Connect Page Required</h3>
           <p className="text-sm text-[var(--text-muted)] mb-4">
             Connect wallet on dedicated page, then return here.
           </p>
@@ -76,7 +76,7 @@ class WalletSectionBoundary extends React.Component<
             href={getConnectPageUrl()}
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[var(--champagne)] hover:bg-[var(--champagne-hover)] text-black font-semibold transition-all duration-200 glow-champagne"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold transition-all duration-200"
           >
             Open Connect Page
           </a>
@@ -98,6 +98,24 @@ export default function App() {
       <Route path="/dashboard" element={<MainApp />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
+  );
+}
+
+// S-Logo SVG Component (the actual compute blocks pattern)
+function SLogo({ size = 40 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      {/* S-formation of compute blocks */}
+      <rect x="8" y="6" width="8" height="6" rx="2" fill="#FFFFFF" />
+      <rect x="18" y="6" width="8" height="6" rx="2" fill="#FFFFFF" />
+      <rect x="28" y="6" width="8" height="6" rx="2" fill="#3B82F6" />
+      <rect x="18" y="14" width="8" height="6" rx="2" fill="#3B82F6" />
+      <rect x="28" y="14" width="8" height="6" rx="2" fill="#FFFFFF" />
+      <rect x="8" y="22" width="8" height="6" rx="2" fill="#FFFFFF" />
+      <rect x="18" y="22" width="8" height="6" rx="2" fill="#FFFFFF" />
+      <rect x="4" y="30" width="8" height="6" rx="2" fill="#FFFFFF" />
+      <rect x="14" y="30" width="8" height="6" rx="2" fill="#3B82F6" />
+    </svg>
   );
 }
 
@@ -124,6 +142,7 @@ function MainApp() {
   const displayLastName = tgUser?.last_name || tgUser?.lastName || '';
   const displayInitial = displayFirstName ? displayFirstName.charAt(0) : '?';
   const displayUsername = tgUser?.username || (tgUser?.id ? `user${tgUser.id}` : 'user');
+  
   // Initialize Relayer API connection
   const relayerAPI = useRelayerAPI({
     baseUrl: import.meta.env.VITE_RELAYER_URL || 'https://api.smainer.io',
@@ -264,14 +283,17 @@ function MainApp() {
   // ─── Loading State ───
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: 'var(--surface-void)' }}>
-        <div className="flex items-center space-x-1 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--champagne)] to-[var(--cyan)] opacity-80" />
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#09090B' }}>
+        <div className="flex items-center justify-center mb-4">
+          <SLogo size={48} />
         </div>
+        <h1 className="text-xl font-mono font-semibold text-white tracking-tight mb-6">
+          SMAINER
+        </h1>
         <div className="flex space-x-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--champagne)] loading-dot" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--champagne)] loading-dot" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--champagne)] loading-dot" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white loading-dot" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white loading-dot" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white loading-dot" />
         </div>
       </div>
     );
@@ -280,33 +302,32 @@ function MainApp() {
   // ─── Not Connected — Onboarding ───
   if (!connectedWallet) {
     return (
-      <main className="min-h-screen p-4" style={{ background: 'var(--surface-void)' }}>
-        <div className="max-w-md mx-auto pt-8">
+      <main className="min-h-screen p-4" style={{ background: '#09090B' }}>
+        <div className="max-w-md mx-auto pt-12">
           {/* Hero */}
           <div className="text-center mb-8 animate-fade-in">
-            <div className="flex items-center justify-center mb-5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--champagne)] to-[var(--cyan)] opacity-90" />
+            <div className="flex items-center justify-center mb-6">
+              <SLogo size={64} />
             </div>
-            <h1 className="text-2xl font-mono font-semibold text-[var(--text-primary)] tracking-tight mb-2">
+            <h1 className="text-2xl font-mono font-semibold text-white tracking-tight mb-3">
               SMAINER
             </h1>
             <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Private compute on Starknet. Pay per task in $STRK.
+              Private compute on Starknet
             </p>
           </div>
 
           {/* User info card */}
           {tgUser && (
-            <div className="card-elevated p-4 mb-6 animate-fade-in stagger-1">
+            <div className="card p-4 mb-6 animate-fade-in stagger-1">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                     style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
-                  <span className="text-sm font-mono font-semibold text-[var(--champagne)]">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
+                  <span className="text-sm font-mono font-semibold text-[#3B82F6]">
                     {displayInitial}
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium text-[var(--text-primary)] text-sm">
+                  <p className="font-medium text-white text-sm">
                     {displayFirstName} {displayLastName}
                   </p>
                   <p className="text-xs font-mono text-[var(--text-muted)]">
@@ -327,9 +348,9 @@ function MainApp() {
           </div>
 
           {/* Connection status */}
-          <div className="mt-6 card-elevated p-3 animate-fade-in stagger-3">
+          <div className="mt-6 card p-3 animate-fade-in stagger-3">
             <div className="flex items-center justify-center space-x-2 text-xs">
-              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)] glow-success' : 'bg-[var(--error)] glow-error'} animate-breathe`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
               <span className="text-[var(--text-muted)] font-mono">
                 Relayer {relayerAPI.isConnected ? 'Online' : 'Offline'}
               </span>
@@ -347,7 +368,7 @@ function MainApp() {
 
   // ─── Main App (Connected) ───
   return (
-    <main className="min-h-screen flex flex-col" style={{ background: 'var(--surface-void)' }}>
+    <main className="min-h-screen flex flex-col" style={{ background: '#09090B' }}>
       <AppLayout 
         connectedWallet={connectedWallet}
         relayerAPI={relayerAPI}
@@ -387,7 +408,7 @@ function MainApp() {
         )}
       </div>
       
-      {/* Floating Navigation */}
+      {/* Bottom Navigation */}
       <BottomNavigation currentView={currentView} navigate={navigate} />
       
       <DebugOverlay />
@@ -408,35 +429,24 @@ function AppLayout({
   navigate: NavigateFunction
 }) {
   return (
-    <div className="px-4 py-3" style={{ background: 'var(--surface-void)', borderBottom: '1px solid var(--border-subtle)' }}>
+    <div className="px-4 py-3 border-b border-[var(--border-subtle)]" style={{ background: '#09090B' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          {currentView !== 'home' && (
-            <button
-              onClick={() => navigate('/home')}
-              className="p-1.5 rounded-lg transition-colors duration-200 hover:bg-[var(--surface-interactive)] group"
-            >
-              <svg className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--champagne)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
           <div className="flex items-center space-x-2">
-            <div className="w-5 h-5 rounded-md bg-gradient-to-br from-[var(--champagne)] to-[var(--cyan)] opacity-90" />
-            <h1 className="text-base font-mono font-semibold text-[var(--text-primary)] tracking-tight">
+            <SLogo size={20} />
+            <h1 className="text-base font-mono font-semibold text-white tracking-tight">
               SMAINER
             </h1>
           </div>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className="px-2.5 py-1 rounded-lg" style={{ background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)' }}>
+          <div className="px-2.5 py-1 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-subtle)]">
             <span className="text-[11px] font-mono text-[var(--text-muted)]">
               {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
             </span>
           </div>
-          <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-breathe`}
-               style={relayerAPI.isConnected ? { boxShadow: '0 0 8px rgba(16,185,129,0.5)' } : { boxShadow: '0 0 8px rgba(239,68,68,0.5)' }} />
+          <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
         </div>
       </div>
     </div>
@@ -446,27 +456,27 @@ function AppLayout({
 // ─── Home View ───
 function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relayerAPI: any }) {
   return (
-    <div className="px-4 py-6 pb-28 overflow-y-auto">
-      <div className="max-w-md mx-auto space-y-5">
+    <div className="px-4 py-6 pb-24 overflow-y-auto">
+      <div className="max-w-md mx-auto space-y-6">
         
         {/* Title section */}
         <div className="animate-fade-in">
           <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">Dashboard</p>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Control Center</h2>
+          <h2 className="text-xl font-semibold text-white">Control Center</h2>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 animate-fade-in stagger-1">
-          <div className="card-elevated p-4 text-center">
-            <div className="stat-number text-2xl font-bold text-[var(--champagne)] mb-1">
+        <div className="grid grid-cols-2 gap-4 animate-fade-in stagger-1">
+          <div className="card p-5 text-center">
+            <div className="stat-number text-3xl font-bold text-white mb-2">
               {relayerAPI.availableModels.length}
             </div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
               Nodes Online
             </div>
           </div>
-          <div className="card-elevated p-4 text-center">
-            <div className="stat-number text-2xl font-bold text-[var(--champagne)] mb-1">
+          <div className="card p-5 text-center">
+            <div className="stat-number text-3xl font-bold text-white mb-2">
               0
             </div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
@@ -477,56 +487,63 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
 
         {/* Action cards */}
         <div className="space-y-3 animate-fade-in stagger-2">
-          {/* Primary CTA */}
+          {/* Primary CTA - Run Compute Task */}
           <button 
             onClick={() => navigate('/chat')}
-            className="group w-full card-interactive p-5 text-left"
+            className="group w-full card-interactive p-5 text-left border-l-4 border-l-[#3B82F6]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[var(--champagne)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none" />
-            <div className="flex items-center justify-between relative">
-              <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Run Compute Task</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-white mb-1">Run Compute Task</h3>
                 <p className="text-xs text-[var(--text-muted)]">Submit private tasks to GPU nodes</p>
               </div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--champagne)', boxShadow: '0 4px 16px rgba(181,160,130,0.3)' }}>
-                <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" />
+              <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-[#3B82F6]">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <rect x="2" y="4" width="16" height="10" rx="2" fill="white" />
+                  <rect x="4" y="6" width="8" height="1" rx="0.5" fill="#3B82F6" />
+                  <rect x="4" y="8" width="6" height="1" rx="0.5" fill="#3B82F6" />
+                  <circle cx="15" cy="7" r="1" fill="#3B82F6" />
                 </svg>
               </div>
             </div>
           </button>
 
-          {/* Secondary CTA */}
+          {/* Secondary CTA - Mint NFTs */}
           <button 
             onClick={() => navigate('/nft')}
             className="group w-full card-interactive p-5 text-left"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Mint NFTs</h3>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-white mb-1">Mint NFTs</h3>
                 <p className="text-xs text-[var(--text-muted)]">Turn compute results into on-chain assets</p>
               </div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
-                <svg className="w-5 h-5 text-[var(--cyan)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <rect x="3" y="3" width="6" height="6" rx="1" fill="white" />
+                  <rect x="11" y="3" width="6" height="6" rx="1" fill="white" />
+                  <rect x="3" y="11" width="6" height="6" rx="1" fill="white" />
+                  <rect x="11" y="11" width="6" height="6" rx="1" fill="#3B82F6" />
                 </svg>
               </div>
             </div>
           </button>
 
-          {/* Tertiary */}
+          {/* Tertiary - Dashboard */}
           <button 
             onClick={() => navigate('/dashboard')}
             className="group w-full card-interactive p-5 text-left"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Dashboard</h3>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-white mb-1">Dashboard</h3>
                 <p className="text-xs text-[var(--text-muted)]">Wallet balance and network status</p>
               </div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
-                <svg className="w-5 h-5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <rect x="3" y="10" width="3" height="6" rx="1" fill="white" />
+                  <rect x="8.5" y="7" width="3" height="9" rx="1" fill="white" />
+                  <rect x="14" y="4" width="3" height="12" rx="1" fill="white" />
                 </svg>
               </div>
             </div>
@@ -534,10 +551,10 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
         </div>
 
         {/* Network status row */}
-        <div className="card-elevated p-3 animate-fade-in stagger-3">
+        <div className="card p-4 animate-fade-in stagger-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-breathe`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
               <span className="text-xs font-mono text-[var(--text-muted)]">
                 {relayerAPI.isConnected ? 'Network Active' : 'Network Offline'}
               </span>
@@ -553,27 +570,30 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
 // ─── NFT View ───
 function NFTView({ navigate }: { navigate: NavigateFunction }) {
   return (
-    <div className="px-4 py-6 pb-28 overflow-y-auto">
+    <div className="px-4 py-6 pb-24 overflow-y-auto">
       <div className="max-w-md mx-auto">
         <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1 animate-fade-in">Gallery</p>
-        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6 animate-fade-in">NFT Collection</h2>
+        <h2 className="text-xl font-semibold text-white mb-6 animate-fade-in">NFT Collection</h2>
         
-        <div className="card-elevated p-8 text-center animate-slide-up">
-          {/* Geometric placeholder */}
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
-            <svg className="w-8 h-8 text-[var(--text-disabled)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <div className="card p-8 text-center animate-slide-up">
+          {/* NFT placeholder icon */}
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center bg-[var(--surface-interactive)] border border-[var(--border-subtle)]">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="4" y="4" width="10" height="10" rx="2" fill="white" />
+              <rect x="18" y="4" width="10" height="10" rx="2" fill="white" />
+              <rect x="4" y="18" width="10" height="10" rx="2" fill="white" />
+              <rect x="18" y="18" width="10" height="10" rx="2" fill="#3B82F6" />
             </svg>
           </div>
           
-          <h3 className="font-semibold text-[var(--text-primary)] mb-2">Mint Compute Results</h3>
+          <h3 className="font-semibold text-white mb-2">Mint Compute Results</h3>
           <p className="text-sm text-[var(--text-muted)] mb-6 leading-relaxed">
             Turn computed outputs into verified NFTs on Starknet
           </p>
           
           <button 
             onClick={() => navigate('/chat')}
-            className="px-6 py-3 rounded-xl bg-[var(--champagne)] hover:bg-[var(--champagne-hover)] text-black font-semibold transition-all duration-200 glow-champagne hover:glow-champagne-strong"
+            className="px-6 py-3 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold transition-all duration-200"
           >
             Start Creating
           </button>
@@ -586,23 +606,23 @@ function NFTView({ navigate }: { navigate: NavigateFunction }) {
 // ─── Dashboard View ───
 function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: ConnectedWallet, relayerAPI: any }) {
   return (
-    <div className="px-4 py-6 pb-28 overflow-y-auto">
+    <div className="px-4 py-6 pb-24 overflow-y-auto">
       <div className="max-w-md mx-auto space-y-5">
         <div className="animate-fade-in">
           <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">Account</p>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Dashboard</h2>
+          <h2 className="text-xl font-semibold text-white">Dashboard</h2>
         </div>
         
         {/* Balance card */}
-        <div className="card-elevated p-5 animate-fade-in stagger-1">
+        <div className="card p-5 animate-fade-in stagger-1">
           <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Wallet Balance</p>
           <div className="flex items-baseline space-x-2">
-            <span className="stat-number text-3xl font-bold text-[var(--champagne)]">
+            <span className="stat-number text-3xl font-bold text-white">
               {connectedWallet.balance_strk}
             </span>
             <span className="text-sm font-mono text-[var(--text-muted)]">STRK</span>
           </div>
-          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
             <div className="text-xs font-mono text-[var(--text-disabled)]">
               {connectedWallet.address.slice(0, 10)}...{connectedWallet.address.slice(-8)}
             </div>
@@ -610,7 +630,7 @@ function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: Conne
         </div>
 
         {/* Network status */}
-        <div className="card-elevated p-5 animate-fade-in stagger-2">
+        <div className="card p-5 animate-fade-in stagger-2">
           <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Network</p>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -619,12 +639,12 @@ function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: Conne
                 <span className={`text-sm font-mono ${relayerAPI.isConnected ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                   {relayerAPI.isConnected ? 'Connected' : 'Offline'}
                 </span>
-                <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-breathe`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-pulse-glow`} />
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-[var(--text-secondary)]">Compute Nodes</span>
-              <span className="text-sm font-mono text-[var(--text-primary)]">{relayerAPI.availableModels.length}</span>
+              <span className="text-sm font-mono text-white">{relayerAPI.availableModels.length}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-[var(--text-secondary)]">Chain</span>
@@ -637,69 +657,88 @@ function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: Conne
   );
 }
 
-// ─── Bottom Navigation (Floating Glassmorphism) ───
+// ─── Bottom Navigation ───
 function BottomNavigation({ currentView, navigate }: { currentView: string, navigate: NavigateFunction }) {
   const tabs = [
-    { id: 'home', label: 'Home', path: '/home', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    )},
-    { id: 'chat', label: 'Compute', path: '/chat', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    )},
-    { id: 'nft', label: 'NFTs', path: '/nft', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    )},
-    { id: 'dashboard', label: 'Stats', path: '/dashboard', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-      </svg>
-    )},
+    { 
+      id: 'home', 
+      label: 'Home', 
+      path: '/home', 
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" />
+        </svg>
+      )
+    },
+    { 
+      id: 'chat', 
+      label: 'Compute', 
+      path: '/chat', 
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="4" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          <rect x="4" y="6" width="8" height="1" rx="0.5" fill="currentColor" />
+          <rect x="4" y="8" width="6" height="1" rx="0.5" fill="currentColor" />
+          <circle cx="15" cy="7" r="1" fill="currentColor" />
+        </svg>
+      )
+    },
+    { 
+      id: 'nft', 
+      label: 'NFTs', 
+      path: '/nft', 
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <rect x="3" y="3" width="6" height="6" rx="1" />
+          <rect x="11" y="3" width="6" height="6" rx="1" />
+          <rect x="3" y="11" width="6" height="6" rx="1" />
+          <rect x="11" y="11" width="6" height="6" rx="1" />
+        </svg>
+      )
+    },
+    { 
+      id: 'dashboard', 
+      label: 'Stats', 
+      path: '/dashboard', 
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <rect x="3" y="10" width="3" height="6" rx="1" />
+          <rect x="8.5" y="7" width="3" height="9" rx="1" />
+          <rect x="14" y="4" width="3" height="12" rx="1" />
+        </svg>
+      )
+    },
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-3 safe-area-bottom" style={{ zIndex: 50 }}>
-      <div className="max-w-md mx-auto">
-        <div className="glass-nav rounded-2xl p-1.5">
-          <div className="flex">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => navigate(tab.path)}
-                className={`relative flex-1 flex flex-col items-center py-2.5 rounded-xl transition-all duration-300 group ${
-                  currentView === tab.id
-                    ? 'bg-gradient-to-t from-[rgba(181,160,130,0.15)] to-transparent'
-                    : 'hover:bg-white/5'
-                }`}
-              >
-                {/* Active indicator dot */}
-                {currentView === tab.id && (
-                  <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 tab-active-dot" />
-                )}
-                
-                <div className={`mb-1 transition-all duration-300 ${
-                  currentView === tab.id 
-                    ? 'text-[var(--champagne)]' 
-                    : 'text-zinc-500 group-hover:text-zinc-300'
-                }`} style={currentView === tab.id ? { filter: 'drop-shadow(0 0 6px rgba(181,160,130,0.4))' } : undefined}>
-                  {tab.icon}
-                </div>
-                
-                <span className={`text-[10px] font-mono uppercase tracking-wider transition-all duration-300 ${
-                  currentView === tab.id 
-                    ? 'text-[var(--champagne)] font-medium' 
-                    : 'text-zinc-500 group-hover:text-zinc-300'
-                }`}>
-                  {tab.label}
-                </span>
-              </button>
-            ))}
-          </div>
+    <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
+      <div className="bg-[#09090B] border-t border-[var(--border-subtle)] px-4 py-2">
+        <div className="flex">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => navigate(tab.path)}
+              className={`relative flex-1 flex flex-col items-center py-2 transition-all duration-200 ${
+                currentView === tab.id ? '' : 'opacity-60 hover:opacity-80'
+              }`}
+            >
+              <div className={`mb-1 transition-colors duration-200 ${
+                currentView === tab.id 
+                  ? 'text-[#3B82F6]' 
+                  : 'text-[var(--text-muted)]'
+              }`}>
+                {tab.icon}
+              </div>
+              
+              <span className={`text-[10px] font-mono transition-colors duration-200 ${
+                currentView === tab.id 
+                  ? 'text-[#3B82F6] font-medium' 
+                  : 'text-[var(--text-muted)]'
+              }`}>
+                {tab.label}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
     </div>

@@ -75,12 +75,12 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
     if (isWrongNetwork) {
       return (
         <div className="w-full max-w-md mx-auto">
-          <div className="bg-destructive/10 border border-destructive rounded-lg p-6">
+          <div className="card p-6 border border-[var(--error)]">
             <div className="text-center mb-4">
-              <h3 className="text-lg font-semibold text-destructive">Wrong Network</h3>
-              <p className="text-sm text-destructive/80 mt-2">Please switch to {expectedChainStr === 'SN_MAIN' ? 'Mainnet' : 'Sepolia'} to continue.</p>
+              <h3 className="text-lg font-semibold text-[var(--error)]">Wrong Network</h3>
+              <p className="text-sm text-[var(--error)]/80 mt-2">Please switch to {expectedChainStr === 'SN_MAIN' ? 'Mainnet' : 'Sepolia'} to continue.</p>
             </div>
-            <button onClick={handleDisconnect} className="w-full px-4 py-2 bg-destructive text-destructive-foreground font-semibold rounded-md hover:bg-destructive/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive">
+            <button onClick={handleDisconnect} className="w-full px-4 py-2 bg-[var(--error)] text-white font-semibold rounded-xl hover:bg-[var(--error)]/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--error)]">
               Disconnect Wallet
             </button>
           </div>
@@ -90,20 +90,20 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
 
     return (
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-card border rounded-lg p-6">
+        <div className="card p-6">
           <div className="text-center mb-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
-              <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
+            <div className="w-12 h-12 bg-[#3B82F6]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-[#3B82F6]" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Wallet Connected</h3>
-            <p className="text-sm text-muted-foreground">{shortenAddress(address)}</p>
+            <h3 className="text-lg font-semibold text-white">Wallet Connected</h3>
+            <p className="text-sm text-[var(--text-muted)]">{shortenAddress(address)}</p>
           </div>
           
           <button
             onClick={handleDisconnect}
-            className="w-full px-4 py-2 bg-destructive text-destructive-foreground font-semibold rounded-md hover:bg-destructive/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+            className="w-full px-4 py-2 bg-[var(--error)] text-white font-semibold rounded-xl hover:bg-[var(--error)]/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--error)]"
           >
             Disconnect Wallet
           </button>
@@ -115,8 +115,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   return (
     <div className="w-full max-w-md mx-auto space-y-4">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold text-foreground mb-2">Connect Wallet</h2>
-        <p className="text-muted-foreground text-sm">
+        <h2 className="text-xl font-semibold text-white mb-2">Connect Wallet</h2>
+        <p className="text-[var(--text-muted)] text-sm">
           Connect Starknet wallet to submit compute tasks
         </p>
       </div>
@@ -124,15 +124,15 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       {/* Show message if no connectors are available */}
       {connectors.length === 0 ? (
         <div className="space-y-4">
-          <div className="p-6 border border-destructive rounded-lg bg-destructive/5">
+          <div className="p-6 border border-[var(--error)] rounded-xl bg-[var(--error)]/5">
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-destructive mb-2">
+              <h3 className="text-lg font-semibold text-[var(--error)] mb-2">
                 No Wallet Detected
               </h3>
-              <p className="text-sm text-destructive/80 mb-4">
+              <p className="text-sm text-[var(--error)]/80 mb-4">
                 No Starknet wallet found in this browser.
               </p>
-              <div className="text-sm text-muted-foreground space-y-2">
+              <div className="text-sm text-[var(--text-muted)] space-y-2">
                 <p className="font-medium">To submit compute tasks:</p>
                 <ul className="list-disc list-inside space-y-1 text-left">
                   <li>Install Argent X or Braavos wallet extension</li>
@@ -144,18 +144,20 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           </div>
           
           {/* Direct links to wallet installations */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <a 
               href="https://chrome.google.com/webstore/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent transition-colors"
+              className="w-full flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <span className="text-xl font-bold text-blue-600">A</span>
-                <span className="font-medium">Install Argent X</span>
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">A</span>
+                </div>
+                <span className="font-medium text-white">Install Argent X</span>
               </div>
-              <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
@@ -164,13 +166,15 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               href="https://chrome.google.com/webstore/detail/braavos-smart-wallet/jnlgamecbpmbajjfhmmmlhejkemejdma"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent transition-colors"
+              className="w-full flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <span className="text-xl font-bold text-primary">B</span>
-                <span className="font-medium">Install Braavos</span>
+                <div className="w-8 h-8 rounded-lg bg-[#3B82F6] flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">B</span>
+                </div>
+                <span className="font-medium text-white">Install Braavos</span>
               </div>
-              <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
@@ -182,7 +186,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
             <WalletOption
               key={connector.id}
               name={connector.name}
-              icon={getWalletIcon(connector.id)}
+              letter={getWalletLetter(connector.id)}
               isLoading={isConnecting}
               onClick={() => handleConnect(connector)}
             />
@@ -191,7 +195,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           {/* Telegram Wallet option (mock for now) */}
           <WalletOption
             name="Telegram Wallet"
-            icon="T"
+            letter="T"
             isLoading={isConnecting}
             onClick={() => {
               // TODO: Implement Telegram Wallet connection
@@ -202,8 +206,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
         </div>
       )}
       
-      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-        <p className="text-xs text-muted-foreground text-center">
+      <div className="mt-6 p-4 bg-[var(--surface-interactive)] border border-[var(--border-subtle)] rounded-xl">
+        <p className="text-xs text-[var(--text-muted)] text-center">
           Your wallet will be used to pay for compute tasks in $STRK. 
           No private keys are stored by Smainer.
         </p>
@@ -214,21 +218,29 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
 
 interface WalletOptionProps {
   name: string;
-  icon: string;
+  letter: string;
   isLoading: boolean;
   onClick: () => void;
   disabled?: boolean;
 }
 
-function WalletOption({ name, icon, isLoading, onClick, disabled = false }: WalletOptionProps) {
+function WalletOption({ name, letter, isLoading, onClick, disabled = false }: WalletOptionProps) {
   return (
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className="w-full flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] hover:border-[var(--border-interactive)] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <div className="flex items-center space-x-3">
-        <span className="text-2xl">{icon}</span>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+          letter === 'A' 
+            ? 'bg-blue-600' 
+            : letter === 'B' 
+            ? 'bg-[#3B82F6]' 
+            : 'bg-[var(--surface-accent)]'
+        }`}>
+          <span className="text-white font-bold text-sm">{letter}</span>
+        </div>
         <span className="font-medium">{name}</span>
         {disabled && (
           <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-normal">
@@ -238,9 +250,9 @@ function WalletOption({ name, icon, isLoading, onClick, disabled = false }: Wall
       </div>
       
       {isLoading ? (
-        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
       ) : (
-        <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       )}
@@ -248,7 +260,7 @@ function WalletOption({ name, icon, isLoading, onClick, disabled = false }: Wall
   );
 }
 
-function getWalletIcon(walletId: string): string {
+function getWalletLetter(walletId: string): string {
   switch (walletId.toLowerCase()) {
     case 'argentx':
       return 'A';
