@@ -142,15 +142,18 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-screen">
+    <div className="flex flex-col h-full pb-20" style={{ background: 'var(--surface-void)' }}>
       {/* Header with Model Selection */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+      <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="flex flex-col space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Compute Tasks</h3>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span>Connected</span>
+            <div>
+              <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)]">Compute</p>
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">Tasks</h3>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-1.5 h-1.5 bg-[var(--success)] rounded-full animate-breathe" />
+              <span className="text-xs font-mono text-[var(--text-muted)]">Online</span>
             </div>
           </div>
           
@@ -170,7 +173,7 @@ export function ChatInterface({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((message) => (
           <MessageBubble
             key={message.id}
@@ -182,7 +185,7 @@ export function ChatInterface({
       </div>
 
       {/* Input */}
-      <div className="border-t bg-background/95 backdrop-blur p-4">
+      <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <form onSubmit={handleSubmit} className="flex space-x-2">
           <textarea
             value={currentMessage}
@@ -195,17 +198,19 @@ export function ChatInterface({
             }}
             placeholder={selectedModel ? "Describe your compute task..." : "Choose compute model above"}
             disabled={!selectedModel || isGenerating}
-            className="flex-1 min-h-[40px] max-h-32 px-4 py-2 text-sm bg-background border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="flex-1 min-h-[40px] max-h-32 px-4 py-2.5 text-sm rounded-xl resize-none transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[var(--champagne)] placeholder:text-[var(--text-disabled)]"
+            style={{ background: 'var(--surface-interactive)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
             rows={1}
           />
           
           <button
             type="submit"
             disabled={!currentMessage.trim() || !selectedModel || isGenerating}
-            className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-semibold rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center space-x-2"
+            className="px-4 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+            style={{ background: 'var(--champagne)', color: '#000' }}
           >
             {isGenerating ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
             ) : (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -245,27 +250,35 @@ function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
   const isSystem = message.type === 'system';
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} message-fade-in`}>
+      <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
         isUser 
-          ? 'bg-primary text-primary-foreground' 
+          ? 'bg-[var(--champagne)] text-black' 
           : isSystem
-          ? 'bg-muted text-muted-foreground text-center'
-          : 'bg-card border'
-      }`}>
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          ? 'text-center px-4 py-2'
+          : ''
+      }`}
+      style={
+        isSystem 
+          ? { background: 'var(--surface-interactive)', color: 'var(--text-muted)' }
+          : !isUser 
+          ? { background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' } 
+          : undefined
+      }>
+        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
         
         {message.imageUrl && (
           <div className="mt-2">
             <img 
               src={message.imageUrl} 
               alt="Generated content" 
-              className="rounded-lg max-w-full h-auto"
+              className="rounded-xl max-w-full h-auto"
             />
             {message.nftMintable && (
               <button
                 onClick={() => onMintNFT(message.imageUrl!)}
-                className="mt-2 w-full px-3 py-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="mt-2 w-full px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+                style={{ background: 'var(--cyan)', color: '#000' }}
               >
                 Mint as NFT
               </button>
@@ -273,8 +286,8 @@ function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
           </div>
         )}
         
-        <div className="text-xs mt-1 opacity-70">
-          {message.timestamp.toLocaleTimeString()}
+        <div className={`text-[10px] font-mono mt-1 ${isUser ? 'text-black/50' : 'text-[var(--text-disabled)]'}`}>
+          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
     </div>

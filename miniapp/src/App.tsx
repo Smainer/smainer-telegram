@@ -67,16 +67,16 @@ class WalletSectionBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="rounded-lg border border-tg-separator bg-tg-secondary-bg p-4 text-center">
-          <h3 className="text-base font-semibold text-tg-text mb-2">Connect Page Required</h3>
-          <p className="text-sm text-tg-text-hint mb-4">
+        <div className="card-elevated p-6 text-center">
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Connect Page Required</h3>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
             Connect wallet on dedicated page, then return here.
           </p>
           <a
             href={getConnectPageUrl()}
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary hover:bg-primary-hover text-white font-medium"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[var(--champagne)] hover:bg-[var(--champagne-hover)] text-black font-semibold transition-all duration-200 glow-champagne"
           >
             Open Connect Page
           </a>
@@ -261,40 +261,55 @@ function MainApp() {
     }
   };
 
+  // ─── Loading State ───
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-tg-bg">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: 'var(--surface-void)' }}>
+        <div className="flex items-center space-x-1 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--champagne)] to-[var(--cyan)] opacity-80" />
+        </div>
+        <div className="flex space-x-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--champagne)] loading-dot" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--champagne)] loading-dot" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--champagne)] loading-dot" />
+        </div>
       </div>
     );
   }
 
-  // If no wallet connected, show connection interface (all routes)
+  // ─── Not Connected — Onboarding ───
   if (!connectedWallet) {
     return (
-      <main className="min-h-screen p-4 bg-tg-bg">
-        <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-semibold text-primary mb-2">Smainer Protocol</h1>
-            <p className="text-tg-text-hint">
+      <main className="min-h-screen p-4" style={{ background: 'var(--surface-void)' }}>
+        <div className="max-w-md mx-auto pt-8">
+          {/* Hero */}
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="flex items-center justify-center mb-5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--champagne)] to-[var(--cyan)] opacity-90" />
+            </div>
+            <h1 className="text-2xl font-mono font-semibold text-[var(--text-primary)] tracking-tight mb-2">
+              SMAINER
+            </h1>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
               Private compute on Starknet. Pay per task in $STRK.
             </p>
           </div>
 
-          {/* Show Telegram user info */}
+          {/* User info card */}
           {tgUser && (
-            <div className="mb-6 p-4 bg-tg-secondary-bg border border-tg-separator rounded-lg">
+            <div className="card-elevated p-4 mb-6 animate-fade-in stagger-1">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-                  <span className="text-sm">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                     style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
+                  <span className="text-sm font-mono font-semibold text-[var(--champagne)]">
                     {displayInitial}
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium text-tg-text">
+                  <p className="font-medium text-[var(--text-primary)] text-sm">
                     {displayFirstName} {displayLastName}
                   </p>
-                  <p className="text-sm text-tg-text-hint">
+                  <p className="text-xs font-mono text-[var(--text-muted)]">
                     @{displayUsername}
                   </p>
                 </div>
@@ -302,24 +317,26 @@ function MainApp() {
             </div>
           )}
 
-          <WalletSectionBoundary>
-            <WalletConnect 
-              onConnect={handleWalletConnect}
-              onDisconnect={handleWalletDisconnect}
-            />
-          </WalletSectionBoundary>
+          <div className="animate-fade-in stagger-2">
+            <WalletSectionBoundary>
+              <WalletConnect 
+                onConnect={handleWalletConnect}
+                onDisconnect={handleWalletDisconnect}
+              />
+            </WalletSectionBoundary>
+          </div>
 
           {/* Connection status */}
-          <div className="mt-6 p-3 bg-muted/50 rounded-lg text-center">
-            <div className="flex items-center justify-center space-x-2 text-sm">
-              <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-tg-text-hint">
-                Relayer: {relayerAPI.isConnected ? 'Connected' : 'Disconnected'}
+          <div className="mt-6 card-elevated p-3 animate-fade-in stagger-3">
+            <div className="flex items-center justify-center space-x-2 text-xs">
+              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)] glow-success' : 'bg-[var(--error)] glow-error'} animate-breathe`} />
+              <span className="text-[var(--text-muted)] font-mono">
+                Relayer {relayerAPI.isConnected ? 'Online' : 'Offline'}
               </span>
             </div>
             {relayerAPI.availableModels.length > 0 && (
-              <p className="text-xs text-tg-text-hint mt-1">
-                {relayerAPI.availableModels.length} compute nodes online
+              <p className="text-[10px] text-[var(--text-muted)] text-center mt-1 font-mono">
+                {relayerAPI.availableModels.length} node{relayerAPI.availableModels.length !== 1 ? 's' : ''} active
               </p>
             )}
           </div>
@@ -328,9 +345,9 @@ function MainApp() {
     );
   }
 
-  // Main app interface with navigation and routing
+  // ─── Main App (Connected) ───
   return (
-    <main className="min-h-screen bg-tg-bg flex flex-col">
+    <main className="min-h-screen flex flex-col" style={{ background: 'var(--surface-void)' }}>
       <AppLayout 
         connectedWallet={connectedWallet}
         relayerAPI={relayerAPI}
@@ -370,16 +387,15 @@ function MainApp() {
         )}
       </div>
       
-      {/* Navigation Bar - Fixed at bottom for mobile */}
+      {/* Floating Navigation */}
       <BottomNavigation currentView={currentView} navigate={navigate} />
       
-      {/* Debug overlay for development and error diagnostics */}
       <DebugOverlay />
     </main>
   );
 }
 
-// Layout component with header and back button
+// ─── Header ───
 function AppLayout({ 
   connectedWallet, 
   relayerAPI, 
@@ -392,79 +408,141 @@ function AppLayout({
   navigate: NavigateFunction
 }) {
   return (
-    <div className="bg-tg-secondary-bg border-b border-tg-separator p-4">
+    <div className="px-4 py-3" style={{ background: 'var(--surface-void)', borderBottom: '1px solid var(--border-subtle)' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {currentView !== 'home' && (
             <button
               onClick={() => navigate('/home')}
-              className="p-1 text-tg-text-hint hover:text-tg-text"
+              className="p-1.5 rounded-lg transition-colors duration-200 hover:bg-[var(--surface-interactive)] group"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--champagne)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           )}
-          <h1 className="text-xl font-bold text-primary">Smainer</h1>
+          <div className="flex items-center space-x-2">
+            <div className="w-5 h-5 rounded-md bg-gradient-to-br from-[var(--champagne)] to-[var(--cyan)] opacity-90" />
+            <h1 className="text-base font-mono font-semibold text-[var(--text-primary)] tracking-tight">
+              SMAINER
+            </h1>
+          </div>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <div className="text-xs text-tg-text-hint">
-            {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
+        <div className="flex items-center space-x-3">
+          <div className="px-2.5 py-1 rounded-lg" style={{ background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)' }}>
+            <span className="text-[11px] font-mono text-[var(--text-muted)]">
+              {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
+            </span>
           </div>
-          <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div className={`w-2 h-2 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-breathe`}
+               style={relayerAPI.isConnected ? { boxShadow: '0 0 8px rgba(16,185,129,0.5)' } : { boxShadow: '0 0 8px rgba(239,68,68,0.5)' }} />
         </div>
       </div>
     </div>
   );
 }
 
-// Home view component
+// ─── Home View ───
 function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relayerAPI: any }) {
   return (
-    <div className="p-4">
-      <div className="max-w-md mx-auto space-y-4">
-        <div className="text-center mb-6">
-          <h2 className="text-lg font-semibold text-tg-text mb-2">Smainer Control Center</h2>
-          <p className="text-sm text-tg-text-hint">
-            Select a workflow to run private compute, mint results, or check status.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <button 
-            onClick={() => navigate('/chat')}
-            className="w-full p-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center space-x-2"
-          >
-            <span>Run Compute Task</span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/nft')}
-            className="w-full p-4 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex items-center justify-center space-x-2"
-          >
-            <span>Create & Mint NFTs</span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/dashboard')}
-            className="w-full p-4 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center justify-center space-x-2"
-          >
-            <span>View Dashboard</span>
-          </button>
+    <div className="px-4 py-6 pb-28 overflow-y-auto">
+      <div className="max-w-md mx-auto space-y-5">
+        
+        {/* Title section */}
+        <div className="animate-fade-in">
+          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">Dashboard</p>
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Control Center</h2>
         </div>
 
         {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg text-center">
-            <div className="text-lg font-bold text-primary">
+        <div className="grid grid-cols-2 gap-3 animate-fade-in stagger-1">
+          <div className="card-elevated p-4 text-center">
+            <div className="stat-number text-2xl font-bold text-[var(--champagne)] mb-1">
               {relayerAPI.availableModels.length}
             </div>
-            <div className="text-xs text-tg-text-hint">Compute Nodes</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
+              Nodes Online
+            </div>
           </div>
-          <div className="p-3 bg-tg-secondary-bg border border-tg-separator rounded-lg text-center">
-            <div className="text-lg font-bold text-primary">0</div>
-            <div className="text-xs text-tg-text-hint">NFTs Minted</div>
+          <div className="card-elevated p-4 text-center">
+            <div className="stat-number text-2xl font-bold text-[var(--champagne)] mb-1">
+              0
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
+              Tasks Run
+            </div>
+          </div>
+        </div>
+
+        {/* Action cards */}
+        <div className="space-y-3 animate-fade-in stagger-2">
+          {/* Primary CTA */}
+          <button 
+            onClick={() => navigate('/chat')}
+            className="group w-full card-interactive p-5 text-left"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--champagne)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none" />
+            <div className="flex items-center justify-between relative">
+              <div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Run Compute Task</h3>
+                <p className="text-xs text-[var(--text-muted)]">Submit private tasks to GPU nodes</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--champagne)', boxShadow: '0 4px 16px rgba(181,160,130,0.3)' }}>
+                <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              </div>
+            </div>
+          </button>
+
+          {/* Secondary CTA */}
+          <button 
+            onClick={() => navigate('/nft')}
+            className="group w-full card-interactive p-5 text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Mint NFTs</h3>
+                <p className="text-xs text-[var(--text-muted)]">Turn compute results into on-chain assets</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
+                <svg className="w-5 h-5 text-[var(--cyan)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                </svg>
+              </div>
+            </div>
+          </button>
+
+          {/* Tertiary */}
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="group w-full card-interactive p-5 text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Dashboard</h3>
+                <p className="text-xs text-[var(--text-muted)]">Wallet balance and network status</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
+                <svg className="w-5 h-5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Network status row */}
+        <div className="card-elevated p-3 animate-fade-in stagger-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-breathe`} />
+              <span className="text-xs font-mono text-[var(--text-muted)]">
+                {relayerAPI.isConnected ? 'Network Active' : 'Network Offline'}
+              </span>
+            </div>
+            <span className="text-xs font-mono text-[var(--text-disabled)]">Starknet L2</span>
           </div>
         </div>
       </div>
@@ -472,20 +550,30 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
   );
 }
 
-// NFT view component  
+// ─── NFT View ───
 function NFTView({ navigate }: { navigate: NavigateFunction }) {
   return (
-    <div className="p-4">
-      <div className="max-w-md mx-auto text-center">
-        <h2 className="text-lg font-semibold text-tg-text mb-4">NFT Gallery</h2>
-        <div className="p-8 border border-tg-separator rounded-lg">
-            <h3 className="font-medium text-tg-text mb-2">Mint Compute Results</h3>
-          <p className="text-sm text-tg-text-hint mb-4">
-            Turn generated outputs into verified NFTs on Starknet
+    <div className="px-4 py-6 pb-28 overflow-y-auto">
+      <div className="max-w-md mx-auto">
+        <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1 animate-fade-in">Gallery</p>
+        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-6 animate-fade-in">NFT Collection</h2>
+        
+        <div className="card-elevated p-8 text-center animate-slide-up">
+          {/* Geometric placeholder */}
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'var(--surface-interactive)', border: '1px solid var(--border-subtle)' }}>
+            <svg className="w-8 h-8 text-[var(--text-disabled)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+          </div>
+          
+          <h3 className="font-semibold text-[var(--text-primary)] mb-2">Mint Compute Results</h3>
+          <p className="text-sm text-[var(--text-muted)] mb-6 leading-relaxed">
+            Turn computed outputs into verified NFTs on Starknet
           </p>
+          
           <button 
             onClick={() => navigate('/chat')}
-            className="px-6 py-2 bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="px-6 py-3 rounded-xl bg-[var(--champagne)] hover:bg-[var(--champagne-hover)] text-black font-semibold transition-all duration-200 glow-champagne hover:glow-champagne-strong"
           >
             Start Creating
           </button>
@@ -495,41 +583,52 @@ function NFTView({ navigate }: { navigate: NavigateFunction }) {
   );
 }
 
-// Dashboard view component
+// ─── Dashboard View ───
 function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: ConnectedWallet, relayerAPI: any }) {
   return (
-    <div className="p-4">
-      <div className="max-w-md mx-auto">
-        <h2 className="text-lg font-semibold text-tg-text mb-4">Dashboard</h2>
+    <div className="px-4 py-6 pb-28 overflow-y-auto">
+      <div className="max-w-md mx-auto space-y-5">
+        <div className="animate-fade-in">
+          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-1">Account</p>
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Dashboard</h2>
+        </div>
         
-        <div className="space-y-4">
-          <div className="p-4 bg-tg-secondary-bg border border-tg-separator rounded-lg">
-            <h3 className="font-medium text-tg-text mb-2">Wallet Balance</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-sm text-tg-text-hint">STRK:</span>
-                <span className="text-sm text-tg-text">{connectedWallet.balance_strk}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-tg-text-hint">SMAINER:</span>
-                <span className="text-sm text-tg-text">{connectedWallet.balance_smainer}</span>
-              </div>
+        {/* Balance card */}
+        <div className="card-elevated p-5 animate-fade-in stagger-1">
+          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Wallet Balance</p>
+          <div className="flex items-baseline space-x-2">
+            <span className="stat-number text-3xl font-bold text-[var(--champagne)]">
+              {connectedWallet.balance_strk}
+            </span>
+            <span className="text-sm font-mono text-[var(--text-muted)]">STRK</span>
+          </div>
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <div className="text-xs font-mono text-[var(--text-disabled)]">
+              {connectedWallet.address.slice(0, 10)}...{connectedWallet.address.slice(-8)}
             </div>
           </div>
+        </div>
 
-          <div className="p-4 bg-tg-secondary-bg border border-tg-separator rounded-lg">
-            <h3 className="font-medium text-tg-text mb-2">Network Status</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-sm text-tg-text-hint">Relayer:</span>
-                <span className={`text-sm ${relayerAPI.isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                  {relayerAPI.isConnected ? 'Connected' : 'Disconnected'}
+        {/* Network status */}
+        <div className="card-elevated p-5 animate-fade-in stagger-2">
+          <p className="text-xs font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3">Network</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-secondary)]">Relayer</span>
+              <div className="flex items-center space-x-2">
+                <span className={`text-sm font-mono ${relayerAPI.isConnected ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+                  {relayerAPI.isConnected ? 'Connected' : 'Offline'}
                 </span>
+                <div className={`w-1.5 h-1.5 rounded-full ${relayerAPI.isConnected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'} animate-breathe`} />
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-tg-text-hint">Available Models:</span>
-                <span className="text-sm text-tg-text">{relayerAPI.availableModels.length}</span>
-              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-secondary)]">Compute Nodes</span>
+              <span className="text-sm font-mono text-[var(--text-primary)]">{relayerAPI.availableModels.length}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[var(--text-secondary)]">Chain</span>
+              <span className="text-sm font-mono text-[var(--text-muted)]">Starknet L2</span>
             </div>
           </div>
         </div>
@@ -538,40 +637,70 @@ function DashboardView({ connectedWallet, relayerAPI }: { connectedWallet: Conne
   );
 }
 
-// Bottom navigation component
+// ─── Bottom Navigation (Floating Glassmorphism) ───
 function BottomNavigation({ currentView, navigate }: { currentView: string, navigate: NavigateFunction }) {
   const tabs = [
     { id: 'home', label: 'Home', path: '/home', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+      </svg>
     )},
     { id: 'chat', label: 'Compute', path: '/chat', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" />
+      </svg>
     )},
     { id: 'nft', label: 'NFTs', path: '/nft', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
     )},
-    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+    { id: 'dashboard', label: 'Stats', path: '/dashboard', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+      </svg>
     )},
   ];
 
   return (
-    <div className="bg-tg-secondary-bg border-t border-tg-separator p-2 safe-area-bottom">
-      <div className="flex space-x-1 max-w-md mx-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => navigate(tab.path)}
-            className={`flex-1 flex flex-col items-center px-2 py-2 text-xs rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-              currentView === tab.id
-                ? 'bg-primary text-primary-foreground'
-                : 'text-tg-text-hint hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <span className="mb-1">{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
+    <div className="fixed bottom-0 left-0 right-0 p-3 safe-area-bottom" style={{ zIndex: 50 }}>
+      <div className="max-w-md mx-auto">
+        <div className="glass-nav rounded-2xl p-1.5">
+          <div className="flex">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={`relative flex-1 flex flex-col items-center py-2.5 rounded-xl transition-all duration-300 group ${
+                  currentView === tab.id
+                    ? 'bg-gradient-to-t from-[rgba(181,160,130,0.15)] to-transparent'
+                    : 'hover:bg-white/5'
+                }`}
+              >
+                {/* Active indicator dot */}
+                {currentView === tab.id && (
+                  <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 tab-active-dot" />
+                )}
+                
+                <div className={`mb-1 transition-all duration-300 ${
+                  currentView === tab.id 
+                    ? 'text-[var(--champagne)]' 
+                    : 'text-zinc-500 group-hover:text-zinc-300'
+                }`} style={currentView === tab.id ? { filter: 'drop-shadow(0 0 6px rgba(181,160,130,0.4))' } : undefined}>
+                  {tab.icon}
+                </div>
+                
+                <span className={`text-[10px] font-mono uppercase tracking-wider transition-all duration-300 ${
+                  currentView === tab.id 
+                    ? 'text-[var(--champagne)] font-medium' 
+                    : 'text-zinc-500 group-hover:text-zinc-300'
+                }`}>
+                  {tab.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -37,13 +37,11 @@ export default function ConnectLite({}: ConnectLiteProps) {
   const [success, setSuccess] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
 
-  // Address validation regex
   const ADDRESS_REGEX = /^0x[0-9a-fA-F]{1,64}$/
   const runtimeWindow = window as WindowWithWallets
   const telegramWebApp = runtimeWindow.Telegram?.WebApp
   const viteEnv = (import.meta as ImportMeta & { env?: { VITE_TELEGRAM_BOT_USERNAME?: string } }).env
 
-  // Diagnostic information
   const isInTelegram = Boolean(telegramWebApp)
   const currentUrl = window.location.href
   const userAgent = navigator.userAgent.substring(0, 100) + (navigator.userAgent.length > 100 ? '...' : '')
@@ -114,14 +112,12 @@ export default function ConnectLite({}: ConnectLiteProps) {
       })
       channel.close()
     } catch {
-      // BroadcastChannel not supported — localStorage event is the fallback
+      // BroadcastChannel not supported
     }
   }
 
   const finalizeWalletLink = (connectedAddress: string, walletType: string) => {
-    // Always persist to localStorage so the main App tab can read it
     persistWalletState(connectedAddress, walletType)
-    // Notify other tabs/windows immediately
     broadcastWallet(connectedAddress, walletType)
 
     if (isInTelegram && telegramWebApp?.sendData) {
@@ -208,49 +204,35 @@ export default function ConnectLite({}: ConnectLiteProps) {
     }
 
     const trimmedAddress = address.trim()
-
     finalizeWalletLink(trimmedAddress, 'manual')
   }
 
+  // ─── Success State ───
   if (success) {
     return (
-      <div style={{ minHeight: '100vh', padding: '18px 14px', background: '#070c15', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <div style={{
-            background: '#0f172a',
-            border: '1px solid rgba(148, 163, 184, 0.28)',
-            borderRadius: '18px',
-            padding: '24px',
-            marginBottom: '14px',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '999px',
-              margin: '0 auto 14px auto',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(16, 185, 129, 0.14)',
-              border: '1px solid rgba(16, 185, 129, 0.35)'
-            }}>
-              <span style={{ fontSize: '24px', color: '#22C55E' }}>✓</span>
+      <div className="min-h-screen p-4 pt-10" style={{ background: '#09090B', color: '#FAFAFA', fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div className="max-w-md mx-auto">
+          <div className="card-elevated p-6 text-center mb-4 animate-fade-in">
+            <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
+                 style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+              <svg className="w-7 h-7" fill="none" stroke="#10B981" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
             </div>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', lineHeight: 1.15 }}>Wallet Linked</h2>
-            <p style={{ margin: '0', color: '#cbd5e1', lineHeight: 1.5, fontSize: '14px' }}>
+            <h2 className="text-2xl font-semibold mb-2">Wallet Linked</h2>
+            <p className="text-sm leading-relaxed" style={{ color: '#A1A1AA' }}>
               Submit tasks in Telegram or open full app.
             </p>
           </div>
 
-          <div style={{ background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.26)', padding: '14px', borderRadius: '14px', fontSize: '12px', textAlign: 'left' }}>
-            <div style={{ color: '#94a3b8', marginBottom: '6px', letterSpacing: '0.03em' }}>CONNECTED ADDRESS</div>
-            <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', color: '#7dd3fc' }}>
+          <div className="card-elevated p-4 mb-4 animate-fade-in stagger-1">
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: '#71717A' }}>Connected Address</div>
+            <div className="font-mono text-xs break-all" style={{ color: '#22D3EE' }}>
               {address}
             </div>
           </div>
 
-          <div style={{ marginTop: '14px', display: 'grid', gap: '10px' }}>
+          <div className="space-y-3 animate-fade-in stagger-2">
             {isInTelegram ? (
               <button
                 type="button"
@@ -262,16 +244,8 @@ export default function ConnectLite({}: ConnectLiteProps) {
                     window.history.back()
                   }
                 }}
-                style={{
-                  width: '100%',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '15px',
-                  background: '#B5A082'
-                }}
+                className="w-full py-3.5 px-5 rounded-xl font-semibold text-sm transition-all duration-200 glow-champagne"
+                style={{ background: '#B5A082', color: '#000' }}
               >
                 Return To Telegram Chat
               </button>
@@ -282,16 +256,8 @@ export default function ConnectLite({}: ConnectLiteProps) {
                   const encodedAddr = encodeAddressForStartPayload(address)
                   window.location.assign(`https://t.me/${botUsername}?start=linkb_${encodedAddr}`)
                 }}
-                style={{
-                  width: '100%',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '15px',
-                  background: '#B5A082'
-                }}
+                className="w-full py-3.5 px-5 rounded-xl font-semibold text-sm transition-all duration-200 glow-champagne"
+                style={{ background: '#B5A082', color: '#000' }}
               >
                 Return to Telegram
               </button>
@@ -299,19 +265,9 @@ export default function ConnectLite({}: ConnectLiteProps) {
 
             <button
               type="button"
-              onClick={() => {
-                window.location.assign('/')
-              }}
-              style={{
-                width: '100%',
-                padding: '13px 18px',
-                borderRadius: '12px',
-                border: '1px solid rgba(148, 163, 184, 0.35)',
-                color: '#e2e8f0',
-                fontWeight: 600,
-                fontSize: '14px',
-                background: 'rgba(15, 23, 42, 0.8)'
-              }}
+              onClick={() => { window.location.assign('/') }}
+              className="w-full py-3 px-5 rounded-xl font-semibold text-sm transition-all duration-200"
+              style={{ background: '#111111', color: '#A1A1AA', border: '1px solid #27272A' }}
             >
               Open Full Smainer App
             </button>
@@ -321,102 +277,68 @@ export default function ConnectLite({}: ConnectLiteProps) {
     )
   }
 
+  // ─── Connect State ───
   return (
-    <div style={{ minHeight: '100vh', padding: '18px 14px', background: '#070c15', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-        <div style={{
-          marginBottom: '16px',
-          borderRadius: '18px',
-          border: '1px solid rgba(148, 163, 184, 0.26)',
-          background: '#0f172a',
-          padding: '22px'
-        }}>
-          <div style={{ marginBottom: '8px', color: '#6ee7b7', fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
-            Smainer Protocol
+    <div className="min-h-screen p-4 pt-10" style={{ background: '#09090B', color: '#FAFAFA', fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div className="max-w-md mx-auto">
+        {/* Hero */}
+        <div className="card-elevated p-6 mb-4 animate-fade-in">
+          <div className="flex items-center space-x-2 mb-3">
+            <div className="w-6 h-6 rounded-lg" style={{ background: 'linear-gradient(135deg, #B5A082, #22D3EE)' }} />
+            <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: '#B5A082' }}>
+              Smainer Protocol
+            </span>
           </div>
-          <h1 style={{ margin: '0', fontSize: '30px', lineHeight: 1.1 }}>
+          <h1 className="text-2xl font-semibold mb-2">
             Link Starknet Wallet
           </h1>
-          <p style={{ margin: '10px 0 0 0', fontSize: '14px', lineHeight: '1.5', color: '#cbd5e1' }}>
+          <p className="text-sm leading-relaxed" style={{ color: '#A1A1AA' }}>
             {isInTelegram
               ? 'Paste your Starknet wallet address below to connect. Wallet extensions are not available inside Telegram.'
               : 'Submit compute tasks for $STRK. Verified on-chain.'}
           </p>
         </div>
 
+        {/* Injected wallets (browser only) */}
         {!isInTelegram && (
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {injectedWallets.map((wallet) => (
-                <button
-                  key={wallet.id}
-                  type="button"
-                  onClick={() => handleInjectedConnect(wallet.id, wallet.provider)}
-                  disabled={isConnecting}
-                  style={{
-                    width: '100%',
-                    padding: '15px 18px',
-                    background: '#06B6D4',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    cursor: isConnecting ? 'wait' : 'pointer'
-                  }}
-                >
-                  {isConnecting ? 'Requesting Access...' : `${wallet.icon} Connect with ${wallet.label}`}
-                </button>
-              ))}
-
+          <div className="space-y-3 mb-4 animate-fade-in stagger-1">
+            {injectedWallets.map((wallet) => (
               <button
+                key={wallet.id}
                 type="button"
-                onClick={() => openBrowserLink(braavosConnectUrl)}
-                style={{
-                  width: '100%',
-                  padding: '13px 18px',
-                  background: 'rgba(15, 23, 42, 0.92)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(148, 163, 184, 0.35)',
-                  borderRadius: '12px',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                onClick={() => handleInjectedConnect(wallet.id, wallet.provider)}
+                disabled={isConnecting}
+                className="w-full py-3.5 px-5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50"
+                style={{ background: '#22D3EE', color: '#000' }}
               >
-                Open in Braavos App
+                {isConnecting ? 'Requesting Access...' : `Connect with ${wallet.label}`}
               </button>
+            ))}
 
-              <button
-                type="button"
-                onClick={() => openBrowserLink(browserConnectUrl)}
-                style={{
-                  width: '100%',
-                  padding: '13px 18px',
-                  background: 'transparent',
-                  color: '#cbd5e1',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Open in Browser Wallet
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => openBrowserLink(braavosConnectUrl)}
+              className="w-full py-3 px-5 rounded-xl font-semibold text-sm transition-all duration-200"
+              style={{ background: '#111111', color: '#FAFAFA', border: '1px solid #27272A' }}
+            >
+              Open in Braavos App
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openBrowserLink(browserConnectUrl)}
+              className="w-full py-3 px-5 rounded-xl font-medium text-sm transition-all duration-200"
+              style={{ background: 'transparent', color: '#A1A1AA', border: '1px solid #27272A' }}
+            >
+              Open in Browser Wallet
+            </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ marginBottom: '14px', background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.22)', borderRadius: '14px', padding: '14px' }}>
-          <div style={{ marginBottom: '16px' }}>
-            <label htmlFor="address" style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontSize: '14px', 
-              fontWeight: 600,
-              color: '#cbd5e1'
-            }}>
+        {/* Manual address form */}
+        <form onSubmit={handleSubmit} className="card-elevated p-5 mb-4 animate-fade-in stagger-2">
+          <div className="mb-4">
+            <label htmlFor="address" className="block mb-2 text-sm font-medium" style={{ color: '#A1A1AA' }}>
               {isInTelegram ? 'Paste your Starknet address from Braavos or Argent X' : 'Starknet Address'}
             </label>
             <input
@@ -425,58 +347,38 @@ export default function ConnectLite({}: ConnectLiteProps) {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="0x..."
+              className="w-full px-4 py-3 rounded-xl text-base font-mono transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#B5A082]"
               style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                border: error ? '2px solid #f87171' : '1px solid rgba(148, 163, 184, 0.35)',
-                background: '#111827',
-                color: '#e6e6e6',
-                fontSize: '16px',
-                fontFamily: 'monospace',
-                boxSizing: 'border-box'
+                background: '#1A1A1A',
+                color: '#FAFAFA',
+                border: error ? '1px solid #EF4444' : '1px solid #27272A',
               }}
             />
           </div>
 
           {error && (
-            <div style={{
-              background: '#7f1d1d',
-              color: '#fecaca',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              fontSize: '14px'
-            }}>
+            <div className="rounded-xl px-4 py-3 mb-4 text-sm" style={{ background: 'rgba(239,68,68,0.1)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.2)' }}>
               {error}
             </div>
           )}
 
           <button
             type="submit"
-            style={{
-              width: '100%',
-              padding: '14px 18px',
-              background: '#B5A082',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
+            className="w-full py-3.5 px-5 rounded-xl font-semibold text-sm transition-all duration-200 glow-champagne"
+            style={{ background: '#B5A082', color: '#000' }}
           >
             Link Wallet
           </button>
         </form>
 
-        <details style={{ background: '#0f172a', border: '1px solid rgba(148, 163, 184, 0.22)', padding: '12px', borderRadius: '12px', fontSize: '12px' }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#94a3b8' }}>Diagnostics</summary>
-          <div style={{ marginTop: '10px', color: '#cbd5e1', lineHeight: 1.6 }}>
-            <div><strong>Telegram WebApp:</strong> <span style={{ color: isInTelegram ? '#34d399' : '#f87171' }}>{isInTelegram ? 'Yes' : 'No'}</span></div>
+        {/* Diagnostics */}
+        <details className="card-elevated p-4 text-xs animate-fade-in stagger-3">
+          <summary className="cursor-pointer font-semibold" style={{ color: '#71717A' }}>Diagnostics</summary>
+          <div className="mt-3 space-y-1.5" style={{ color: '#A1A1AA', lineHeight: '1.6' }}>
+            <div><strong>Telegram WebApp:</strong> <span style={{ color: isInTelegram ? '#10B981' : '#EF4444' }}>{isInTelegram ? 'Yes' : 'No'}</span></div>
             <div><strong>Injected Wallets:</strong> {injectedWallets.length > 0 ? injectedWallets.map((wallet) => wallet.label).join(', ') : 'None detected'}</div>
-            <div><strong>URL:</strong> <span style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{currentUrl}</span></div>
-            <div><strong>User Agent:</strong> <span style={{ fontFamily: 'monospace' }}>{userAgent}</span></div>
+            <div><strong>URL:</strong> <span className="font-mono break-all">{currentUrl}</span></div>
+            <div><strong>User Agent:</strong> <span className="font-mono">{userAgent}</span></div>
           </div>
         </details>
       </div>
