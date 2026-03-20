@@ -118,46 +118,108 @@ class RelayerClient:
 
     async def list_available_models(self) -> list[Dict[str, Any]]:
         """Ask the relayer which GPU-capable nodes are online and their specs."""
-        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-            resp = await client.get(
-                f"{self._base}/api/v1/nodes",
-                headers=self._headers,
-            )
-            if resp.status_code != 200:
-                return []
 
-            nodes = resp.json().get("nodes", [])
-            models: list[Dict[str, Any]] = []
+        def infer_supported_tiers(
+            gpu_vram_gb: float,
+            ram_gb: int,
+            node_tier: str,
+        ) -> list[str]:
+            """Infer Telegram model tiers from canonical relayer capability fields.
 
-            for node in nodes:
-                gpu = node.get("hardware_spec", {}).get("gpu_info", "")
-                ram = node.get("hardware_spec", {}).get("ram_gb", 0)
-                
-                # More resilient GPU detection 
-                # Accept nodes with missing gpu_info if they have reasonable RAM
-                # This covers cases where GPU metadata is missing but compute capability exists
-                has_gpu_capability = bool(gpu) or ram >= 12  # Lower threshold for initial filtering
-                
-                if not has_gpu_capability:
-                    continue
+            Preference order:
+            1) GPU VRAM (most accurate for model sizing)
+            2) Relayer node_tier (basic/pro/premium)
+            3) RAM heuristic fallback for legacy nodes
+            """
+            supported: list[str] = []
 
-                # Infer supported tiers from RAM/GPU with fallback logic
-                supported: list[str] = []
+            if gpu_vram_gb > 0:
                 for tier in ModelTier:
                     reqs = MODEL_TIER_REQUIREMENTS[tier]
-                    # More tolerant tier matching - allow 10% RAM tolerance
-                    ram_threshold = reqs["ram_gb"] * 0.9
-                    if ram >= ram_threshold:
+                    if gpu_vram_gb >= float(reqs["gpu_vram_gb"]) * 0.9:
                         supported.append(tier.value)
-                
-                # Fallback: if no tiers matched but node has reasonable RAM, support SMALL
-                if not supported and ram >= 12:  # Slightly below SMALL minimum
+                if not supported and gpu_vram_gb >= 8:
                     supported.append(ModelTier.SMALL.value)
+                return supported
+
+            # node_tier comes from relayer schema: basic/pro/premium
+            node_tier = (node_tier or "").lower()
+            if node_tier == "premium":
+                return [ModelTier.SMALL.value, ModelTier.MEDIUM.value, ModelTier.LARGE.value]
+            if node_tier == "pro":
+                return [ModelTier.SMALL.value, ModelTier.MEDIUM.value]
+            if node_tier == "basic":
+                return [ModelTier.SMALL.value]
+
+            # Legacy fallback when GPU metadata is missing.
+            for tier in ModelTier:
+                reqs = MODEL_TIER_REQUIREMENTS[tier]
+                if ram_gb >= int(reqs["ram_gb"]) * 0.9:
+                    supported.append(tier.value)
+            if not supported and ram_gb >= 12:
+                supported.append(ModelTier.SMALL.value)
+            return supported
+
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+            resp = await client.get(f"{self._base}/api/v1/nodes", headers=self._headers)
+            if resp.status_code == 200:
+                nodes = resp.json().get("nodes", [])
+                models: list[Dict[str, Any]] = []
+
+                for node in nodes:
+                    hardware = node.get("hardware_spec", {})
+                    gpu = hardware.get("gpu_info", "")
+                    ram = int(hardware.get("ram_gb", 0) or 0)
+                    gpu_vram = float(hardware.get("gpu_vram_gb", 0) or 0)
+                    node_tier = str(hardware.get("node_tier", "") or "")
+
+                    # Prefer explicit GPU fields; keep RAM fallback for legacy nodes.
+                    has_gpu_capability = bool(gpu) or gpu_vram > 0 or ram >= 12
+                    # PRO/PREMIUM strongly imply GPU capability even if metadata is incomplete.
+                    if node_tier.lower() in {"pro", "premium"}:
+                        has_gpu_capability = True
+                    if not has_gpu_capability:
+                        continue
+
+                    supported = infer_supported_tiers(gpu_vram, ram, node_tier)
+
+                    models.append(
+                        {
+                            "node_id": node["node_id"],
+                            "gpu": gpu or f"Unknown GPU (RAM: {ram}GB)",
+                            "ram_gb": ram,
+                            "supported_tiers": supported,
+                        }
+                    )
+
+                if models:
+                    return models
+
+            logger.warning(
+                "Primary node discovery returned no usable GPU nodes",
+                extra={"status_code": resp.status_code},
+            )
+
+            # Fallback to AI capable-nodes endpoint to avoid false negatives
+            ai_resp = await client.get(f"{self._base}/api/v1/ai/capable-nodes", headers=self._headers)
+            if ai_resp.status_code != 200:
+                logger.warning(
+                    "Fallback capable-nodes endpoint unavailable",
+                    extra={"status_code": ai_resp.status_code},
+                )
+                return []
+
+            fallback_nodes = ai_resp.json()
+            models: list[Dict[str, Any]] = []
+            for node in fallback_nodes:
+                ram = int(node.get("ram_gb", 0) or 0)
+                gpu_vram = float(node.get("vram_gb", 0) or 0)
+                supported = infer_supported_tiers(gpu_vram, ram, "")
 
                 models.append(
                     {
-                        "node_id": node["node_id"],
-                        "gpu": gpu or f"Unknown GPU (RAM: {ram}GB)",  # Fallback display
+                        "node_id": node.get("node_id", "unknown"),
+                        "gpu": node.get("gpu") or f"Unknown GPU (RAM: {ram}GB)",
                         "ram_gb": ram,
                         "supported_tiers": supported,
                     }

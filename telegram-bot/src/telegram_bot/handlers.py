@@ -317,10 +317,10 @@ class SmainerBot:
         )
 
     async def _configure_chat_menu_button(self) -> None:
-        """Ensure Telegram's persistent 'Open App' button points to connect mode."""
+        """Ensure Telegram's persistent 'Open App' button points to configured open URL."""
         assert self._app
         try:
-            url = settings.miniapp_url.rstrip("/") + "/?mode=connect"
+            url = settings.get_miniapp_open_url()
             await self._app.bot.set_chat_menu_button(
                 menu_button=MenuButtonWebApp(
                     text="Open App",
@@ -380,10 +380,14 @@ class SmainerBot:
 
         connect_button = KeyboardButton(
             text="\U0001f517 Connect Wallet",
-            web_app=WebAppInfo(url=settings.miniapp_url + "/?mode=connect"),
+            web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
+        )
+        open_button = KeyboardButton(
+            text="\U0001f680 Open App",
+            web_app=WebAppInfo(url=settings.get_miniapp_open_url()),
         )
         keyboard = ReplyKeyboardMarkup(
-            [[connect_button]],
+            [[connect_button], [open_button]],
             resize_keyboard=True,
             one_time_keyboard=True,
         )

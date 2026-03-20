@@ -4,9 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { 
   AIModel, 
   InferenceRequest, 
-  InferenceResponse, 
-  InferenceTaskStatus,
-  ConnectedWallet 
+  InferenceTaskStatus
 } from '@/types';
 
 interface RelayerAPIConfig {
@@ -26,67 +24,25 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
   const [error, setError] = useState<string | null>(null);
   const [taskSubscriptions, setTaskSubscriptions] = useState<TaskSubscription[]>([]);
 
-  // WebSocket connection for real-time updates
-  const [ws, setWs] = useState<WebSocket | null>(null);
-
   useEffect(() => {
-    // Initialize WebSocket connection when component mounts
-    const wsUrl = config.baseUrl.replace('http', 'ws') + '/ws';
-    
-    const websocket = new WebSocket(wsUrl);
-    
-    websocket.onopen = () => {
-      console.log('WebSocket connected to relayer');
-      setIsConnected(true);
-    };
-    
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleWebSocketMessage(data);
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
-      }
-    };
-    
-    websocket.onclose = () => {
-      console.log('WebSocket disconnected from relayer');
-      setIsConnected(false);
-      
-      // Attempt to reconnect after 3 seconds
-      setTimeout(() => {
-        setWs(new WebSocket(wsUrl));
-      }, 3000);
-    };
-    
-    websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setError('Connection to relayer failed');
-    };
-
-    setWs(websocket);
-
-    // Cleanup on unmount
-    return () => {
-      websocket.close();
-    };
-  }, [config.baseUrl]);
-
-  useEffect(() => {
-    // Fetch available models when component mounts
     fetchAvailableModels();
   }, []);
 
-  const handleWebSocketMessage = (data: any) => {
-    if (data.type === 'task_update') {
-      const { task_id, status } = data;
-      
-      // Find subscription and call callback
-      const subscription = taskSubscriptions.find(sub => sub.taskId === task_id);
-      if (subscription) {
-        subscription.onUpdate(status);
-      }
+  const buildHeaders = useCallback(() => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const apiKey = (import.meta as any).env?.VITE_RELAYER_API_KEY as string | undefined;
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
     }
+    return headers;
+  }, []);
+
+  const mapTaskStatus = (rawStatus: string): InferenceTaskStatus['status'] => {
+    if (rawStatus === 'completed') return 'completed';
+    if (rawStatus === 'failed' || rawStatus === 'timeout') return 'failed';
+    return 'processing';
   };
 
   const fetchAvailableModels = async () => {
@@ -94,30 +50,34 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${config.baseUrl}/api/ai-inference/capable-nodes`);
+      const response = await fetch(`${config.baseUrl}/api/v1/ai/capable-nodes`, {
+        headers: buildHeaders(),
+      });
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch models: ${response.statusText}`);
+        throw new Error(`Failed to fetch models: HTTP ${response.status}`);
       }
       
       const data = await response.json();
+      setIsConnected(true);
       
       // Transform backend response to our model format
-      const models: AIModel[] = data.available_models?.map((model: any) => ({
-        name: model.name,
-        display_name: model.display_name || model.name,
-        type: model.type || 'text',
-        description: model.description || 'AI language model',
-        vram_required: model.vram_required || 8,
-        cost_per_token: model.cost_per_token || 0.000001,
-        capabilities: model.capabilities || [],
-        provider_count: model.provider_count || 0
+      const models: AIModel[] = (Array.isArray(data) ? data : []).map((node: any) => ({
+        name: node.gpu || 'GPU Node',
+        display_name: node.gpu || 'GPU Node',
+        type: 'text',
+        description: `Node ${String(node.node_id || '').slice(0, 8)}...`,
+        vram_required: Number(node.vram_gb || 8),
+        cost_per_token: 0.000001,
+        capabilities: ['text-generation'],
+        provider_count: 1,
       })) || [];
       
       setAvailableModels(models);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
+      setIsConnected(false);
       console.error('Failed to fetch available models:', err);
     } finally {
       setLoading(false);
@@ -133,22 +93,37 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
       }
 
       const requestBody = {
-        ...request,
-        user_address: config.walletAddress,
+        payload: {
+          type: 'ai_inference',
+          prompt: request.prompt,
+          model: request.model_name,
+          user_address: config.walletAddress,
+        },
+        requirements: {
+          cpu_threads: 4,
+          ram_gb: 16,
+          gpu_required: true,
+          max_execution_time: 300,
+        },
+        token_amount: 1,
+        description: `Telegram miniapp inference (${request.model_name})`,
       };
 
-      const response = await fetch(`${config.baseUrl}/api/ai-inference/submit`, {
+      const response = await fetch(`${config.baseUrl}/api/v1/tasks`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add authentication header if needed
-        },
+        headers: buildHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+        let reason = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          reason = errorData.detail || errorData.error || reason;
+        } catch {
+          // keep status-only reason for non-JSON responses
+        }
+        throw new Error(reason);
       }
 
       const data = await response.json();
@@ -170,37 +145,41 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
       { taskId, onUpdate }
     ]);
 
-    // Send subscription message via WebSocket
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'subscribe_task',
-        task_id: taskId
-      }));
-    }
+    const interval = setInterval(async () => {
+      try {
+        const status = await getTaskStatus(taskId);
+        onUpdate(status);
+      } catch {
+        // getTaskStatus already records error state
+      }
+    }, 3000);
 
     // Return unsubscribe function
     return () => {
       setTaskSubscriptions(prev => prev.filter(sub => sub.taskId !== taskId));
-      
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'unsubscribe_task',
-          task_id: taskId
-        }));
-      }
+      clearInterval(interval);
     };
-  }, [ws]);
+  }, [buildHeaders, config.baseUrl]);
 
   const getTaskStatus = async (taskId: string): Promise<InferenceTaskStatus> => {
     try {
-      const response = await fetch(`${config.baseUrl}/api/ai-inference/status/${taskId}`);
+      const response = await fetch(`${config.baseUrl}/api/v1/tasks/${taskId}`, {
+        headers: buildHeaders(),
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to get task status: ${response.statusText}`);
       }
       
       const data = await response.json();
-      return data;
+      return {
+        task_id: data.task_id,
+        status: mapTaskStatus(data.status),
+        result: data.result?.response,
+        error: data.error_message,
+        execution_time: data.result?.execution_time,
+        node_id: data.assigned_node_id,
+      };
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get task status';
@@ -211,7 +190,9 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
 
   const getProviderStats = async () => {
     try {
-      const response = await fetch(`${config.baseUrl}/api/provider-stats`);
+      const response = await fetch(`${config.baseUrl}/api/v1/nodes`, {
+        headers: buildHeaders(),
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch provider stats: ${response.statusText}`);
@@ -242,10 +223,6 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
     refetchModels: fetchAvailableModels,
     
     // Connection management
-    reconnect: () => {
-      if (ws) {
-        ws.close();
-      }
-    }
+    reconnect: fetchAvailableModels,
   };
 }

@@ -2,6 +2,7 @@
 
 import logging
 import os
+from urllib.parse import urlsplit
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
@@ -76,7 +77,15 @@ class Settings(BaseSettings):
     # MiniApp
     miniapp_url: str = Field(
         default="https://smainer-miniapp.vercel.app",
-        description="Telegram MiniApp URL for wallet connection",
+        description="Telegram MiniApp base URL (e.g. https://smainer-miniapp.vercel.app)",
+    )
+    miniapp_connect_url: str = Field(
+        default="",
+        description="Optional full URL for connect flow. If unset, uses MINIAPP_URL + '/?mode=connect'",
+    )
+    miniapp_open_url: str = Field(
+        default="",
+        description="Optional full URL for persistent Telegram menu button. If unset, uses MINIAPP_URL root",
     )
 
     # Logging
@@ -115,6 +124,33 @@ class Settings(BaseSettings):
             if not self.callback_signing_secret:
                 raise ValueError("CALLBACK_SIGNING_SECRET must be set in production")
 
+        return self
+
+    def get_miniapp_connect_url(self) -> str:
+        """Return the Connect Wallet URL used by /start keyboard button."""
+        if self.miniapp_connect_url:
+            return self.miniapp_connect_url.rstrip("/")
+        return self.miniapp_url.rstrip("/") + "/?mode=connect"
+
+    def get_miniapp_open_url(self) -> str:
+        """Return the URL used by Telegram persistent menu button."""
+        if self.miniapp_open_url:
+            return self.miniapp_open_url.rstrip("/")
+        return self.miniapp_url.rstrip("/")
+
+    @model_validator(mode="after")
+    def _validate_miniapp_urls(self) -> "Settings":
+        """Validate MiniApp URLs early to prevent runtime 404 misconfiguration."""
+        for value, name in (
+            (self.miniapp_url, "MINIAPP_URL"),
+            (self.miniapp_connect_url, "MINIAPP_CONNECT_URL"),
+            (self.miniapp_open_url, "MINIAPP_OPEN_URL"),
+        ):
+            if not value:
+                continue
+            parsed = urlsplit(value)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError(f"{name} must be a valid absolute http(s) URL")
         return self
 
 
