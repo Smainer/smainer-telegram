@@ -6,8 +6,6 @@ dist/
 build/
 .eggs/
 *.egg
-.env
-.env.local
 .venv/
 venv/
 node_modules/
@@ -19,3 +17,4 @@ node_modules/
 *.swo
 .runtime/
 *.pid
+config.bat

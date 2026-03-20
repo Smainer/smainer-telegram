@@ -4,262 +4,207 @@
 
 @layer base {
   :root {
-    --brand-champagne: #B5A082;
-    --brand-champagne-hover: #A18F6E;
-    --brand-champagne-light: #C4B396;
-    --brand-champagne-dark: #8A7563;
-    --surface-primary: #0F0F0F;
-    --surface-secondary: #1A1A1A;
-    --surface-tertiary: #262626;
-    --surface-accent: #2A2A2A;
-    --text-primary: #FAFAFA;
-    --text-secondary: #A3A3A3;
-    --text-muted: #737373;
-    --text-disabled: #525252;
-    --success: #22C55E;
+    /* Surface layers — void black foundation */
+    --surface-void: #09090B;
+    --surface-elevated: #111111;
+    --surface-interactive: #1A1A1A;
+    --surface-accent: #262626;
+
+    /* Brand identity */
+    --champagne: #B5A082;
+    --champagne-hover: #A18F6E;
+    --champagne-muted: #8A7563;
+    --champagne-light: #C4B396;
+
+    /* Tech accents */
+    --cyan: #22D3EE;
+    --cyan-muted: #0891B2;
+
+    /* Semantic */
+    --success: #10B981;
     --warning: #F59E0B;
     --error: #EF4444;
-    --info: var(--brand-champagne);
-    
-    /* Legacy CSS variables for existing components */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 35 17% 71%; /* Champagne #B5A082 */
-    --primary-hover: 35 21% 67%; /* Champagne-hover #A18F6E */
-    --primary-light: 35 13% 76%; /* Champagne-light #C4B396 */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222.2 84% 4.9%; /* Slate-900 */
-    --secondary-foreground: 210 40% 98%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 188 95% 43%; /* Cyan-500 #06B6D4 */
-    --accent-hover: 188 85% 39%; /* Cyan-600 #0891B2 */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 35 17% 71%; /* Champagne focus ring */
-    --success: 142.1 76.2% 36.3%; /* Green-500 #22C55E */
-    --success-foreground: 0 0% 100%;
-    --warning: 37.7 92.1% 50.2%; /* Amber-500 #F59E0B */
-    --warning-foreground: 0 0% 100%;
-    --error: 0 84.2% 60.2%; /* Red-500 #EF4444 - same as destructive */
-    --error-foreground: 210 40% 98%;
-    --info: 35 17% 71%; /* Champagne #B5A082 - brand consistency */
-    --info-foreground: 0 0% 100%;
-    --radius: 0.5rem;
-  }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 35 17% 62%; /* Champagne for dark mode */
-    --primary-hover: 35 21% 58%;
-    --primary-light: 35 13% 67%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 188 95% 43%; /* Cyan-500 */
-    --accent-hover: 188 85% 39%; /* Cyan-600 */
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 35 17% 62%; /* Champagne for focus ring */
-    --success: 142.1 76.2% 36.3%; /* Green-500 #22C55E */
-    --success-foreground: 0 0% 100%;
-    --warning: 37.7 92.1% 50.2%; /* Amber-500 #F59E0B */
-    --warning-foreground: 0 0% 100%;
-    --error: 0 62.8% 30.6%; /* Same as destructive for dark mode */
-    --error-foreground: 210 40% 98%;
-    --info: 35 17% 62%; /* Champagne dark mode */
-    --info-foreground: 222.2 84% 4.9%;
+    /* Text hierarchy */
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --text-disabled: #3F3F46;
+
+    /* Borders */
+    --border-subtle: #27272A;
+    --border-interactive: #404040;
+    --border-active: #B5A082;
+
+    /* Tailwind HSL compat */
+    --background: 240 6% 3%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --primary: 35 17% 61%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 188 80% 53%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 35 17% 61%;
+    --radius: 0.75rem;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--border-subtle);
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
-    @apply bg-background text-foreground;
+    background: var(--surface-void);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Telegram Mini App specific styles */
+/* ── Telegram viewport ── */
 .tg-viewport {
   height: 100vh;
   height: 100dvh;
 }
 
-/* Custom scrollbar for chat */
-.chat-scroll::-webkit-scrollbar {
-  width: 4px;
+/* ── Dark scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272A; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #404040; }
+
+/* ── Glassmorphism nav ── */
+.glass-nav {
+  background: rgba(0, 0, 0, 0.72);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(63, 63, 70, 0.35);
 }
 
-.chat-scroll::-webkit-scrollbar-track {
-  background: transparent;
+/* ── Elevated card surface ── */
+.card-elevated {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-elevated:hover {
+  border-color: var(--border-interactive);
 }
 
-.chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 2px;
+/* ── Interactive card (tappable) ── */
+.card-interactive {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-.chat-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* Smooth animations */
-.message-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-.typing-indicator {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Solid backgrounds only: gradients removed for design-system compliance. */
-
-/* NFT card effects */
-.nft-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.nft-card:hover {
+.card-interactive:hover {
+  border-color: var(--border-interactive);
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.card-interactive:active {
+  transform: translateY(0);
 }
 
-/* Button variants */
-.button-primary {
-  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+/* ── Glow utilities ── */
+.glow-champagne {
+  box-shadow: 0 4px 20px rgba(181, 160, 130, 0.25);
+}
+.glow-champagne-strong {
+  box-shadow: 0 4px 30px rgba(181, 160, 130, 0.40);
+}
+.glow-success {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.50);
+}
+.glow-error {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.50);
 }
 
-.button-secondary {
-  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+/* ── Stat number typography ── */
+.stat-number {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
-.button-outline {
-  @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(181, 160, 130, 0.4); }
+  50% { box-shadow: 0 0 16px rgba(181, 160, 130, 0.7); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
 }
 
-/* Loading states */
-.skeleton {
-  @apply animate-pulse bg-muted rounded;
-}
+.animate-fade-in { animation: fadeIn 0.4s ease-out both; }
+.animate-slide-up { animation: slideUp 0.5s ease-out both; }
+.animate-glow-pulse { animation: glowPulse 2.5s ease-in-out infinite; }
+.animate-breathe { animation: breathe 2s ease-in-out infinite; }
 
-/* Skeleton animations */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+
+/* Loading dots */
+.loading-dot { animation: dotPulse 1.4s ease-in-out infinite; }
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Skeleton shimmer ── */
 @keyframes skeleton {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
-
 .skeleton-shimmer {
-  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-tertiary) 50%, var(--surface-secondary) 75%);
+  background: linear-gradient(90deg, #111111 25%, #1A1A1A 50%, #111111 75%);
   background-size: 200% 100%;
   animation: skeleton 2s infinite linear;
 }
 
-/* Micro-interactions */
-.button-hover {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* ── Safe area ── */
+.safe-area-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
-.button-hover:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+/* ── Message bubble animation ── */
+.message-fade-in {
+  animation: fadeIn 0.3s ease-out both;
 }
 
-.button-hover:active {
-  transform: translateY(0);
-}
-
-/* Typography scale */
-.display-large {
-  font-size: 3.5rem;
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.display-medium {
-  font-size: 2.5rem;
-  line-height: 1.2;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-
-.heading-1 {
-  font-size: 2rem;
-  line-height: 1.25;
-  font-weight: 600;
-}
-
-.heading-2 {
-  font-size: 1.5rem;
-  line-height: 1.3;
-  font-weight: 600;
-}
-
-.body-large {
-  font-size: 1.125rem;
-  line-height: 1.6;
-}
-
-.body-medium {
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-.body-small {
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-.caption {
-  font-size: 0.75rem;
-  line-height: 1.3;
-  font-weight: 500;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .container {
-    @apply px-4;
-  }
-  
-  .chat-input {
-    @apply text-16; /* Prevents zoom on iOS */
-  }
-}
-
-/* Telegram theme variables integration */
-body[data-tg-theme="dark"] {
-  --background: var(--tg-theme-bg-color, hsl(222.2 84% 4.9%));
-  --foreground: var(--tg-theme-text-color, hsl(210 40% 98%));
-  --primary: var(--tg-theme-button-color, hsl(217.2 91.2% 59.8%));
-  --primary-foreground: var(--tg-theme-button-text-color, hsl(222.2 84% 4.9%));
-}
-
-body[data-tg-theme="light"] {
-  --background: var(--tg-theme-bg-color, hsl(0 0% 100%));
-  --foreground: var(--tg-theme-text-color, hsl(222.2 84% 4.9%));
-  --primary: var(--tg-theme-button-color, hsl(221.2 83.2% 53.3%));
-  --primary-foreground: var(--tg-theme-button-text-color, hsl(210 40% 98%));
+/* ── Active tab indicator ── */
+.tab-active-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--champagne);
+  box-shadow: 0 0 8px rgba(181, 160, 130, 0.6);
 }
