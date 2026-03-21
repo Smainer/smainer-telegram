@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SMAINER MINIAPP — PREMIUM DESIGN SYSTEM
+   SMAINER MINIAPP — PREMIUM DESIGN SYSTEM v2.0
+   Based on Smainer brand: dark theme, blue primary, professional finish
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
@@ -12,56 +13,72 @@
     --void: #09090B;
     --white: #FFFFFF;
     --blue: #3B82F6;
+    --blue-hover: #2563EB;
     --blue-light: #60A5FA;
-    --blue-glow: rgba(59, 130, 246, 0.5);
+    --blue-glow: rgba(59, 130, 246, 0.4);
 
-    /* ─── Surface Layers ─── */
+    /* ─── Surface Layers (Solid for consistency) ─── */
     --surface-base: #09090B;
-    --surface-card: rgba(255, 255, 255, 0.03);
-    --surface-card-hover: rgba(255, 255, 255, 0.05);
-    --surface-elevated: rgba(255, 255, 255, 0.06);
-    --surface-glass: rgba(255, 255, 255, 0.08);
-    --surface-input: rgba(255, 255, 255, 0.04);
-    --surface-interactive: rgba(255, 255, 255, 0.06);
-    --surface-accent: rgba(59, 130, 246, 0.15);
+    --surface-card: #141416;
+    --surface-card-hover: #1A1A1E;
+    --surface-elevated: #202024;
+    --surface-glass: #27272A;
+    --surface-input: #18181B;
+    --surface-interactive: #202024;
+    --surface-accent: rgba(59, 130, 246, 0.12);
 
     /* ─── Text Hierarchy ─── */
     --text-primary: #FFFFFF;
-    --text-secondary: rgba(255, 255, 255, 0.7);
-    --text-muted: rgba(255, 255, 255, 0.4);
-    --text-hint: rgba(255, 255, 255, 0.25);
+    --text-secondary: #E4E4E7;
+    --text-muted: #A1A1AA;
+    --text-hint: #71717A;
 
     /* ─── Borders ─── */
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.1);
-    --border-hover: rgba(255, 255, 255, 0.15);
+    --border-subtle: #27272A;
+    --border-default: #3F3F46;
+    --border-hover: #52525B;
     --border-active: var(--blue);
     --border-interactive: rgba(59, 130, 246, 0.4);
 
     /* ─── Semantic ─── */
     --success: #22C55E;
-    --success-muted: rgba(34, 197, 94, 0.15);
+    --success-muted: rgba(34, 197, 94, 0.12);
     --warning: #F59E0B;
-    --warning-muted: rgba(245, 158, 11, 0.15);
+    --warning-muted: rgba(245, 158, 11, 0.12);
     --error: #EF4444;
-    --error-muted: rgba(239, 68, 68, 0.15);
+    --error-muted: rgba(239, 68, 68, 0.12);
 
     /* ─── Shadows ─── */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-glow: 0 0 20px var(--blue-glow);
 
+    /* ─── Animation ─── */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 150ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+
+    /* ─── Spacing (8px grid) ─── */
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 40px;
+    --space-6: 48px;
+
     /* ─── Tailwind Compat ─── */
     --background: 220 13% 4%;
     --foreground: 0 0% 100%;
-    --card: 0 0% 100% / 0.03;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 100%;
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 100% / 0.06;
-    --muted-foreground: 0 0% 100% / 0.4;
-    --border: 0 0% 100% / 0.1;
-    --input: 0 0% 100% / 0.04;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --border: 240 4% 16%;
+    --input: 240 4% 10%;
     --ring: 217 91% 60%;
     --radius: 16px;
   }
@@ -617,7 +634,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   NAV BAR
+   NAV BAR — Premium Bottom Navigation
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .nav-bar {
@@ -625,9 +642,9 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(9, 9, 11, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--border-subtle);
   z-index: 100;
 }
@@ -637,18 +654,37 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 0;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
+  padding: 10px 0;
+  color: var(--text-hint);
+  transition: all var(--duration-normal) var(--ease-out);
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
 .nav-item-active {
   color: var(--blue);
 }
 
+/* Active indicator dot */
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--blue);
+  border-radius: 50%;
+  animation: fadeInScale 0.2s var(--ease-out) forwards;
+}
+
 .nav-item:not(.nav-item-active):hover {
-  color: var(--text-secondary);
+  color: var(--text-muted);
+}
+
+.nav-item:not(.nav-item-active):active {
+  transform: scale(0.95);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
