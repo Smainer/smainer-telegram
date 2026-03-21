@@ -149,8 +149,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               rel="noopener noreferrer"
               className="w-full flex items-center gap-3 p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
             >
-              <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#FF875B] flex items-center justify-center">
-                <span className="text-white font-bold">A</span>
+              <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#FF875B]/15 flex items-center justify-center">
+                <ArgentLogo />
               </div>
               <span className="flex-1 font-semibold text-sm text-white">Install Argent X</span>
               <svg className="w-5 h-5 flex-shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,8 +164,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               rel="noopener noreferrer"
               className="w-full flex items-center gap-3 p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
             >
-              <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#F5C14F] flex items-center justify-center">
-                <span className="text-white font-bold">B</span>
+              <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#F5C14F]/15 flex items-center justify-center">
+                <BraavosLogo />
               </div>
               <span className="flex-1 font-semibold text-sm text-white">Install Braavos</span>
               <svg className="w-5 h-5 flex-shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +180,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
             <WalletOption
               key={connector.id}
               name={connector.name}
-              letter={getWalletLetter(connector.id)}
+              walletId={connector.id}
               isLoading={isConnecting}
               onClick={() => handleConnect(connector)}
             />
@@ -189,7 +189,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           {/* Telegram Wallet option (mock for now) */}
           <WalletOption
             name="Telegram Wallet"
-            letter="T"
+            walletId="telegram"
             isLoading={isConnecting}
             onClick={() => {
               // TODO: Implement Telegram Wallet connection
@@ -212,13 +212,66 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
 
 interface WalletOptionProps {
   name: string;
-  letter: string;
+  walletId: string;
   isLoading: boolean;
   onClick: () => void;
   disabled?: boolean;
 }
 
-function WalletOption({ name, letter, isLoading, onClick, disabled = false }: WalletOptionProps) {
+// Argent X Logo SVG
+function ArgentLogo() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className="w-6 h-6">
+      <path d="M18.316 4.938a2.5 2.5 0 0 0-4.632 0l-8.5 21a2.5 2.5 0 0 0 4.632 1.874L12.5 21h7l2.684 6.812a2.5 2.5 0 0 0 4.632-1.874l-8.5-21zM16 8.5l4 9h-8l4-9z" fill="#FF875B"/>
+    </svg>
+  );
+}
+
+// Braavos Logo SVG  
+function BraavosLogo() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className="w-6 h-6">
+      <path d="M16 4c-2.5 0-4.5 1-6 3-1.5 2-2.5 5-2.5 8 0 4 1.5 7 4 9 2 1.5 4 2.5 4.5 4v-4c-2-1-4-3-4-6 0-2 1-4 2-5s2-1.5 2-1.5 1 .5 2 1.5 2 3 2 5c0 3-2 5-4 6v4c.5-1.5 2.5-2.5 4.5-4 2.5-2 4-5 4-9 0-3-1-6-2.5-8s-3.5-3-6-3z" fill="#F5C14F"/>
+    </svg>
+  );
+}
+
+// Telegram Logo SVG
+function TelegramLogo() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className="w-6 h-6">
+      <path d="M16 4C9.373 4 4 9.373 4 16s5.373 12 12 12 12-5.373 12-12S22.627 4 16 4zm5.562 8.161l-1.97 9.287c-.146.658-.537.818-1.084.508l-3-2.211-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.332-.373-.119l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.582-4.461c.538-.194 1.006.128.821.934z" fill="#29B6F6"/>
+    </svg>
+  );
+}
+
+function WalletOption({ name, walletId, isLoading, onClick, disabled = false }: WalletOptionProps) {
+  const getWalletIcon = () => {
+    switch (walletId.toLowerCase()) {
+      case 'argentx':
+        return <ArgentLogo />;
+      case 'braavos':
+        return <BraavosLogo />;
+      case 'telegram':
+        return <TelegramLogo />;
+      default:
+        return <span className="text-white font-bold text-sm">W</span>;
+    }
+  };
+
+  const getWalletBg = () => {
+    switch (walletId.toLowerCase()) {
+      case 'argentx':
+        return 'bg-[#FF875B]/15';
+      case 'braavos':
+        return 'bg-[#F5C14F]/15';
+      case 'telegram':
+        return 'bg-[#29B6F6]/15';
+      default:
+        return 'bg-[var(--surface-glass)]';
+    }
+  };
+
   return (
     <button
       onClick={onClick}
@@ -226,14 +279,8 @@ function WalletOption({ name, letter, isLoading, onClick, disabled = false }: Wa
       className="w-full flex items-center gap-3 p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] hover:border-[var(--border-interactive)] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {/* Wallet Icon */}
-      <div className={`w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center ${
-        letter === 'A' 
-          ? 'bg-[#FF875B]' 
-          : letter === 'B' 
-          ? 'bg-[#F5C14F]' 
-          : 'bg-[var(--surface-glass)]'
-      }`}>
-        <span className="text-white font-bold">{letter}</span>
+      <div className={`w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center ${getWalletBg()}`}>
+        {getWalletIcon()}
       </div>
       
       {/* Name + Badge */}
@@ -260,13 +307,6 @@ function WalletOption({ name, letter, isLoading, onClick, disabled = false }: Wa
   );
 }
 
-function getWalletLetter(walletId: string): string {
-  switch (walletId.toLowerCase()) {
-    case 'argentx':
-      return 'A';
-    case 'braavos':
-      return 'B';
-    default:
-      return 'W';
-  }
+function getWalletId(connectorId: string): string {
+  return connectorId.toLowerCase();
 }
