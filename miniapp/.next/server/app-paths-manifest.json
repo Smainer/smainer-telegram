@@ -1,6 +1,0 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/websocket-callback/route": "app/api/websocket-callback/route.js",
-  "/api/placeholder-image.jpg/route": "app/api/placeholder-image.jpg/route.js",
-  "/page": "app/page.js"
-}
