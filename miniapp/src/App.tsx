@@ -679,7 +679,7 @@ function NavBar({ currentView, navigate }: { currentView: string, navigate: Navi
 
   return (
     <nav className="nav-bar safe-area-bottom">
-      <div className="flex px-2 py-2">
+      <div className="flex">
         {tabs.map(({ id, label, path, Icon }) => {
           const isActive = currentView === id;
           return (
@@ -688,8 +688,10 @@ function NavBar({ currentView, navigate }: { currentView: string, navigate: Navi
               onClick={() => navigate(path)}
               className={`nav-item flex-1 ${isActive ? 'nav-item-active' : ''}`}
             >
-              <Icon active={isActive} />
-              <span className={`text-[11px] font-medium ${isActive ? 'text-[var(--blue)]' : 'text-[var(--text-muted)]'}`}>
+              <div className="w-6 h-6 flex items-center justify-center">
+                <Icon active={isActive} />
+              </div>
+              <span className={`text-[11px] font-medium leading-none ${isActive ? 'text-[var(--blue)]' : 'text-[var(--text-muted)]'}`}>
                 {label}
               </span>
             </button>
