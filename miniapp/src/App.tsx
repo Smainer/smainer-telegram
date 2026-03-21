@@ -348,7 +348,7 @@ function MainApp() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--blue)] opacity-10 blur-[120px]" />
         </div>
 
-        <div className="relative z-10 px-6 pt-16 pb-8 max-w-md mx-auto min-h-screen flex flex-col">
+        <div className="relative z-10 pt-16 pb-8 max-w-md mx-auto min-h-screen flex flex-col" style={{ paddingLeft: 16, paddingRight: 16 }}>
           {/* Logo & Title */}
           <div className="text-center mb-12 animate-in">
             <div className="inline-flex items-center justify-center mb-6">

@@ -157,21 +157,12 @@ function WalletButton({ name, walletId, isLoading, onClick, disabled = false }: 
       className={`wallet-option ${isHovered ? 'wallet-option--hover' : ''} ${disabled ? 'wallet-option--disabled' : ''}`}
     >
       <div className="wallet-option__icon">
-        <WalletIcon walletId={walletId} />
+        {isLoading ? <div className="wallet-spinner" /> : <WalletIcon walletId={walletId} />}
       </div>
       <div className="wallet-option__info">
         <span className="wallet-option__name">{name}</span>
-        {disabled && isHovered && <span className="wallet-option__badge">Coming Soon</span>}
       </div>
-      <div className="wallet-option__arrow">
-        {isLoading ? (
-          <div className="wallet-spinner" />
-        ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 5l7 7-7 7" />
-          </svg>
-        )}
-      </div>
+      {disabled && <span className="wallet-option__badge">Coming Soon</span>}
     </button>
   );
 }
@@ -182,8 +173,10 @@ function WalletLink({ name, href }: { name: string; href: string }) {
       <div className="wallet-option__icon">
         <WalletIcon walletId={name === 'Argent X' ? 'argentx' : 'braavos'} />
       </div>
-      <span className="wallet-option__name">Install {name}</span>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="wallet-option__external">
+      <div className="wallet-option__info">
+        <span className="wallet-option__name">Install {name}</span>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="wallet-option__external">
         <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
       </svg>
     </a>
