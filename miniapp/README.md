@@ -125,16 +125,14 @@ Update `.env.local` with your configuration:
 
 ```env
 # Relayer API
-NEXT_PUBLIC_RELAYER_URL=http://localhost:8001
+VITE_RELAYER_URL=http://localhost:8001
 
 # Starknet Network
-NEXT_PUBLIC_STARKNET_NETWORK=sepolia
-NEXT_PUBLIC_STARKNET_RPC_URL=https://starknet-sepolia.public.blastapi.io
+VITE_STARKNET_RPC_URL=https://starknet-sepolia.public.blastapi.io
 
 # Contract Addresses
-NEXT_PUBLIC_SMAINER_CONTRACT_ADDRESS=0x...
-NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS=0x...
-NEXT_PUBLIC_NFT_CONTRACT_ADDRESS=0x...
+VITE_SMAINER_CONTRACT_ADDRESS=0x...
+VITE_NFT_FACTORY_ADDRESS=0x...
 ```
 
 ## 📱 Telegram Integration
@@ -164,24 +162,27 @@ ngrok http 3000
 
 ## 🏗️ Architecture
 
+Vite + React 18 SPA, deployed as static files on Vercel.
+
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── layout.tsx         # Root layout with providers
-│   ├── page.tsx           # Main Mini App interface
-│   └── api/               # API routes
-├── components/            # React components
+├── main.tsx               # Vite entry, route-based code splitting
+├── App.tsx                # Routes: /, /chat, /nft, /dashboard
+├── index.css              # Global styles + CSS variables
+├── ConnectLite.tsx        # Standalone wallet connect page
+├── components/
 │   ├── WalletConnect.tsx  # Wallet connection interface
 │   ├── ChatInterface.tsx  # AI chat interface
 │   ├── ModelSelector.tsx  # Model selection dropdown
 │   ├── CostEstimator.tsx  # Cost calculation display
-│   └── NFTPreview.tsx     # NFT minting modal
-├── hooks/                 # Custom React hooks
-│   └── useRelayerAPI.ts   # API communication hook
-├── lib/                   # Utility libraries
-│   ├── starknet.ts        # Starknet configuration
-│   └── utils.ts           # Helper functions
-└── types/                 # TypeScript definitions
+│   ├── NFTPreview.tsx     # NFT minting modal
+│   └── DebugOverlay.tsx   # Dev-only debug panel
+├── hooks/
+│   ├── useRelayerAPI.ts   # Relayer HTTP client
+│   └── useTelegramData.ts # Telegram WebApp SDK bridge
+├── lib/
+│   └── starknet.ts        # Starknet configuration
+└── types/
     └── index.ts           # Shared types
 ```
 
@@ -190,8 +191,7 @@ src/
 ### Code Style
 
 - **TypeScript**: Strict type checking enabled
-- **ESLint**: Configured for Next.js and React
-- **Prettier**: Code formatting
+- **ESLint**: Configured for React
 - **Tailwind CSS**: Utility-first styling
 
 ### Testing
@@ -213,11 +213,8 @@ npm run test:e2e
 # Build for production
 npm run build
 
-# Start production server
-npm start
-
-# Analyze bundle size
-npm run analyze
+# Preview production build locally
+npm run preview
 ```
 
 ## 🎨 UI/UX Design
@@ -255,26 +252,21 @@ npm run analyze
 ### Production Deployment
 
 ```bash
-# Build the application
-npm run build
-
-# Deploy to Vercel (recommended)
-vercel --prod
-
-# Or deploy to other platforms
-npm run export  # For static hosting
+# Build and deploy via Vercel CLI
+cd miniapp
+vercel build --prod
+vercel deploy --prebuilt --prod
 ```
 
 ### Environment Variables
 
-Set these in your production environment:
+Set these in your production environment (or in `vercel.json` env block):
 
 ```env
-NEXT_PUBLIC_RELAYER_URL=https://your-relayer.com
-NEXT_PUBLIC_STARKNET_NETWORK=mainnet
-NEXT_PUBLIC_STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io
-NEXT_PUBLIC_SMAINER_CONTRACT_ADDRESS=0x...
-# ... other production values
+VITE_RELAYER_URL=https://api.smainer.ai
+VITE_STARKNET_RPC_URL=https://api.cartridge.gg/x/starknet/mainnet
+VITE_SMAINER_CONTRACT_ADDRESS=0x...
+VITE_TELEGRAM_BOT_USERNAME=smainer_ai_bot
 ```
 
 ## 📊 Monitoring
@@ -288,10 +280,7 @@ NEXT_PUBLIC_SMAINER_CONTRACT_ADDRESS=0x...
 
 ### Health Checks
 
-The app includes health check endpoints:
-
-- `/api/health` - Basic app health
-- `/api/relayer-status` - Relayer connectivity
+Health is verified through the Relayer API endpoints (`/api/v1/health`).
 
 ## 🤝 Contributing
 
