@@ -356,16 +356,16 @@ function MainApp() {
 
           {/* User Card (if in Telegram) */}
           {tgUser && (
-            <div className="glass p-4 mb-6 animate-in delay-1">
+            <div className="glass p-5 mb-6 animate-in delay-1">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[var(--blue)] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-[var(--blue)] flex items-center justify-center flex-shrink-0">
                   <span className="text-lg font-bold text-white">{displayInitial}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-white truncate">
                     {displayFirstName} {displayLastName}
                   </p>
-                  <p className="text-sm text-[var(--text-muted)]">@{displayUsername}</p>
+                  <p className="text-sm text-[var(--text-muted)] truncate">@{displayUsername}</p>
                 </div>
               </div>
             </div>
@@ -382,13 +382,13 @@ function MainApp() {
           </div>
 
           {/* Network Status */}
-          <div className="mt-auto pt-8 animate-in delay-3">
+          <div className="mt-auto pt-4 pb-4 animate-in delay-3">
             <div className="glass p-4">
               <div className="flex items-center justify-between">
                 <div className="status">
                   <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
                   <span className="text-sm text-[var(--text-muted)]">
-                    {relayerAPI.isConnected ? 'Network Online' : 'Connecting...'}
+                    {relayerAPI.isConnected ? 'Network Online' : relayerAPI.error ? 'Offline' : 'Connecting...'}
                   </span>
                 </div>
                 {relayerAPI.availableModels.length > 0 && (
