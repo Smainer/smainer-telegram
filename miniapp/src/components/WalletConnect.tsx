@@ -147,15 +147,13 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               href="https://chrome.google.com/webstore/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
+              className="w-full flex items-center gap-3 p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
             >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">A</span>
-                </div>
-                <span className="font-medium text-white">Install Argent X</span>
+              <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#FF875B] flex items-center justify-center">
+                <span className="text-white font-bold">A</span>
               </div>
-              <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex-1 font-semibold text-sm text-white">Install Argent X</span>
+              <svg className="w-5 h-5 flex-shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
@@ -164,15 +162,13 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               href="https://chrome.google.com/webstore/detail/braavos-smart-wallet/jnlgamecbpmbajjfhmmmlhejkemejdma"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
+              className="w-full flex items-center gap-3 p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] transition-colors"
             >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-[#3B82F6] flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">B</span>
-                </div>
-                <span className="font-medium text-white">Install Braavos</span>
+              <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#F5C14F] flex items-center justify-center">
+                <span className="text-white font-bold">B</span>
               </div>
-              <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex-1 font-semibold text-sm text-white">Install Braavos</span>
+              <svg className="w-5 h-5 flex-shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
@@ -227,33 +223,39 @@ function WalletOption({ name, letter, isLoading, onClick, disabled = false }: Wa
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className="w-full flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] hover:border-[var(--border-interactive)] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full flex items-center gap-3 p-4 border border-[var(--border-subtle)] rounded-xl hover:bg-[var(--surface-interactive)] hover:border-[var(--border-interactive)] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <div className="flex items-center space-x-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-          letter === 'A' 
-            ? 'bg-blue-600' 
-            : letter === 'B' 
-            ? 'bg-[#3B82F6]' 
-            : 'bg-[var(--surface-accent)]'
-        }`}>
-          <span className="text-white font-bold text-sm">{letter}</span>
-        </div>
-        <span className="font-medium">{name}</span>
+      {/* Wallet Icon */}
+      <div className={`w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center ${
+        letter === 'A' 
+          ? 'bg-[#FF875B]' 
+          : letter === 'B' 
+          ? 'bg-[#F5C14F]' 
+          : 'bg-[var(--surface-glass)]'
+      }`}>
+        <span className="text-white font-bold">{letter}</span>
+      </div>
+      
+      {/* Name + Badge */}
+      <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
+        <span className="font-semibold text-sm truncate max-w-full">{name}</span>
         {disabled && (
-          <span className="text-xs bg-[#3B82F6]/10 text-[#3B82F6] px-2 py-1 rounded font-normal">
+          <span className="text-[10px] bg-[var(--surface-glass)] text-[var(--text-muted)] px-2 py-0.5 rounded">
             Coming Soon
           </span>
         )}
       </div>
       
-      {isLoading ? (
-        <div className="w-5 h-5 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
-      ) : (
-        <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      )}
+      {/* Arrow / Loading */}
+      <div className="flex-shrink-0">
+        {isLoading ? (
+          <div className="w-5 h-5 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </div>
     </button>
   );
 }
