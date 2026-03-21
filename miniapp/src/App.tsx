@@ -344,35 +344,35 @@ function MainApp() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--blue)] opacity-10 blur-[120px]" />
         </div>
 
-        <div className="relative z-10 pt-12 pb-24 max-w-md mx-auto flex flex-col" style={{ paddingLeft: 16, paddingRight: 16, minHeight: 'calc(100vh - 56px)' }}>
+        <div className="relative z-10 max-w-md mx-auto" style={{ padding: '48px 20px 100px 20px', minHeight: '100vh', overflowY: 'auto' }}>
           {/* Logo & Title */}
-          <div className="text-center mb-12 animate-in">
-            <div className="inline-flex items-center justify-center mb-6">
+          <div style={{ textAlign: 'center', marginBottom: 40 }} className="animate-in">
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
               <SmainerLogo size={72} />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight mb-3">SMAINER</h1>
-            <p className="text-base text-[var(--text-secondary)]">Private compute on Starknet</p>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: 'white', letterSpacing: '-0.02em', marginBottom: 8 }}>SMAINER</h1>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Private compute on Starknet</p>
           </div>
 
           {/* User Card (if in Telegram) */}
           {tgUser && (
-            <div className="glass p-5 mb-6 animate-in delay-1">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-[var(--blue)] flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg font-bold text-white">{displayInitial}</span>
+            <div className="glass animate-in delay-1" style={{ padding: 20, marginBottom: 24, borderRadius: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>{displayInitial}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white truncate">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 600, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {displayFirstName} {displayLastName}
                   </p>
-                  <p className="text-sm text-[var(--text-muted)] truncate">@{displayUsername}</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{displayUsername}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Wallet Connect */}
-          <div className="flex-1 animate-in delay-2">
+          <div style={{ marginBottom: 24 }} className="animate-in delay-2">
             <WalletSectionBoundary>
               <WalletConnect 
                 onConnect={handleWalletConnect}
@@ -382,7 +382,7 @@ function MainApp() {
           </div>
 
           {/* Network Status */}
-          <div className="mt-auto pt-4 pb-4 animate-in delay-3">
+          <div style={{ marginTop: 'auto', paddingTop: 16, paddingBottom: 16 }} className="animate-in delay-3">
             <div className="glass p-4">
               <div className="flex items-center justify-between">
                 <div className="status">
@@ -676,19 +676,20 @@ function NavBar({ currentView, navigate }: { currentView: string, navigate: Navi
 
   return (
     <nav className="nav-bar safe-area-bottom">
-      <div className="flex">
+      <div className="nav-bar-inner">
         {tabs.map(({ id, label, path, Icon }) => {
           const isActive = currentView === id;
           return (
             <button
               key={id}
               onClick={() => navigate(path)}
-              className={`nav-item flex-1 ${isActive ? 'nav-item-active' : ''}`}
+              className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
+              style={{ flex: 1 }}
             >
-              <div className="w-6 h-6 flex items-center justify-center">
+              <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon active={isActive} />
               </div>
-              <span className={`text-[11px] font-medium leading-none ${isActive ? 'text-[var(--blue)]' : 'text-[var(--text-muted)]'}`}>
+              <span style={{ fontSize: 11, fontWeight: 500, lineHeight: 1, color: isActive ? 'var(--blue)' : 'var(--text-muted)' }}>
                 {label}
               </span>
             </button>
