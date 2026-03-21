@@ -408,8 +408,8 @@ function MainApp() {
   return (
     <main className="min-h-screen flex flex-col bg-[var(--void)]">
       {/* Header */}
-      <header className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--void)]">
-        <div className="flex items-center justify-between">
+      <header className="px-5 py-3 border-b border-[var(--border-subtle)] bg-[var(--void)]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SmainerLogo size={28} />
             <span className="text-lg font-bold text-white">SMAINER</span>
