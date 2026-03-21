@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import './index.css'
 
@@ -104,12 +104,12 @@ async function bootstrap() {
       ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
           <AppErrorBoundary>
-            <BrowserRouter>
+            <HashRouter>
               <Routes>
                 <Route path="/connect" element={<ConnectLite />} />
                 <Route path="*" element={<Navigate to="/connect" replace />} />
               </Routes>
-            </BrowserRouter>
+            </HashRouter>
           </AppErrorBoundary>
         </React.StrictMode>,
       )
@@ -127,9 +127,9 @@ async function bootstrap() {
           <AppErrorBoundary>
             <TelegramProvider>
               <StarknetConfig {...starknetConfig}>
-                <BrowserRouter>
+                <HashRouter>
                   <App />
-                </BrowserRouter>
+                </HashRouter>
               </StarknetConfig>
             </TelegramProvider>
           </AppErrorBoundary>
