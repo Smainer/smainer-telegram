@@ -104,12 +104,12 @@ async function bootstrap() {
       ReactDOM.createRoot(rootElement).render(
         <React.StrictMode>
           <AppErrorBoundary>
-            <HashRouter>
+            <BrowserRouter>
               <Routes>
                 <Route path="/connect" element={<ConnectLite />} />
                 <Route path="*" element={<Navigate to="/connect" replace />} />
               </Routes>
-            </HashRouter>
+            </BrowserRouter>
           </AppErrorBoundary>
         </React.StrictMode>,
       )
@@ -127,9 +127,9 @@ async function bootstrap() {
           <AppErrorBoundary>
             <TelegramProvider>
               <StarknetConfig {...starknetConfig}>
-                <HashRouter>
+                <BrowserRouter>
                   <App />
-                </HashRouter>
+                </BrowserRouter>
               </StarknetConfig>
             </TelegramProvider>
           </AppErrorBoundary>
