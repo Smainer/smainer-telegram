@@ -897,6 +897,7 @@
 
 .wallet-footer {
   margin-top: 24px;
+  margin-bottom: 16px;
   padding: 16px;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);

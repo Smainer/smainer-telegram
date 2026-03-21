@@ -149,7 +149,7 @@ function IconStats({ active }: { active?: boolean }) {
 
 function SmainerLogo({ size = 40 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="100 80 312 352" fill="none" xmlns="http://www.w3.org/2000/svg">
       {/* Official: 7 compute blocks in distributed S-formation */}
       <rect x="200" y="104" width="112" height="48" rx="8" fill="#FFFFFF" />
       <rect x="328" y="104" width="48" height="48" rx="8" fill="#3B82F6" />
@@ -344,7 +344,7 @@ function MainApp() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--blue)] opacity-10 blur-[120px]" />
         </div>
 
-        <div className="relative z-10 pt-16 pb-8 max-w-md mx-auto min-h-screen flex flex-col" style={{ paddingLeft: 16, paddingRight: 16 }}>
+        <div className="relative z-10 pt-12 pb-24 max-w-md mx-auto flex flex-col" style={{ paddingLeft: 16, paddingRight: 16, minHeight: 'calc(100vh - 56px)' }}>
           {/* Logo & Title */}
           <div className="text-center mb-12 animate-in">
             <div className="inline-flex items-center justify-center mb-6">
@@ -357,7 +357,7 @@ function MainApp() {
           {/* User Card (if in Telegram) */}
           {tgUser && (
             <div className="glass p-5 mb-6 animate-in delay-1">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-5">
                 <div className="w-12 h-12 rounded-full bg-[var(--blue)] flex items-center justify-center flex-shrink-0">
                   <span className="text-lg font-bold text-white">{displayInitial}</span>
                 </div>
@@ -400,6 +400,7 @@ function MainApp() {
             </div>
           </div>
         </div>
+        <NavBar currentView="home" navigate={navigate} />
       </main>
     );
   }
