@@ -148,21 +148,16 @@ function IconStats({ active }: { active?: boolean }) {
 }
 
 function SmainerLogo({ size = 40 }: { size?: number }) {
-  const scale = size / 40;
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      <g transform={`scale(${scale})`}>
-        {/* S-formation of compute blocks */}
-        <rect x="6" y="5" width="9" height="6" rx="2" fill="#FFFFFF" />
-        <rect x="17" y="5" width="9" height="6" rx="2" fill="#FFFFFF" />
-        <rect x="28" y="5" width="9" height="6" rx="2" fill="#3B82F6" />
-        <rect x="17" y="13" width="9" height="6" rx="2" fill="#3B82F6" />
-        <rect x="28" y="13" width="9" height="6" rx="2" fill="#FFFFFF" opacity="0.6" />
-        <rect x="6" y="21" width="9" height="6" rx="2" fill="#FFFFFF" opacity="0.6" />
-        <rect x="17" y="21" width="9" height="6" rx="2" fill="#FFFFFF" />
-        <rect x="3" y="29" width="9" height="6" rx="2" fill="#3B82F6" />
-        <rect x="14" y="29" width="9" height="6" rx="2" fill="#FFFFFF" />
-      </g>
+    <svg width={size} height={size} viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Official: 7 compute blocks in distributed S-formation */}
+      <rect x="200" y="104" width="112" height="48" rx="8" fill="#FFFFFF" />
+      <rect x="328" y="104" width="48" height="48" rx="8" fill="#3B82F6" />
+      <rect x="136" y="168" width="48" height="48" rx="8" fill="#FFFFFF" />
+      <rect x="200" y="232" width="112" height="48" rx="8" fill="#FFFFFF" />
+      <rect x="328" y="296" width="48" height="48" rx="8" fill="#FFFFFF" />
+      <rect x="136" y="360" width="48" height="48" rx="8" fill="#3B82F6" />
+      <rect x="200" y="360" width="112" height="48" rx="8" fill="#FFFFFF" />
     </svg>
   );
 }
@@ -211,6 +206,7 @@ function MainApp() {
   
   const relayerAPI = useRelayerAPI({
     baseUrl: import.meta.env.VITE_RELAYER_URL || 'https://api.smainer.io',
+    // NOTE: api.smainer.ai does not resolve yet — fallback uses api.smainer.io (138.197.11.147)
     walletAddress: connectedWallet?.address,
   });
 
