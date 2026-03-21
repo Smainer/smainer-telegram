@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { AIModel, InferenceRequest, InferenceTaskStatus } from '@/types';
 import { ModelSelector } from './ModelSelector';

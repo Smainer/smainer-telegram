@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useConnect, useAccount, useDisconnect } from '@starknet-react/core';
 

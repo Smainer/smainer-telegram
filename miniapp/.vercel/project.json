@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_znfuXN4ourNKtnqqjW5Dil1PHx0C",
+  "orgId": "team_eaQWzh1avWOQBKRvMZZwyeqE",
+  "projectName": "smainer-miniapp",
+  "settings": {
+    "createdAt": 1772919710544,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "20.x"
+  }
+}
