@@ -338,9 +338,9 @@ function MainApp() {
   // ─── Onboarding (Not Connected) ───
   if (!connectedWallet) {
     return (
-      <main className="min-h-screen bg-[var(--void)] overflow-hidden">
+      <main className="min-h-screen bg-[var(--void)]">
         {/* Hero Glow */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--blue)] opacity-10 blur-[120px]" />
         </div>
 
