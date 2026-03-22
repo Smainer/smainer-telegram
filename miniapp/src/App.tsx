@@ -462,87 +462,91 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
   
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
-      <div style={{ maxWidth: 448, margin: '0 auto' }}>
-        <div className="space-y-6">
+      <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
         {/* Header */}
         <div className="animate-in">
-          <p className="text-label mb-1">Dashboard</p>
-          <h2 className="text-2xl font-bold text-white">Control Center</h2>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-hint)', marginBottom: 4 }}>Dashboard</p>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: 'white' }}>Control Center</h2>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 gap-4 animate-in delay-1">
-          <div className="glass p-5 text-center">
-            <div className="text-stat text-4xl text-white mb-1">{nodesOnline}</div>
-            <div className="text-label">Nodes Online</div>
+        <div className="animate-in delay-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="glass" style={{ padding: 20, textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: 'white', marginBottom: 4 }}>{nodesOnline}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-hint)' }}>Nodes Online</div>
           </div>
-          <div className="glass p-5 text-center">
-            <div className="text-stat text-4xl text-white mb-1">0</div>
-            <div className="text-label">Tasks Run</div>
+          <div className="glass" style={{ padding: 20, textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: 'white', marginBottom: 4 }}>0</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-hint)' }}>Tasks Run</div>
           </div>
         </div>
 
         {/* Primary CTA */}
         <button 
           onClick={() => navigate('/chat')}
-          className="w-full card-glow card-interactive p-5 text-left animate-in delay-2"
-          style={{ borderLeft: '3px solid var(--blue)' }}
+          className="card-interactive animate-in delay-2"
+          style={{ padding: 20, textAlign: 'left', borderLeft: '3px solid var(--blue)', width: '100%' }}
         >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">Run Compute Task</h3>
-              <p className="text-sm text-[var(--text-muted)]">Submit private inference to GPU nodes</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: 'white', marginBottom: 4 }}>Run Compute Task</h3>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Submit private inference to GPU nodes</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[var(--blue)]">
+            <div style={{ width: 48, height: 48, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--blue)' }}>
               <IconCompute active />
             </div>
           </div>
           {nodesOnline > 0 && (
-            <div className="mt-4 flex items-center gap-2">
-              <div className="status-dot status-dot-online animate-glow" />
-              <span className="text-sm text-[var(--success)]">{nodesOnline} node{nodesOnline !== 1 ? 's' : ''} ready</span>
+            <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
+              <span style={{ fontSize: 14, color: 'var(--success)' }}>{nodesOnline} node{nodesOnline !== 1 ? 's' : ''} ready</span>
             </div>
           )}
         </button>
 
         {/* Secondary Actions */}
-        <div className="grid grid-cols-2 gap-4 animate-in delay-3">
+        <div className="animate-in delay-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <button 
             onClick={() => navigate('/nft')}
-            className="card-interactive p-4 text-left"
+            className="card-interactive"
+            style={{ padding: 16, textAlign: 'left' }}
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--surface-glass)] mb-3">
+            <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-glass)', marginBottom: 12 }}>
               <IconNFT />
             </div>
-            <h4 className="font-semibold text-white mb-1">Marketplace</h4>
-            <p className="text-xs text-[var(--text-muted)]">Browse & mint NFTs</p>
+            <h4 style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>Marketplace</h4>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Browse & mint NFTs</p>
           </button>
           
           <button 
             onClick={() => navigate('/dashboard')}
-            className="card-interactive p-4 text-left"
+            className="card-interactive"
+            style={{ padding: 16, textAlign: 'left' }}
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--surface-glass)] mb-3">
+            <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-glass)', marginBottom: 12 }}>
               <IconStats />
             </div>
-            <h4 className="font-semibold text-white mb-1">Dashboard</h4>
-            <p className="text-xs text-[var(--text-muted)]">Balance & status</p>
+            <h4 style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>Dashboard</h4>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Balance & status</p>
           </button>
         </div>
 
         {/* Network Status */}
-        <div className="glass p-4 animate-in delay-4">
-          <div className="flex items-center justify-between">
-            <div className="status">
-              <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
-              <span className="text-sm text-[var(--text-muted)]">
+        <div className="glass animate-in delay-4" style={{ padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)',
+                boxShadow: relayerAPI.isConnected ? '0 0 8px var(--success)' : 'none'
+              }} />
+              <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                 {relayerAPI.isConnected ? 'Network Active' : 'Connecting...'}
               </span>
             </div>
             <span className="pill">Starknet L2</span>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );
