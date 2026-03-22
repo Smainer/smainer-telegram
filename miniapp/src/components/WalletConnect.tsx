@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useConnect, useAccount, useDisconnect } from '@starknet-react/core';
 
 import type { ConnectedWallet } from '@/types';
 import { shortenAddress } from '@/lib/starknet';
+
+// Detect if running inside Telegram WebApp
+function isTelegramWebApp(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
+}
 
 interface WalletConnectProps {
   onConnect: (wallet: ConnectedWallet) => void;
@@ -16,6 +21,19 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const { disconnect } = useDisconnect();
   const lastSyncedAddress = useRef<string | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const isTelegram = useMemo(() => isTelegramWebApp(), []);
+  
+  // Filter to only available connectors
+  const availableConnectors = useMemo(() => {
+    return connectors.filter(c => {
+      try {
+        return c.available();
+      } catch {
+        return false;
+      }
+    });
+  }, [connectors]);
 
   useEffect(() => {
     if (!starknetConnected && !connectingId) {
@@ -125,7 +143,19 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       </div>
 
       <div className="wallet-list">
-        {connectors.length === 0 ? (
+        {isTelegram && availableConnectors.length === 0 ? (
+          <>
+            <div className="wallet-telegram-notice">
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 12, textAlign: 'center' }}>
+                Browser wallets aren't available inside Telegram.
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>
+                Open in your mobile browser to connect Argent or Braavos.
+              </p>
+            </div>
+            <OpenInBrowserButton />
+          </>
+        ) : availableConnectors.length === 0 ? (
           <>
             <p className="wallet-warning">No wallet detected. Install one below:</p>
             <WalletLink name="Argent X" href="https://chrome.google.com/webstore/detail/argent-x/dlcobpjiigpikoobohmabehhmhfoodbb" />
@@ -133,7 +163,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           </>
         ) : (
           <>
-            {connectors.map((connector) => (
+            {availableConnectors.map((connector) => (
               <WalletButton
                 key={connector.id}
                 name={connector.name}
@@ -203,6 +233,45 @@ function WalletLink({ name, href }: { name: string; href: string }) {
         <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
       </svg>
     </a>
+  );
+}
+
+function OpenInBrowserButton() {
+  const handleOpenInBrowser = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    const url = 'https://smainer-miniapp.vercel.app';
+    if (tg?.openLink) {
+      tg.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleOpenInBrowser}
+      style={{
+        width: '100%',
+        padding: '14px 20px',
+        background: 'var(--blue)',
+        border: 'none',
+        borderRadius: 12,
+        color: 'white',
+        fontSize: 15,
+        fontWeight: 600,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 12,
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+      </svg>
+      Open in Browser
+    </button>
   );
 }
 
