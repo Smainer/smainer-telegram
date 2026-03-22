@@ -446,7 +446,6 @@ function MainApp() {
       
       {/* Navigation */}
       <NavBar currentView={currentView} navigate={navigate} />
-      <DebugOverlay />
     </main>
   );
 }
