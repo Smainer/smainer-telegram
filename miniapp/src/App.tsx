@@ -320,16 +320,23 @@ function MainApp() {
   // ─── Loading Screen ───
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--void)]">
+      <div style={{ 
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#09090B'
+      }}>
         <div className="animate-in delay-1">
           <SmainerLogo size={64} />
         </div>
-        <h1 className="mt-6 text-2xl font-bold text-white animate-in delay-2">SMAINER</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)] animate-in delay-3">Private Compute</p>
-        <div className="mt-8 flex gap-2">
-          <div className="w-2 h-2 rounded-full bg-[var(--blue)] loading-dot" />
-          <div className="w-2 h-2 rounded-full bg-[var(--blue)] loading-dot" />
-          <div className="w-2 h-2 rounded-full bg-[var(--blue)] loading-dot" />
+        <h1 className="animate-in delay-2" style={{ marginTop: 24, fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>SMAINER</h1>
+        <p className="animate-in delay-3" style={{ marginTop: 8, fontSize: 14, color: '#71717A' }}>Private Compute</p>
+        <div style={{ marginTop: 32, display: 'flex', gap: 8 }}>
+          <div className="loading-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6' }} />
+          <div className="loading-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6' }} />
+          <div className="loading-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6' }} />
         </div>
       </div>
     );
@@ -338,34 +345,44 @@ function MainApp() {
   // ─── Onboarding (Not Connected) ───
   if (!connectedWallet) {
     return (
-      <main className="min-h-screen bg-[var(--void)]">
+      <main style={{ minHeight: '100vh', background: '#09090B' }}>
         {/* Hero Glow */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--blue)] opacity-10 blur-[120px]" />
+        <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            width: 600, 
+            height: 400, 
+            background: '#3B82F6', 
+            opacity: 0.1, 
+            filter: 'blur(120px)' 
+          }} />
         </div>
 
-        <div className="relative z-10 max-w-md mx-auto" style={{ padding: '48px 20px 100px 20px', minHeight: '100vh', overflowY: 'auto' }}>
+        <div style={{ position: 'relative', zIndex: 10, maxWidth: 448, margin: '0 auto', padding: '48px 20px 100px 20px', minHeight: '100vh', overflowY: 'auto' }}>
           {/* Logo & Title */}
           <div style={{ textAlign: 'center', marginBottom: 40 }} className="animate-in">
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
               <SmainerLogo size={72} />
             </div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: 'white', letterSpacing: '-0.02em', marginBottom: 8 }}>SMAINER</h1>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Private compute on Starknet</p>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: 8 }}>SMAINER</h1>
+            <p style={{ fontSize: 15, color: '#A1A1AA' }}>Private compute on Starknet</p>
           </div>
 
           {/* User Card (if in Telegram) */}
           {tgUser && (
             <div className="glass animate-in delay-1" style={{ padding: 20, marginBottom: 24, borderRadius: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>{displayInitial}</span>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF' }}>{displayInitial}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 600, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
                     {displayFirstName} {displayLastName}
                   </p>
-                  <p style={{ fontSize: 14, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{displayUsername}</p>
+                  <p style={{ fontSize: 14, color: '#71717A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>@{displayUsername}</p>
                 </div>
               </div>
             </div>
@@ -382,7 +399,7 @@ function MainApp() {
           </div>
 
           {/* Network Status */}
-          <div style={{ marginTop: 'auto', paddingTop: 16, paddingBottom: 16, paddingLeft: 4, paddingRight: 4 }} className="animate-in delay-3">
+          <div style={{ marginTop: 'auto', paddingTop: 16, paddingBottom: 16 }} className="animate-in delay-3">
             <div className="glass" style={{ padding: 16, borderRadius: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -390,10 +407,10 @@ function MainApp() {
                     width: 8, 
                     height: 8, 
                     borderRadius: '50%', 
-                    backgroundColor: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)',
-                    boxShadow: relayerAPI.isConnected ? '0 0 8px var(--success)' : 'none'
+                    backgroundColor: relayerAPI.isConnected ? '#22C55E' : '#EF4444',
+                    boxShadow: relayerAPI.isConnected ? '0 0 8px #22C55E' : 'none'
                   }} />
-                  <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: 14, color: '#71717A' }}>
                     {relayerAPI.isConnected ? 'Network Online' : relayerAPI.error ? 'Network Offline' : 'Connecting...'}
                   </span>
                 </div>
@@ -413,13 +430,13 @@ function MainApp() {
 
   // ─── Main App (Connected) ───
   return (
-    <main className="min-h-screen flex flex-col bg-[var(--void)]">
+    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#09090B' }}>
       {/* Header */}
-      <header style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--void)' }}>
+      <header style={{ padding: '12px 20px', borderBottom: '1px solid #27272A', background: '#09090B' }}>
         <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SmainerLogo size={28} />
-            <span style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>SMAINER</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF' }}>SMAINER</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="pill">
@@ -427,8 +444,8 @@ function MainApp() {
             </div>
             <div style={{
               width: 8, height: 8, borderRadius: '50%',
-              backgroundColor: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)',
-              boxShadow: relayerAPI.isConnected ? '0 0 8px var(--success)' : 'none'
+              backgroundColor: relayerAPI.isConnected ? '#22C55E' : '#EF4444',
+              boxShadow: relayerAPI.isConnected ? '0 0 8px #22C55E' : 'none'
             }} />
           </div>
         </div>
@@ -465,19 +482,19 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
       <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
         {/* Header */}
         <div className="animate-in">
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-hint)', marginBottom: 4 }}>Dashboard</p>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: 'white' }}>Control Center</h2>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#71717A', margin: 0, marginBottom: 4 }}>Dashboard</p>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#E4E4E7', margin: 0 }}>Control Center</h2>
         </div>
 
         {/* Stats Row */}
         <div className="animate-in delay-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div className="glass" style={{ padding: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 700, color: 'white', marginBottom: 4 }}>{nodesOnline}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-hint)' }}>Nodes Online</div>
+          <div className="glass" style={{ padding: 20, textAlign: 'center', borderRadius: 16 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{nodesOnline}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#71717A' }}>Nodes Online</div>
           </div>
-          <div className="glass" style={{ padding: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 700, color: 'white', marginBottom: 4 }}>0</div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-hint)' }}>Tasks Run</div>
+          <div className="glass" style={{ padding: 20, textAlign: 'center', borderRadius: 16 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>0</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#71717A' }}>Tasks Run</div>
           </div>
         </div>
 
@@ -485,21 +502,21 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
         <button 
           onClick={() => navigate('/chat')}
           className="card-interactive animate-in delay-2"
-          style={{ padding: 20, textAlign: 'left', borderLeft: '3px solid var(--blue)', width: '100%' }}
+          style={{ padding: 20, textAlign: 'left', borderLeft: '3px solid #3B82F6', width: '100%', borderRadius: 16 }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 600, color: 'white', marginBottom: 4 }}>Run Compute Task</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Submit private inference to GPU nodes</p>
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: '#E4E4E7', marginBottom: 4 }}>Run Compute Task</h3>
+              <p style={{ fontSize: 14, color: '#71717A', margin: 0 }}>Submit private inference to GPU nodes</p>
             </div>
-            <div style={{ width: 48, height: 48, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--blue)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#3B82F6' }}>
               <IconCompute active />
             </div>
           </div>
           {nodesOnline > 0 && (
             <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
-              <span style={{ fontSize: 14, color: 'var(--success)' }}>{nodesOnline} node{nodesOnline !== 1 ? 's' : ''} ready</span>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 8px #22C55E' }} />
+              <span style={{ fontSize: 14, color: '#22C55E' }}>{nodesOnline} node{nodesOnline !== 1 ? 's' : ''} ready</span>
             </div>
           )}
         </button>
@@ -509,38 +526,38 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
           <button 
             onClick={() => navigate('/nft')}
             className="card-interactive"
-            style={{ padding: 16, textAlign: 'left' }}
+            style={{ padding: 16, textAlign: 'left', borderRadius: 16 }}
           >
-            <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-glass)', marginBottom: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#27272A', marginBottom: 12 }}>
               <IconNFT />
             </div>
-            <h4 style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>NFT</h4>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Browse & mint NFTs</p>
+            <h4 style={{ fontWeight: 600, color: '#E4E4E7', marginBottom: 4 }}>NFT</h4>
+            <p style={{ fontSize: 12, color: '#71717A', margin: 0 }}>Browse & mint NFTs</p>
           </button>
           
           <button 
             onClick={() => navigate('/dashboard')}
             className="card-interactive"
-            style={{ padding: 16, textAlign: 'left' }}
+            style={{ padding: 16, textAlign: 'left', borderRadius: 16 }}
           >
-            <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-glass)', marginBottom: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#27272A', marginBottom: 12 }}>
               <IconStats />
             </div>
-            <h4 style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>Dashboard</h4>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Balance & status</p>
+            <h4 style={{ fontWeight: 600, color: '#E4E4E7', marginBottom: 4 }}>Dashboard</h4>
+            <p style={{ fontSize: 12, color: '#71717A', margin: 0 }}>Balance & status</p>
           </button>
         </div>
 
         {/* Network Status */}
-        <div className="glass animate-in delay-4" style={{ padding: 16 }}>
+        <div className="glass animate-in delay-4" style={{ padding: 16, borderRadius: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 width: 8, height: 8, borderRadius: '50%',
-                background: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)',
-                boxShadow: relayerAPI.isConnected ? '0 0 8px var(--success)' : 'none'
+                background: relayerAPI.isConnected ? '#22C55E' : '#EF4444',
+                boxShadow: relayerAPI.isConnected ? '0 0 8px #22C55E' : 'none'
               }} />
-              <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 14, color: '#71717A' }}>
                 {relayerAPI.isConnected ? 'Network Active' : 'Connecting...'}
               </span>
             </div>
@@ -605,57 +622,11 @@ const CATEGORY_COLORS: Record<NFTCategory, string> = {
 };
 
 const CATEGORY_LABELS: Record<NFTCategory, string> = {
-  AiArt: 'AI Outputs',
-  ComputeCredit: 'STRK Credits',
-  ProviderBadge: 'Provider Status',
-  ComputeCertificate: 'Compute Proof',
+  AiArt: 'AI Art',
+  ComputeCredit: 'Compute Credit',
+  ProviderBadge: 'Provider Badge',
+  ComputeCertificate: 'Compute Certificate',
 };
-
-// ─── Category Icon Component ───
-function CategoryIcon({ category, size = 64 }: { category: NFTCategory; size?: number }) {
-  const icons: Record<NFTCategory, JSX.Element> = {
-    AiArt: (
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="1.5">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-        <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-      </svg>
-    ),
-    ComputeCredit: (
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5">
-        <rect x="4" y="4" width="16" height="16" rx="2" />
-        <path d="M9 9h6v6H9z" />
-        <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
-      </svg>
-    ),
-    ProviderBadge: (
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-      </svg>
-    ),
-    ComputeCertificate: (
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.5">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <path d="M14 2v6h6" />
-        <path d="M9 15l2 2 4-4" />
-      </svg>
-    ),
-  };
-
-  return (
-    <div style={{
-      width: size,
-      height: size,
-      borderRadius: 16,
-      background: '#18181B',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      {icons[category]}
-    </div>
-  );
-}
 
 // Truncate address helper
 function truncateAddress(addr: string): string {
@@ -866,8 +837,8 @@ function NFTView({
       <div style={{ maxWidth: 448, margin: '0 auto' }}>
         {/* Header */}
         <div className="animate-in" style={{ marginBottom: 24 }}>
-          <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A1A1AA', marginBottom: 4 }}>Smainer</p>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>Marketplace</h2>
+          <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A1A1AA', marginBottom: 4 }}>Marketplace</p>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>NFT</h2>
         </div>
 
         {/* Stats Bar */}
@@ -901,15 +872,15 @@ function NFTView({
                 padding: '10px 12px',
                 borderRadius: 8,
                 border: 'none',
-                background: activeTab === tab ? '#27272A' : 'transparent',
-                color: activeTab === tab ? '#FFFFFF' : '#71717A',
+                background: activeTab === tab ? '#3B82F6' : 'transparent',
+                color: activeTab === tab ? '#FFFFFF' : '#A1A1AA',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
             >
-              {tab === 'browse' ? 'Marketplace' : tab === 'my-nfts' ? 'Portfolio' : 'Trades'}
+              {tab === 'browse' ? 'Browse' : tab === 'my-nfts' ? 'My NFTs' : 'Activity'}
             </button>
           ))}
         </div>
@@ -965,7 +936,7 @@ function NFTView({
                     action={{ label: 'Create NFT', onClick: () => navigate('/chat') }}
                   />
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
                     {listings.map((listing, i) => (
                       <NFTCard
                         key={listing.id}
@@ -1000,7 +971,7 @@ function NFTView({
                     action={{ label: 'Browse Marketplace', onClick: () => setActiveTab('browse') }}
                   />
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
                     {userNfts.map((nft, i) => (
                       <NFTCard
                         key={nft.token_id}
@@ -1045,9 +1016,23 @@ function NFTView({
         {buyModalOpen && selectedListing && (
           <Modal onClose={() => !txPending && setBuyModalOpen(false)}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              {/* NFT Preview — Solid dark bg with category icon */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-                <CategoryIcon category={selectedListing.category} size={100} />
+              {/* NFT Preview */}
+              <div style={{
+                width: 120,
+                height: 120,
+                borderRadius: 16,
+                margin: '0 auto 16px',
+                background: `linear-gradient(135deg, ${CATEGORY_COLORS[selectedListing.category]}40, ${CATEGORY_COLORS[selectedListing.category]}10)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <rect x="8" y="8" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} opacity="0.6" />
+                  <rect x="26" y="8" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} opacity="0.6" />
+                  <rect x="8" y="26" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} opacity="0.6" />
+                  <rect x="26" y="26" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} />
+                </svg>
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 600, color: '#FFFFFF', marginBottom: 4 }}>
                 {selectedListing.metadata.name}
@@ -1131,9 +1116,22 @@ function NFTView({
         {listModalOpen && selectedNft && (
           <Modal onClose={() => !txPending && setListModalOpen(false)}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              {/* NFT Preview — Solid dark bg with category icon */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-                <CategoryIcon category={selectedNft.category} size={80} />
+              <div style={{
+                width: 80,
+                height: 80,
+                borderRadius: 16,
+                margin: '0 auto 16px',
+                background: `linear-gradient(135deg, ${CATEGORY_COLORS[selectedNft.category]}40, ${CATEGORY_COLORS[selectedNft.category]}10)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <rect x="5" y="5" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} opacity="0.6" />
+                  <rect x="17" y="5" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} opacity="0.6" />
+                  <rect x="5" y="17" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} opacity="0.6" />
+                  <rect x="17" y="17" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} />
+                </svg>
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', marginBottom: 8 }}>
                 List for Sale
@@ -1203,7 +1201,7 @@ function NFTView({
   );
 }
 
-// ─── NFT Card Component (Horizontal Layout) ───
+// ─── NFT Card Component ───
 function NFTCard({
   category,
   name,
@@ -1229,75 +1227,120 @@ function NFTCard({
   
   return (
     <div 
-      className={`card-interactive animate-in delay-${delay + 1}`}
-      style={{ 
-        padding: 12, 
-        display: 'flex', 
-        alignItems: 'center',
-        gap: 12,
-        background: '#18181B',
-        borderRadius: 12,
-        borderLeft: `3px solid ${color}`,
-      }}
+      className={`glass card-interactive animate-in delay-${delay + 1}`}
+      style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}
     >
-      {/* Category Icon — Solid Dark Background */}
-      <CategoryIcon category={category} size={80} />
+      {/* Thumbnail placeholder */}
+      <div style={{
+        width: '100%',
+        aspectRatio: '1',
+        borderRadius: 12,
+        background: `linear-gradient(135deg, ${color}30, ${color}08)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+      }}>
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect x="6" y="6" width="12" height="12" rx="3" fill={color} opacity="0.5" />
+          <rect x="22" y="6" width="12" height="12" rx="3" fill={color} opacity="0.5" />
+          <rect x="6" y="22" width="12" height="12" rx="3" fill={color} opacity="0.5" />
+          <rect x="22" y="22" width="12" height="12" rx="3" fill={color} />
+        </svg>
+        {/* Category badge */}
+        <span className="pill" style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          padding: '4px 8px',
+          fontSize: 10,
+          background: `${color}20`,
+          borderColor: color,
+          color: color,
+        }}>
+          {CATEGORY_LABELS[category].split(' ')[0]}
+        </span>
+        {isListed && (
+          <span className="pill" style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            padding: '4px 8px',
+            fontSize: 10,
+            background: 'rgba(59, 130, 246, 0.2)',
+            borderColor: '#3B82F6',
+            color: '#3B82F6',
+          }}>
+            Listed
+          </span>
+        )}
+      </div>
 
       {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h4 style={{ 
-          fontSize: 14, 
-          fontWeight: 600, 
-          color: '#FFFFFF', 
-          marginBottom: 4, 
-          overflow: 'hidden', 
-          textOverflow: 'ellipsis', 
-          whiteSpace: 'nowrap' 
-        }}>
+      <div style={{ flex: 1 }}>
+        <h4 style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name}
         </h4>
-        <p style={{ fontSize: 11, color: '#71717A', fontFamily: 'monospace', marginBottom: 8 }}>
+        <p style={{ fontSize: 11, color: '#71717A', fontFamily: 'monospace' }}>
           {truncateAddress(owner)}
         </p>
+      </div>
+
+      {/* Price & Action */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         {price ? (
           <div>
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF' }}>{price}</span>
-            <span style={{ fontSize: 12, color: '#71717A', marginLeft: 4 }}>STRK</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}>{price}</span>
+            <span style={{ fontSize: 11, color: '#71717A', marginLeft: 4 }}>STRK</span>
           </div>
         ) : (
           <span style={{ fontSize: 12, color: '#71717A' }}>Not listed</span>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onAction(); }}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 8,
+            border: 'none',
+            background: isOwned ? (isListed ? '#27272A' : '#3B82F6') : '#3B82F6',
+            color: '#FFFFFF',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {actionLabel}
+        </button>
       </div>
-
-      {/* Action Button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onAction(); }}
-        style={{
-          padding: '10px 16px',
-          borderRadius: 8,
-          border: 'none',
-          background: isOwned ? (isListed ? '#27272A' : '#3B82F6') : '#3B82F6',
-          color: '#FFFFFF',
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        {actionLabel}
-      </button>
     </div>
   );
 }
 
 // ─── Activity Item Component ───
 function ActivityItem({ activity, delay }: { activity: MarketplaceActivity; delay: number }) {
+  const color = CATEGORY_COLORS[activity.category];
   const typeLabels = { sale: 'Sold', listing: 'Listed', delisting: 'Delisted' };
   const typeColors = { sale: '#22C55E', listing: '#3B82F6', delisting: '#71717A' };
   
   return (
-    <div className={`animate-in delay-${delay + 1}`} style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12, background: '#18181B', borderRadius: 12 }}>
-      <CategoryIcon category={activity.category} size={48} />
+    <div className={`glass animate-in delay-${delay + 1}`} style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        width: 48,
+        height: 48,
+        borderRadius: 10,
+        background: `linear-gradient(135deg, ${color}30, ${color}08)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="3" width="6" height="6" rx="2" fill={color} opacity="0.5" />
+          <rect x="11" y="3" width="6" height="6" rx="2" fill={color} opacity="0.5" />
+          <rect x="3" y="11" width="6" height="6" rx="2" fill={color} opacity="0.5" />
+          <rect x="11" y="11" width="6" height="6" rx="2" fill={color} />
+        </svg>
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1449,63 +1492,198 @@ function DashboardView({
   relayerAPI: any
   onDisconnect: () => void
 }) {
+  const nodesOnline = relayerAPI.availableModels.length;
+  
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
       <div style={{ maxWidth: 448, margin: '0 auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* Header */}
-        <div className="animate-in">
-          <p className="text-label" style={{ marginBottom: '4px' }}>Account</p>
-          <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'white' }}>Dashboard</h2>
-        </div>
-        
-        {/* Balance Card */}
-        <div className="glass animate-in delay-1" style={{ padding: '24px' }}>
-          <p className="text-label" style={{ marginBottom: '16px' }}>Wallet Balance</p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
-            <span className="text-stat" style={{ fontSize: '48px', color: 'white' }}>{connectedWallet.balance_strk || '0'}</span>
-            <span style={{ fontSize: '18px', color: 'var(--text-muted)' }}>STRK</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Header */}
+          <div className="animate-in">
+            <p style={{ 
+              fontSize: 11, 
+              fontWeight: 600, 
+              letterSpacing: '0.08em', 
+              textTransform: 'uppercase', 
+              color: '#71717A', 
+              marginBottom: 4,
+              margin: 0
+            }}>COMPUTE</p>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: '#E4E4E7', margin: 0 }}>Private Compute</h2>
           </div>
-          <div style={{ paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
-            <p className="text-mono" style={{ fontSize: '14px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
-              {connectedWallet.address}
-            </p>
-          </div>
-        </div>
 
-        {/* Network Status */}
-        <div className="glass animate-in delay-2" style={{ padding: '20px' }}>
-          <p className="text-label" style={{ marginBottom: '16px' }}>Network Status</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Relayer</span>
-              <div className="status">
-                <span style={{ fontSize: '14px', fontWeight: 500, color: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)' }}>
-                  {relayerAPI.isConnected ? 'Connected' : 'Offline'}
-                </span>
-                <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
+          {/* AI Tasks Card */}
+          <div className="glass animate-in delay-1" style={{ padding: 20, borderRadius: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: 12, 
+                  background: '#27272A', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <IconCompute active={false} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: '#E4E4E7', margin: 0 }}>AI Tasks</p>
+                  <p style={{ fontSize: 13, color: '#71717A', margin: 0 }}>Run inference on GPU nodes</p>
+                </div>
+              </div>
+              <span className="pill" style={{ 
+                background: nodesOnline > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                color: nodesOnline > 0 ? '#22C55E' : '#EF4444',
+                border: 'none',
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 600
+              }}>
+                {nodesOnline > 0 ? 'Ready' : 'Offline'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ flex: 1, textAlign: 'center', padding: 12, background: '#18181B', borderRadius: 10 }}>
+                <p style={{ fontSize: 24, fontWeight: 700, color: '#E4E4E7', margin: 0 }}>{nodesOnline}</p>
+                <p style={{ fontSize: 11, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Nodes</p>
+              </div>
+              <div style={{ flex: 1, textAlign: 'center', padding: 12, background: '#18181B', borderRadius: 10 }}>
+                <p style={{ fontSize: 24, fontWeight: 700, color: '#E4E4E7', margin: 0 }}>0</p>
+                <p style={{ fontSize: 11, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Tasks</p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Compute Nodes</span>
-              <span style={{ color: 'white', fontWeight: 500 }}>{relayerAPI.availableModels.length}</span>
+          </div>
+
+          {/* No Compute Nodes Card (conditional) */}
+          {nodesOnline === 0 && (
+            <div className="glass animate-in delay-2" style={{ padding: 24, borderRadius: 16, textAlign: 'center' }}>
+              <div style={{ 
+                width: 56, 
+                height: 56, 
+                borderRadius: 16, 
+                background: '#27272A', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                margin: '0 auto 16px auto'
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#71717A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <p style={{ fontSize: 16, fontWeight: 600, color: '#E4E4E7', marginBottom: 8 }}>No compute nodes online</p>
+              <p style={{ fontSize: 14, color: '#71717A', margin: 0 }}>GPU providers will appear here when they connect to the network.</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Chain</span>
-              <span className="pill">Starknet L2</span>
+          )}
+
+          {/* Balance Card */}
+          <div className="glass animate-in delay-2" style={{ padding: 20, borderRadius: 16 }}>
+            <p style={{ 
+              fontSize: 11, 
+              fontWeight: 600, 
+              letterSpacing: '0.08em', 
+              textTransform: 'uppercase', 
+              color: '#71717A', 
+              margin: 0,
+              marginBottom: 16
+            }}>Wallet Balance</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+              <span style={{ fontSize: 40, fontWeight: 700, color: '#E4E4E7' }}>{connectedWallet.balance_strk || '0'}</span>
+              <span style={{ fontSize: 18, color: '#71717A' }}>STRK</span>
+            </div>
+            <div style={{ paddingTop: 16, borderTop: '1px solid #27272A' }}>
+              <p style={{ fontSize: 13, color: '#71717A', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 }}>
+                {connectedWallet.address}
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Disconnect */}
-        <button 
-          onClick={onDisconnect}
-          className="btn btn-ghost animate-in delay-3"
-          style={{ width: '100%', color: 'var(--error)' }}
-        >
-          Disconnect Wallet
-        </button>
-      </div>
+          {/* Network Status Card */}
+          <div className="glass animate-in delay-3" style={{ padding: 20, borderRadius: 16 }}>
+            <p style={{ 
+              fontSize: 11, 
+              fontWeight: 600, 
+              letterSpacing: '0.08em', 
+              textTransform: 'uppercase', 
+              color: '#71717A', 
+              margin: 0,
+              marginBottom: 16
+            }}>Network Status</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, color: '#A1A1AA' }}>Relayer</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: relayerAPI.isConnected ? '#22C55E' : '#EF4444' }}>
+                    {relayerAPI.isConnected ? 'Connected' : 'Offline'}
+                  </span>
+                  <div style={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    backgroundColor: relayerAPI.isConnected ? '#22C55E' : '#EF4444',
+                    boxShadow: relayerAPI.isConnected ? '0 0 8px #22C55E' : 'none'
+                  }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, color: '#A1A1AA' }}>Compute Nodes</span>
+                <span style={{ fontSize: 14, color: '#E4E4E7', fontWeight: 500 }}>{nodesOnline}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, color: '#A1A1AA' }}>Chain</span>
+                <span className="pill">Starknet L2</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Private Compute Section */}
+          <div className="glass animate-in delay-4" style={{ padding: 20, borderRadius: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ 
+                width: 44, 
+                height: 44, 
+                borderRadius: 12, 
+                background: 'rgba(99, 102, 241, 0.15)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#E4E4E7', margin: 0, marginBottom: 4 }}>Private Compute</p>
+                <p style={{ fontSize: 13, color: '#71717A', margin: 0 }}>Your inference runs on decentralized GPU nodes. Only you see the results.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Disconnect Button */}
+          <button 
+            onClick={onDisconnect}
+            className="animate-in delay-5"
+            style={{ 
+              width: '100%', 
+              padding: '14px 20px',
+              background: 'transparent',
+              border: '1px solid #27272A',
+              borderRadius: 12,
+              color: '#EF4444',
+              fontSize: 15,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Disconnect Wallet
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1524,21 +1702,51 @@ function NavBar({ currentView, navigate }: { currentView: string, navigate: Navi
   ];
 
   return (
-    <nav className="nav-bar safe-area-bottom">
-      <div className="nav-bar-inner">
+    <nav style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'rgba(9, 9, 11, 0.95)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      borderTop: '1px solid #27272A',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      zIndex: 100
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'stretch',
+        justifyContent: 'space-around',
+        maxWidth: 448,
+        margin: '0 auto',
+        padding: '8px 16px 8px 16px'
+      }}>
         {tabs.map(({ id, label, path, Icon }) => {
           const isActive = currentView === id;
           return (
             <button
               key={id}
               onClick={() => navigate(path)}
-              className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
-              style={{ flex: 1 }}
+              style={{ 
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                padding: '8px 4px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease',
+                WebkitTapHighlightColor: 'transparent'
+              }}
             >
               <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon active={isActive} />
               </div>
-              <span style={{ fontSize: 11, fontWeight: 500, lineHeight: 1, color: isActive ? 'var(--blue)' : 'var(--text-muted)' }}>
+              <span style={{ fontSize: 11, fontWeight: 500, lineHeight: 1, color: isActive ? '#3B82F6' : '#71717A' }}>
                 {label}
               </span>
             </button>
