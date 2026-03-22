@@ -200,6 +200,74 @@ export interface NFTGalleryProps {
   onListNFT: (nft_id: string, price: string) => void;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  NFT MARKETPLACE TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type NFTCategory = 'AiArt' | 'ComputeCredit' | 'ProviderBadge' | 'ComputeCertificate';
+
+export const NFT_CATEGORY_MAP: Record<NFTCategory, number> = {
+  AiArt: 0,
+  ComputeCredit: 1,
+  ProviderBadge: 2,
+  ComputeCertificate: 3,
+};
+
+export const NFT_CATEGORY_FROM_NUMBER: Record<number, NFTCategory> = {
+  0: 'AiArt',
+  1: 'ComputeCredit',
+  2: 'ProviderBadge',
+  3: 'ComputeCertificate',
+};
+
+export interface NFTListing {
+  id: string;
+  token_id: string;
+  category: NFTCategory;
+  price: string; // in STRK
+  seller_address: string;
+  created_at: string;
+  metadata: {
+    name: string;
+    description: string;
+    image_url?: string;
+    attributes?: Record<string, string>;
+  };
+}
+
+export interface UserNFT {
+  token_id: string;
+  category: NFTCategory;
+  owner_address: string;
+  metadata: {
+    name: string;
+    description: string;
+    image_url?: string;
+    attributes?: Record<string, string>;
+  };
+  is_listed: boolean;
+  listing_id?: string;
+  listing_price?: string;
+}
+
+export interface MarketplaceStats {
+  total_listed: number;
+  total_volume: string;
+  floor_price: string;
+  total_sales: number;
+}
+
+export interface MarketplaceActivity {
+  id: string;
+  type: 'sale' | 'listing' | 'delisting';
+  token_id: string;
+  category: NFTCategory;
+  price?: string;
+  from_address?: string;
+  to_address?: string;
+  timestamp: string;
+}
+
 export interface WalletConnectProps {
   onConnect: (wallet: ConnectedWallet) => void;
   onDisconnect: () => void;
