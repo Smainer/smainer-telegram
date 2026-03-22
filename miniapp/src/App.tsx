@@ -415,17 +415,21 @@ function MainApp() {
   return (
     <main className="min-h-screen flex flex-col bg-[var(--void)]">
       {/* Header */}
-      <header className="px-5 py-3 border-b border-[var(--border-subtle)] bg-[var(--void)]">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--void)' }}>
+        <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SmainerLogo size={28} />
-            <span className="text-lg font-bold text-white">SMAINER</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>SMAINER</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="pill">
               {connectedWallet.address.slice(0, 6)}...{connectedWallet.address.slice(-4)}
             </div>
-            <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%',
+              backgroundColor: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)',
+              boxShadow: relayerAPI.isConnected ? '0 0 8px var(--success)' : 'none'
+            }} />
           </div>
         </div>
       </header>
