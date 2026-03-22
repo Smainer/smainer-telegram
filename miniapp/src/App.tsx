@@ -63,9 +63,9 @@ class WalletSectionBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="glass p-6 text-center">
-          <h3 className="text-lg font-semibold text-white mb-2">Connect Wallet</h3>
-          <p className="text-sm text-[var(--text-secondary)] mb-4">
+        <div className="glass" style={{ padding: '24px', textAlign: 'center' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Connect Wallet</h3>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             Open the dedicated connect page for best compatibility.
           </p>
           <a
@@ -514,7 +514,7 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
             <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-glass)', marginBottom: 12 }}>
               <IconNFT />
             </div>
-            <h4 style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>Marketplace</h4>
+            <h4 style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>NFT</h4>
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Browse & mint NFTs</p>
           </button>
           
@@ -561,14 +561,14 @@ function NFTView({ navigate }: { navigate: NavigateFunction }) {
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
       <div style={{ maxWidth: 448, margin: '0 auto' }}>
         {/* Header */}
-        <div className="mb-8 animate-in">
-          <p className="text-label mb-1">Marketplace</p>
-          <h2 className="text-2xl font-bold text-white">Marketplace</h2>
+        <div className="animate-in" style={{ marginBottom: '32px' }}>
+          <p className="text-label" style={{ marginBottom: '4px' }}>NFT Gallery</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'white' }}>NFT</h2>
         </div>
         
         {/* Empty State */}
-        <div className="glass p-8 text-center animate-in delay-1">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-3xl flex items-center justify-center bg-[var(--surface-glass)]">
+        <div className="glass animate-in delay-1" style={{ padding: '32px', textAlign: 'center' }}>
+          <div style={{ width: '80px', height: '80px', margin: '0 auto', marginBottom: '24px', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-glass)' }}>
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
               <rect x="6" y="6" width="12" height="12" rx="3" fill="white" opacity="0.6" />
               <rect x="22" y="6" width="12" height="12" rx="3" fill="white" opacity="0.6" />
@@ -577,25 +577,25 @@ function NFTView({ navigate }: { navigate: NavigateFunction }) {
             </svg>
           </div>
           
-          <h3 className="text-xl font-semibold text-white mb-2">Mint Compute Results</h3>
-          <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
+          <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>Mint Compute Results</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>
             Turn your AI-generated outputs into verified NFTs on Starknet
           </p>
           
-          <button onClick={() => navigate('/chat')} className="btn btn-primary w-full">
+          <button onClick={() => navigate('/chat')} className="btn btn-primary" style={{ width: '100%' }}>
             Start Creating
           </button>
         </div>
         
         {/* Info Card */}
-        <div className="glass p-4 mt-6 animate-in delay-2">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--blue)] bg-opacity-20 flex-shrink-0">
+        <div className="glass animate-in delay-2" style={{ padding: '16px', marginTop: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.2)', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--blue)">
                 <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 5a1 1 0 112 0v3a1 1 0 01-2 0V5zm1 7a1 1 0 100-2 1 1 0 000 2z"/>
               </svg>
             </div>
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
               Each NFT includes cryptographic proof of the compute task that generated it.
             </p>
           </div>
@@ -621,46 +621,46 @@ function DashboardView({
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
       <div style={{ maxWidth: 448, margin: '0 auto' }}>
-        <div className="space-y-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Header */}
         <div className="animate-in">
-          <p className="text-label mb-1">Account</p>
-          <h2 className="text-2xl font-bold text-white">Dashboard</h2>
+          <p className="text-label" style={{ marginBottom: '4px' }}>Account</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'white' }}>Dashboard</h2>
         </div>
         
         {/* Balance Card */}
-        <div className="glass p-6 animate-in delay-1">
-          <p className="text-label mb-4">Wallet Balance</p>
-          <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-stat text-5xl text-white">{connectedWallet.balance_strk || '0'}</span>
-            <span className="text-lg text-[var(--text-muted)]">STRK</span>
+        <div className="glass animate-in delay-1" style={{ padding: '24px' }}>
+          <p className="text-label" style={{ marginBottom: '16px' }}>Wallet Balance</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
+            <span className="text-stat" style={{ fontSize: '48px', color: 'white' }}>{connectedWallet.balance_strk || '0'}</span>
+            <span style={{ fontSize: '18px', color: 'var(--text-muted)' }}>STRK</span>
           </div>
-          <div className="pt-4 border-t border-[var(--border-subtle)]">
-            <p className="text-mono text-sm text-[var(--text-muted)] break-all">
+          <div style={{ paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+            <p className="text-mono" style={{ fontSize: '14px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
               {connectedWallet.address}
             </p>
           </div>
         </div>
 
         {/* Network Status */}
-        <div className="glass p-5 animate-in delay-2">
-          <p className="text-label mb-4">Network Status</p>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-secondary)]">Relayer</span>
+        <div className="glass animate-in delay-2" style={{ padding: '20px' }}>
+          <p className="text-label" style={{ marginBottom: '16px' }}>Network Status</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Relayer</span>
               <div className="status">
-                <span className={`text-sm font-medium ${relayerAPI.isConnected ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)' }}>
                   {relayerAPI.isConnected ? 'Connected' : 'Offline'}
                 </span>
                 <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-secondary)]">Compute Nodes</span>
-              <span className="text-white font-medium">{relayerAPI.availableModels.length}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Compute Nodes</span>
+              <span style={{ color: 'white', fontWeight: 500 }}>{relayerAPI.availableModels.length}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-secondary)]">Chain</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Chain</span>
               <span className="pill">Starknet L2</span>
             </div>
           </div>
@@ -669,7 +669,8 @@ function DashboardView({
         {/* Disconnect */}
         <button 
           onClick={onDisconnect}
-          className="w-full btn btn-ghost text-[var(--error)] animate-in delay-3"
+          className="btn btn-ghost animate-in delay-3"
+          style={{ width: '100%', color: 'var(--error)' }}
         >
           Disconnect Wallet
         </button>
@@ -687,7 +688,7 @@ function NavBar({ currentView, navigate }: { currentView: string, navigate: Navi
   const tabs = [
     { id: 'home', label: 'Home', path: '/', Icon: IconHome },
     { id: 'chat', label: 'Compute', path: '/chat', Icon: IconCompute },
-    { id: 'nft', label: 'Market', path: '/nft', Icon: IconNFT },
+    { id: 'nft', label: 'NFT', path: '/nft', Icon: IconNFT },
     { id: 'dashboard', label: 'Stats', path: '/dashboard', Icon: IconStats },
   ];
 
