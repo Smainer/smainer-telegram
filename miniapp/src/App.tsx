@@ -431,7 +431,7 @@ function MainApp() {
       </header>
       
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         {currentView === 'home' && <HomeView navigate={navigate} relayerAPI={relayerAPI} />}
         {currentView === 'chat' && (
           <ChatInterface
@@ -458,8 +458,9 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
   const nodesOnline = relayerAPI.availableModels.length;
   
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-6 pb-28">
-      <div className="max-w-md mx-auto space-y-6">
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
+      <div style={{ maxWidth: 448, margin: '0 auto' }}>
+        <div className="space-y-6">
         {/* Header */}
         <div className="animate-in">
           <p className="text-label mb-1">Dashboard</p>
@@ -510,8 +511,8 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--surface-glass)] mb-3">
               <IconNFT />
             </div>
-            <h4 className="font-semibold text-white mb-1">NFTs</h4>
-            <p className="text-xs text-[var(--text-muted)]">Mint results on-chain</p>
+            <h4 className="font-semibold text-white mb-1">Marketplace</h4>
+            <p className="text-xs text-[var(--text-muted)]">Browse & mint NFTs</p>
           </button>
           
           <button 
@@ -539,6 +540,7 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -549,12 +551,12 @@ function HomeView({ navigate, relayerAPI }: { navigate: NavigateFunction, relaye
 
 function NFTView({ navigate }: { navigate: NavigateFunction }) {
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-6 pb-28">
-      <div className="max-w-md mx-auto">
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
+      <div style={{ maxWidth: 448, margin: '0 auto' }}>
         {/* Header */}
         <div className="mb-8 animate-in">
-          <p className="text-label mb-1">Gallery</p>
-          <h2 className="text-2xl font-bold text-white">NFT Collection</h2>
+          <p className="text-label mb-1">Marketplace</p>
+          <h2 className="text-2xl font-bold text-white">Marketplace</h2>
         </div>
         
         {/* Empty State */}
@@ -610,8 +612,9 @@ function DashboardView({
   onDisconnect: () => void
 }) {
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-6 pb-28">
-      <div className="max-w-md mx-auto space-y-6">
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 112px 20px' }}>
+      <div style={{ maxWidth: 448, margin: '0 auto' }}>
+        <div className="space-y-6">
         {/* Header */}
         <div className="animate-in">
           <p className="text-label mb-1">Account</p>
@@ -664,6 +667,7 @@ function DashboardView({
           Disconnect Wallet
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -676,7 +680,7 @@ function NavBar({ currentView, navigate }: { currentView: string, navigate: Navi
   const tabs = [
     { id: 'home', label: 'Home', path: '/', Icon: IconHome },
     { id: 'chat', label: 'Compute', path: '/chat', Icon: IconCompute },
-    { id: 'nft', label: 'NFTs', path: '/nft', Icon: IconNFT },
+    { id: 'nft', label: 'Market', path: '/nft', Icon: IconNFT },
     { id: 'dashboard', label: 'Stats', path: '/dashboard', Icon: IconStats },
   ];
 
