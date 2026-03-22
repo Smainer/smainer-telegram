@@ -382,13 +382,19 @@ function MainApp() {
           </div>
 
           {/* Network Status */}
-          <div style={{ marginTop: 'auto', paddingTop: 16, paddingBottom: 16 }} className="animate-in delay-3">
-            <div className="glass p-4">
-              <div className="flex items-center justify-between">
-                <div className="status">
-                  <div className={`status-dot ${relayerAPI.isConnected ? 'status-dot-online animate-glow' : 'status-dot-offline'}`} />
-                  <span className="text-sm text-[var(--text-muted)]">
-                    {relayerAPI.isConnected ? 'Network Online' : relayerAPI.error ? 'Offline' : 'Connecting...'}
+          <div style={{ marginTop: 'auto', paddingTop: 16, paddingBottom: 16, paddingLeft: 4, paddingRight: 4 }} className="animate-in delay-3">
+            <div className="glass" style={{ padding: 16, borderRadius: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    backgroundColor: relayerAPI.isConnected ? 'var(--success)' : 'var(--error)',
+                    boxShadow: relayerAPI.isConnected ? '0 0 8px var(--success)' : 'none'
+                  }} />
+                  <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                    {relayerAPI.isConnected ? 'Network Online' : relayerAPI.error ? 'Network Offline' : 'Connecting...'}
                   </span>
                 </div>
                 {relayerAPI.availableModels.length > 0 && (

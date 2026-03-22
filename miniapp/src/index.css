@@ -670,7 +670,10 @@
   gap: 4px;
   padding: 12px 0;
   min-height: 56px;
-  color: var(--text-hint);
+  color: #71717A;
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: all var(--duration-normal) var(--ease-out);
   -webkit-tap-highlight-color: transparent;
   position: relative;
@@ -680,9 +683,14 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
+  color: inherit;
 }
 
 .nav-item-active {
+  color: var(--blue);
+}
+
+.nav-item-active svg {
   color: var(--blue);
 }
 

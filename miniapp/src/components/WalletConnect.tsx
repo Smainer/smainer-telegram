@@ -10,14 +10,15 @@ interface WalletConnectProps {
 }
 
 export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
   const { connect, connectors } = useConnect();
   const { address, isConnected: starknetConnected, chainId } = useAccount();
   const { disconnect } = useDisconnect();
   const lastSyncedAddress = useRef<string | null>(null);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!starknetConnected && !isConnecting) {
+    if (!starknetConnected && !connectingId) {
       const lastConnectorId = localStorage.getItem('starknet-react.lastUsedConnector');
       if (lastConnectorId) {
         const connector = connectors.find(c => c.id === lastConnectorId);
@@ -26,10 +27,14 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
         }
       }
     }
-  }, [connect, connectors, isConnecting, starknetConnected]);
+  }, [connect, connectors, connectingId, starknetConnected]);
 
   useEffect(() => {
     if (starknetConnected && address && lastSyncedAddress.current !== address) {
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
       const wallet: ConnectedWallet = {
         address,
         type: 'argentx',
@@ -38,22 +43,40 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       };
       lastSyncedAddress.current = address;
       onConnect(wallet);
-      setIsConnecting(false);
+      setConnectingId(null);
       return;
     }
     if (!starknetConnected) {
       lastSyncedAddress.current = null;
-      setIsConnecting(false);
     }
   }, [address, onConnect, starknetConnected]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleConnect = async (connector: any) => {
+    if (connectingId) return; // Prevent multiple clicks
     try {
-      setIsConnecting(true);
+      setConnectingId(connector.id);
+      // Timeout after 8 seconds
+      connectionTimeoutRef.current = setTimeout(() => {
+        setConnectingId(null);
+        console.warn('Wallet connection timed out');
+      }, 8000);
       await connect({ connector });
     } catch (error) {
       console.error('Wallet connection failed:', error);
-      setIsConnecting(false);
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      setConnectingId(null);
     }
   };
 
@@ -115,7 +138,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
                 key={connector.id}
                 name={connector.name}
                 walletId={connector.id}
-                isLoading={isConnecting}
+                isLoading={connectingId === connector.id}
                 onClick={() => handleConnect(connector)}
               />
             ))}
