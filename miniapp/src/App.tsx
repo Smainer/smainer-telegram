@@ -605,11 +605,57 @@ const CATEGORY_COLORS: Record<NFTCategory, string> = {
 };
 
 const CATEGORY_LABELS: Record<NFTCategory, string> = {
-  AiArt: 'AI Art',
-  ComputeCredit: 'Compute Credit',
-  ProviderBadge: 'Provider Badge',
-  ComputeCertificate: 'Compute Certificate',
+  AiArt: 'AI Outputs',
+  ComputeCredit: 'STRK Credits',
+  ProviderBadge: 'Provider Status',
+  ComputeCertificate: 'Compute Proof',
 };
+
+// ─── Category Icon Component ───
+function CategoryIcon({ category, size = 64 }: { category: NFTCategory; size?: number }) {
+  const icons: Record<NFTCategory, JSX.Element> = {
+    AiArt: (
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+      </svg>
+    ),
+    ComputeCredit: (
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5">
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <path d="M9 9h6v6H9z" />
+        <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+      </svg>
+    ),
+    ProviderBadge: (
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    ),
+    ComputeCertificate: (
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M9 15l2 2 4-4" />
+      </svg>
+    ),
+  };
+
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: 16,
+      background: '#18181B',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      {icons[category]}
+    </div>
+  );
+}
 
 // Truncate address helper
 function truncateAddress(addr: string): string {
@@ -820,8 +866,8 @@ function NFTView({
       <div style={{ maxWidth: 448, margin: '0 auto' }}>
         {/* Header */}
         <div className="animate-in" style={{ marginBottom: 24 }}>
-          <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A1A1AA', marginBottom: 4 }}>Marketplace</p>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>NFT</h2>
+          <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A1A1AA', marginBottom: 4 }}>Smainer</p>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>Marketplace</h2>
         </div>
 
         {/* Stats Bar */}
@@ -855,15 +901,15 @@ function NFTView({
                 padding: '10px 12px',
                 borderRadius: 8,
                 border: 'none',
-                background: activeTab === tab ? '#3B82F6' : 'transparent',
-                color: activeTab === tab ? '#FFFFFF' : '#A1A1AA',
+                background: activeTab === tab ? '#27272A' : 'transparent',
+                color: activeTab === tab ? '#FFFFFF' : '#71717A',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
             >
-              {tab === 'browse' ? 'Browse' : tab === 'my-nfts' ? 'My NFTs' : 'Activity'}
+              {tab === 'browse' ? 'Marketplace' : tab === 'my-nfts' ? 'Portfolio' : 'Trades'}
             </button>
           ))}
         </div>
@@ -919,7 +965,7 @@ function NFTView({
                     action={{ label: 'Create NFT', onClick: () => navigate('/chat') }}
                   />
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {listings.map((listing, i) => (
                       <NFTCard
                         key={listing.id}
@@ -954,7 +1000,7 @@ function NFTView({
                     action={{ label: 'Browse Marketplace', onClick: () => setActiveTab('browse') }}
                   />
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {userNfts.map((nft, i) => (
                       <NFTCard
                         key={nft.token_id}
@@ -999,23 +1045,9 @@ function NFTView({
         {buyModalOpen && selectedListing && (
           <Modal onClose={() => !txPending && setBuyModalOpen(false)}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              {/* NFT Preview */}
-              <div style={{
-                width: 120,
-                height: 120,
-                borderRadius: 16,
-                margin: '0 auto 16px',
-                background: `linear-gradient(135deg, ${CATEGORY_COLORS[selectedListing.category]}40, ${CATEGORY_COLORS[selectedListing.category]}10)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <rect x="8" y="8" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} opacity="0.6" />
-                  <rect x="26" y="8" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} opacity="0.6" />
-                  <rect x="8" y="26" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} opacity="0.6" />
-                  <rect x="26" y="26" width="14" height="14" rx="4" fill={CATEGORY_COLORS[selectedListing.category]} />
-                </svg>
+              {/* NFT Preview — Solid dark bg with category icon */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <CategoryIcon category={selectedListing.category} size={100} />
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 600, color: '#FFFFFF', marginBottom: 4 }}>
                 {selectedListing.metadata.name}
@@ -1099,22 +1131,9 @@ function NFTView({
         {listModalOpen && selectedNft && (
           <Modal onClose={() => !txPending && setListModalOpen(false)}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{
-                width: 80,
-                height: 80,
-                borderRadius: 16,
-                margin: '0 auto 16px',
-                background: `linear-gradient(135deg, ${CATEGORY_COLORS[selectedNft.category]}40, ${CATEGORY_COLORS[selectedNft.category]}10)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                  <rect x="5" y="5" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} opacity="0.6" />
-                  <rect x="17" y="5" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} opacity="0.6" />
-                  <rect x="5" y="17" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} opacity="0.6" />
-                  <rect x="17" y="17" width="10" height="10" rx="3" fill={CATEGORY_COLORS[selectedNft.category]} />
-                </svg>
+              {/* NFT Preview — Solid dark bg with category icon */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <CategoryIcon category={selectedNft.category} size={80} />
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', marginBottom: 8 }}>
                 List for Sale
@@ -1184,7 +1203,7 @@ function NFTView({
   );
 }
 
-// ─── NFT Card Component ───
+// ─── NFT Card Component (Horizontal Layout) ───
 function NFTCard({
   category,
   name,
@@ -1210,120 +1229,75 @@ function NFTCard({
   
   return (
     <div 
-      className={`glass card-interactive animate-in delay-${delay + 1}`}
-      style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}
-    >
-      {/* Thumbnail placeholder */}
-      <div style={{
-        width: '100%',
-        aspectRatio: '1',
-        borderRadius: 12,
-        background: `linear-gradient(135deg, ${color}30, ${color}08)`,
-        display: 'flex',
+      className={`card-interactive animate-in delay-${delay + 1}`}
+      style={{ 
+        padding: 12, 
+        display: 'flex', 
         alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-      }}>
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <rect x="6" y="6" width="12" height="12" rx="3" fill={color} opacity="0.5" />
-          <rect x="22" y="6" width="12" height="12" rx="3" fill={color} opacity="0.5" />
-          <rect x="6" y="22" width="12" height="12" rx="3" fill={color} opacity="0.5" />
-          <rect x="22" y="22" width="12" height="12" rx="3" fill={color} />
-        </svg>
-        {/* Category badge */}
-        <span className="pill" style={{
-          position: 'absolute',
-          top: 8,
-          left: 8,
-          padding: '4px 8px',
-          fontSize: 10,
-          background: `${color}20`,
-          borderColor: color,
-          color: color,
-        }}>
-          {CATEGORY_LABELS[category].split(' ')[0]}
-        </span>
-        {isListed && (
-          <span className="pill" style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            padding: '4px 8px',
-            fontSize: 10,
-            background: 'rgba(59, 130, 246, 0.2)',
-            borderColor: '#3B82F6',
-            color: '#3B82F6',
-          }}>
-            Listed
-          </span>
-        )}
-      </div>
+        gap: 12,
+        background: '#18181B',
+        borderRadius: 12,
+        borderLeft: `3px solid ${color}`,
+      }}
+    >
+      {/* Category Icon — Solid Dark Background */}
+      <CategoryIcon category={category} size={80} />
 
       {/* Info */}
-      <div style={{ flex: 1 }}>
-        <h4 style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <h4 style={{ 
+          fontSize: 14, 
+          fontWeight: 600, 
+          color: '#FFFFFF', 
+          marginBottom: 4, 
+          overflow: 'hidden', 
+          textOverflow: 'ellipsis', 
+          whiteSpace: 'nowrap' 
+        }}>
           {name}
         </h4>
-        <p style={{ fontSize: 11, color: '#71717A', fontFamily: 'monospace' }}>
+        <p style={{ fontSize: 11, color: '#71717A', fontFamily: 'monospace', marginBottom: 8 }}>
           {truncateAddress(owner)}
         </p>
-      </div>
-
-      {/* Price & Action */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         {price ? (
           <div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}>{price}</span>
-            <span style={{ fontSize: 11, color: '#71717A', marginLeft: 4 }}>STRK</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF' }}>{price}</span>
+            <span style={{ fontSize: 12, color: '#71717A', marginLeft: 4 }}>STRK</span>
           </div>
         ) : (
           <span style={{ fontSize: 12, color: '#71717A' }}>Not listed</span>
         )}
-        <button
-          onClick={(e) => { e.stopPropagation(); onAction(); }}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 8,
-            border: 'none',
-            background: isOwned ? (isListed ? '#27272A' : '#3B82F6') : '#3B82F6',
-            color: '#FFFFFF',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          {actionLabel}
-        </button>
       </div>
+
+      {/* Action Button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onAction(); }}
+        style={{
+          padding: '10px 16px',
+          borderRadius: 8,
+          border: 'none',
+          background: isOwned ? (isListed ? '#27272A' : '#3B82F6') : '#3B82F6',
+          color: '#FFFFFF',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        {actionLabel}
+      </button>
     </div>
   );
 }
 
 // ─── Activity Item Component ───
 function ActivityItem({ activity, delay }: { activity: MarketplaceActivity; delay: number }) {
-  const color = CATEGORY_COLORS[activity.category];
   const typeLabels = { sale: 'Sold', listing: 'Listed', delisting: 'Delisted' };
   const typeColors = { sale: '#22C55E', listing: '#3B82F6', delisting: '#71717A' };
   
   return (
-    <div className={`glass animate-in delay-${delay + 1}`} style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{
-        width: 48,
-        height: 48,
-        borderRadius: 10,
-        background: `linear-gradient(135deg, ${color}30, ${color}08)`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <rect x="3" y="3" width="6" height="6" rx="2" fill={color} opacity="0.5" />
-          <rect x="11" y="3" width="6" height="6" rx="2" fill={color} opacity="0.5" />
-          <rect x="3" y="11" width="6" height="6" rx="2" fill={color} opacity="0.5" />
-          <rect x="11" y="11" width="6" height="6" rx="2" fill={color} />
-        </svg>
-      </div>
+    <div className={`animate-in delay-${delay + 1}`} style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12, background: '#18181B', borderRadius: 12 }}>
+      <CategoryIcon category={activity.category} size={48} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
