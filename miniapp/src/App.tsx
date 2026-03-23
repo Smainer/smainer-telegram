@@ -14,7 +14,7 @@ function getConnectPageUrl(): string {
   if (typeof window !== 'undefined') {
     return `${window.location.origin}/connect`;
   }
-  return (import.meta.env.VITE_FRONTEND_URL || 'https://smainer-miniapp.vercel.app') + '/connect';
+  return (import.meta.env.VITE_FRONTEND_URL || 'https://app.smainer.io') + '/connect';
 }
 
 function loadPersistedWallet(): ConnectedWallet | null {
@@ -423,7 +423,7 @@ function MainApp() {
             </div>
           </div>
         </div>
-        <NavBar currentView="home" navigate={navigate} />
+        <NavBar currentView={currentView} navigate={navigate} />
       </main>
     );
   }

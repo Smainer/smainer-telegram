@@ -27,7 +27,7 @@ class RelayerClient:
     """Talks to the Smainer Relayer over its REST API.
 
     Usage (inside a Vercel function):
-        client = RelayerClient(callback_base_url="https://smainer-bot.vercel.app")
+        client = RelayerClient(callback_base_url="https://bot.smainer.io")
         task_id = await client.submit_inference(req)
     """
 

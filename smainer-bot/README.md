@@ -96,7 +96,7 @@ See [.env.example](.env.example) for the full list with descriptions.
 | `RELAYER_API_URL` | ✅ | Smainer Relayer base URL |
 | `RELAYER_API_KEY` | ✅ | Relayer API authentication key |
 | `CALLBACK_SIGNING_SECRET` | ✅ | HMAC key for relayer→bot callback verification |
-| `CALLBACK_BASE_URL` | ✅ | Base URL for bot callbacks (e.g., https://smainer-bot.vercel.app) |
+| `CALLBACK_BASE_URL` | ✅ | Base URL for bot callbacks (e.g., https://bot.smainer.io) |
 | `STARKNET_RPC_URL` | ✅ | Starknet JSON-RPC endpoint |
 | `STRK_TOKEN_ADDRESS` | ✅ | $STRK ERC-20 contract address |
 | `SMAINER_CONTRACT_ADDRESS` | ✅ | SmainerEscrow contract address |
@@ -117,7 +117,7 @@ After deploying, register the webhook URL with Telegram:
 curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://smainer-bot.vercel.app/api/webhook",
+    "url": "https://bot.smainer.io/api/webhook",
     "secret_token": "'$WEBHOOK_SECRET'"
   }'
 ```

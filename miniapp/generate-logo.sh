@@ -23,7 +23,7 @@ if [ -f "smainer-logo-512x512.png" ]; then
     echo "2. Send: /newapp"
     echo "3. Select: @smainer_ai_bot"
     echo "4. Upload: smainer-logo-512x512.png"
-    echo "5. URL: https://smainer-miniapp.vercel.app"
+    echo "5. URL: https://app.smainer.io"
 else
     echo "❌ Failed to generate PNG. Try the HTML generator instead:"
     echo "   Open logo-generator.html in your browser"

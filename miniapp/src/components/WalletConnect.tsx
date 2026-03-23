@@ -16,6 +16,7 @@ interface WalletConnectProps {
 
 export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [showTelegramWalletInfo, setShowTelegramWalletInfo] = useState(false);
   const { connect, connectors } = useConnect();
   const { address, isConnected: starknetConnected, chainId } = useAccount();
   const { disconnect } = useDisconnect();
@@ -176,7 +177,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               name="Telegram Wallet"
               walletId="telegram"
               isLoading={false}
-              onClick={() => {}}
+              onClick={() => setShowTelegramWalletInfo(true)}
               disabled
             />
           </>
@@ -186,6 +187,77 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       <div className="wallet-footer">
         <p>Pay for compute in $STRK. No private keys stored.</p>
       </div>
+
+      {/* Telegram Wallet Info Modal */}
+      {showTelegramWalletInfo && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20,
+          }}
+          onClick={() => setShowTelegramWalletInfo(false)}
+        >
+          <div 
+            style={{
+              background: '#1A1A2E',
+              border: '1px solid #2A2A4A',
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 340,
+              width: '100%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: 10, 
+                background: '#2A2A4A', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 3L10 14M21 3l-7 18-4-8-8-4 18-7z" stroke="#3B82F6" strokeWidth="1.5" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', margin: 0 }}>
+                Telegram Wallet
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: 14, color: '#A1A1AA', lineHeight: 1.6, margin: 0, marginBottom: 20 }}>
+              Telegram Wallet uses the TON blockchain. Smainer runs on Starknet. We're exploring cross-chain bridges to support TON payments in the future.
+            </p>
+            
+            <button
+              onClick={() => setShowTelegramWalletInfo(false)}
+              style={{
+                width: '100%',
+                padding: '12px 20px',
+                background: '#3B82F6',
+                border: 'none',
+                borderRadius: 10,
+                color: 'white',
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -239,11 +311,14 @@ function WalletLink({ name, href }: { name: string; href: string }) {
 function OpenInBrowserButton() {
   const handleOpenInBrowser = () => {
     const tg = (window as any).Telegram?.WebApp;
-    const url = 'https://smainer-miniapp.vercel.app';
-    if (tg?.openLink) {
-      tg.openLink(url);
-    } else {
+    const url = 'https://app.smainer.io';
+    // Use window.open to force system browser (tg.openLink opens in-app browser)
+    // This triggers the external browser even on mobile Telegram
+    if (typeof window !== 'undefined') {
       window.open(url, '_blank');
+    } else if (tg?.openLink) {
+      // Fallback: try with try_instant_view: false to avoid miniapp re-render
+      tg.openLink(url, { try_instant_view: false });
     }
   };
 

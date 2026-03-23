@@ -9,7 +9,7 @@ set -euo pipefail
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <miniapp_base_url>"
-  echo "Example: $0 https://smainer-miniapp.vercel.app"
+  echo "Example: $0 https://app.smainer.io"
   exit 1
 fi
 

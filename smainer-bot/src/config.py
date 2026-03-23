@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # MiniApp
     # ------------------------------------------------------------------
     miniapp_url: str = Field(
-        default="https://smainer-miniapp.vercel.app",
+        default="https://app.smainer.io",
         description="Telegram MiniApp base URL",
     )
 
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     # Callback URLs (for Vercel serverless)
     # ------------------------------------------------------------------
     callback_base_url: str = Field(
-        default="https://smainer-bot.vercel.app",
+        default="https://bot.smainer.io",
         description="Base URL for relayer callbacks (stream/complete endpoints)",
     )
 

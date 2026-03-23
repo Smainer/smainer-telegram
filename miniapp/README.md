@@ -46,13 +46,13 @@ Starknet AI tasks through Telegram. Connect wallet, run compute tasks, pay with 
    ```
 
 3. **Telegram Bot Setup**
-   - Get your Vercel deployment URL (e.g., `https://smainer-miniapp.vercel.app`)
+   - Get your Vercel deployment URL (e.g., `https://app.smainer.io`)
    - Set Mini App URL in [@BotFather](https://t.me/BotFather):
      ```
      /setmenubutton
      @your_bot_name
      Smainer AI
-     https://smainer-miniapp.vercel.app
+     https://app.smainer.io
      ```
 
 4. **Custom Domain (Optional)**

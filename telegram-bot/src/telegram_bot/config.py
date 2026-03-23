@@ -76,8 +76,8 @@ class Settings(BaseSettings):
 
     # MiniApp
     miniapp_url: str = Field(
-        default="https://smainer-miniapp.vercel.app",
-        description="Telegram MiniApp base URL (e.g. https://smainer-miniapp.vercel.app)",
+        default="https://app.smainer.io",
+        description="Telegram MiniApp base URL (e.g. https://app.smainer.io)",
     )
     miniapp_connect_url: str = Field(
         default="",
