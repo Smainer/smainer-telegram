@@ -2,7 +2,7 @@
 
 All handlers are pure async functions — no class, no shared state between
 invocations. Each function receives a parsed Telegram Update and dependencies
-injected from the calling Vercel function (redis, relayer_client, etc.).
+injected from the calling Vercel function (relayer_client, wallet_mgr, etc.).
 
 Uses python-telegram-bot's Bot(token=...) direct methods for sending messages.
 """
@@ -15,7 +15,6 @@ import logging
 import time
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-import redis.asyncio as aioredis
 from telegram import (
     Bot,
     KeyboardButton,
@@ -33,10 +32,6 @@ from .relayer_client import RelayerClient
 from .wallet import BalanceUnavailableError, WalletManager
 
 logger = logging.getLogger(__name__)
-
-# Redis key schemas (must match exactly across all modules)
-PENDING_TASKS_KEY = "tgbot:tasks:pending"
-PREFS_KEY = "tgbot:prefs:{user_id}"
 
 # Timeout constants
 HANDLER_TIMEOUT = 25  # seconds — Vercel functions have 30s max
@@ -436,7 +431,7 @@ async def handle_models(
 async def handle_set_model(
     update: Dict[str, Any],
     bot: Bot,
-    redis: aioredis.Redis,
+    relayer: RelayerClient,
 ) -> None:
     """Handle /model <name> — set preferred model."""
     message = update.get("message", {})
@@ -447,7 +442,7 @@ async def handle_set_model(
     # Parse model name from command
     parts = text.split(maxsplit=1)
     if len(parts) < 2:
-        current = await redis.hget(PREFS_KEY.format(user_id=user_id), "model")
+        current = await relayer.kv_get(f"prefs:{user_id}:model")
         current = current or settings.default_model
         await bot.send_message(
             chat_id=chat_id,
@@ -457,7 +452,7 @@ async def handle_set_model(
         return
 
     model_name = parts[1].strip()
-    await redis.hset(PREFS_KEY.format(user_id=user_id), "model", model_name)
+    await relayer.kv_set(f"prefs:{user_id}:model", model_name)
     await bot.send_message(
         chat_id=chat_id,
         text=f"Model set to `{model_name}`",
@@ -474,7 +469,6 @@ async def handle_set_model(
 async def handle_inference(
     update: Dict[str, Any],
     bot: Bot,
-    redis: aioredis.Redis,
     wallet_mgr: WalletManager,
     payment_mgr: PaymentManager,
     relayer: RelayerClient,
@@ -524,8 +518,7 @@ async def handle_inference(
         return
 
     # 3. Determine model and tier
-    user_model = await redis.hget(PREFS_KEY.format(user_id=user_id), "model")
-    user_model = user_model or settings.default_model
+    user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
     tier = infer_tier(user_model)
 
     # 4. Check for available compute nodes
@@ -574,7 +567,7 @@ async def handle_inference(
         text="Running compute task...",
     )
 
-    # 6. Submit to relayer
+    # 6. Submit to relayer (chat_id/msg_id encoded in callback URL)
     req = InferenceRequest(
         telegram_user_id=user_id,
         chat_id=chat_id,
@@ -595,19 +588,12 @@ async def handle_inference(
         )
         return
 
-    # 7. Reserve payment
+    # 7. Log payment reservation
     await payment_mgr.reserve_payment(
         task_id=task_id,
         user_id=user_id,
         starknet_address=address,
         amount=settings.prompt_cost_strk,
-    )
-
-    # 8. Track for callback routing in Redis
-    await redis.hset(
-        PENDING_TASKS_KEY,
-        task_id,
-        f"{chat_id}:{placeholder.message_id}",
     )
 
     await bot.edit_message_text(

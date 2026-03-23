@@ -1,4 +1,4 @@
-"""Tests for src/wallet.py — WalletManager (mocked starknet-py + Redis)."""
+"""Tests for src/wallet.py — WalletManager (mocked starknet-py + Relayer KV)."""
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,8 +12,8 @@ from src.wallet import BalanceUnavailableError, WalletManager
 
 
 @pytest.fixture
-def wallet_mgr(mock_redis):
-    return WalletManager(mock_redis)
+def wallet_mgr(mock_kv_client):
+    return WalletManager(mock_kv_client)
 
 
 # ---------------------------------------------------------------------------
@@ -60,14 +60,13 @@ class TestNormalizeAddress:
 
 class TestLinkWallet:
     @pytest.mark.asyncio
-    async def test_link_stores_normalized_address(self, wallet_mgr, mock_redis):
+    async def test_link_stores_normalized_address(self, wallet_mgr, mock_kv_client):
         await wallet_mgr.link_wallet(12345, "0x04a3ff")
 
-        mock_redis.hset.assert_called_once()
-        key = mock_redis.hset.call_args[0][0]
-        assert key == "tgbot:wallet:12345"
-        mapping = mock_redis.hset.call_args[1]["mapping"]
-        assert mapping["address"] == "0x" + "04a3ff".zfill(64)
+        mock_kv_client.kv_set.assert_called_once()
+        args, kwargs = mock_kv_client.kv_set.call_args
+        assert args[0] == "wallet:12345"
+        assert args[1] == "0x" + "04a3ff".zfill(64)
 
     @pytest.mark.asyncio
     async def test_link_invalid_address_raises(self, wallet_mgr):
@@ -82,9 +81,9 @@ class TestLinkWallet:
 
 class TestUnlinkWallet:
     @pytest.mark.asyncio
-    async def test_unlink_deletes_key(self, wallet_mgr, mock_redis):
+    async def test_unlink_deletes_key(self, wallet_mgr, mock_kv_client):
         await wallet_mgr.unlink_wallet(12345)
-        mock_redis.delete.assert_called_once_with("tgbot:wallet:12345")
+        mock_kv_client.kv_delete.assert_called_once_with("wallet:12345")
 
 
 # ---------------------------------------------------------------------------
@@ -94,20 +93,14 @@ class TestUnlinkWallet:
 
 class TestGetLinkedAddress:
     @pytest.mark.asyncio
-    async def test_returns_address_bytes(self, wallet_mgr, mock_redis):
-        mock_redis.hget.return_value = b"0x04a3"
+    async def test_returns_address_str(self, wallet_mgr, mock_kv_client):
+        mock_kv_client.kv_get.return_value = "0x04a3"
         result = await wallet_mgr.get_linked_address(12345)
         assert result == "0x04a3"
 
     @pytest.mark.asyncio
-    async def test_returns_address_str(self, wallet_mgr, mock_redis):
-        mock_redis.hget.return_value = "0x04a3"
-        result = await wallet_mgr.get_linked_address(12345)
-        assert result == "0x04a3"
-
-    @pytest.mark.asyncio
-    async def test_returns_none_when_not_linked(self, wallet_mgr, mock_redis):
-        mock_redis.hget.return_value = None
+    async def test_returns_none_when_not_linked(self, wallet_mgr, mock_kv_client):
+        mock_kv_client.kv_get.return_value = None
         result = await wallet_mgr.get_linked_address(12345)
         assert result is None
 

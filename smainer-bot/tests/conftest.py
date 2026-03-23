@@ -12,7 +12,6 @@ os.environ.setdefault("WEBHOOK_SECRET", "test-webhook-secret")
 os.environ.setdefault("RELAYER_API_URL", "https://api.test.smainer.io")
 os.environ.setdefault("RELAYER_API_KEY", "test-relayer-key")
 os.environ.setdefault("CALLBACK_SIGNING_SECRET", "test-signing-secret")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
 os.environ.setdefault("STARKNET_RPC_URL", "https://test-rpc.example.com")
 os.environ.setdefault("CALLBACK_BASE_URL", "https://test-bot.vercel.app")
 
@@ -20,25 +19,15 @@ import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import redis.asyncio as aioredis
-
 
 @pytest.fixture
-def mock_redis():
-    """Return an AsyncMock that behaves like an async Redis client."""
-    r = AsyncMock(spec=aioredis.Redis)
-    r.hset = AsyncMock()
-    r.hget = AsyncMock(return_value=None)
-    r.hgetall = AsyncMock(return_value={})
-    r.hdel = AsyncMock()
-    r.exists = AsyncMock(return_value=1)
-    r.expire = AsyncMock()
-    r.delete = AsyncMock()
-    r.append = AsyncMock()
-    r.get = AsyncMock(return_value=None)
-    r.setex = AsyncMock()
-    r.aclose = AsyncMock()
-    return r
+def mock_kv_client():
+    """Return an AsyncMock that behaves like a RelayerClient KV interface."""
+    kv = AsyncMock()
+    kv.kv_get = AsyncMock(return_value=None)
+    kv.kv_set = AsyncMock()
+    kv.kv_delete = AsyncMock()
+    return kv
 
 
 @pytest.fixture

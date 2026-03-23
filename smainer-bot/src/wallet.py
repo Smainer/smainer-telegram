@@ -1,19 +1,15 @@
 """Starknet wallet linking and $STRK balance verification.
 
-Serverless edition: Redis client is created per invocation (Upstash TLS).
-Wallet links are stored in Redis under tgbot:wallet:{user_id}.
+Serverless edition: wallet links are stored via the Relayer KV API
+(backed by the relayer's own Redis). No direct Redis dependency.
 """
 
 import logging
 from typing import Optional
 
-import redis.asyncio as aioredis
-
 from .config import settings
 
 logger = logging.getLogger(__name__)
-
-_WALLET_KEY = "tgbot:wallet:{user_id}"
 
 
 class BalanceUnavailableError(Exception):
@@ -23,12 +19,11 @@ class BalanceUnavailableError(Exception):
 class WalletManager:
     """Manages user wallet links and $STRK balance checks.
 
-    Args:
-        redis: An async Redis client connected to Upstash (or local Redis).
+    Uses the Relayer's /api/v1/bot/kv/ endpoints for persistence.
     """
 
-    def __init__(self, redis: aioredis.Redis) -> None:
-        self._redis = redis
+    def __init__(self, kv_client) -> None:
+        self._kv = kv_client  # RelayerKVClient
         self._starknet = None  # Lazy-loaded to avoid cold start penalty
 
     # ------------------------------------------------------------------
@@ -36,24 +31,18 @@ class WalletManager:
     # ------------------------------------------------------------------
 
     async def link_wallet(self, user_id: int, starknet_address: str) -> None:
-        """Store the user ↔ Starknet address mapping in Redis."""
+        """Store the user ↔ Starknet address mapping via Relayer KV."""
         normalized = self._normalize_address(starknet_address)
-        await self._redis.hset(
-            _WALLET_KEY.format(user_id=user_id),
-            mapping={"address": normalized},
-        )
+        await self._kv.kv_set(f"wallet:{user_id}", normalized)
         logger.info("Wallet linked", extra={"user_id": user_id})
 
     async def unlink_wallet(self, user_id: int) -> None:
-        """Remove the user's wallet link from Redis."""
-        await self._redis.delete(_WALLET_KEY.format(user_id=user_id))
+        """Remove the user's wallet link."""
+        await self._kv.kv_delete(f"wallet:{user_id}")
 
     async def get_linked_address(self, user_id: int) -> Optional[str]:
         """Return the linked Starknet address, or None if not linked."""
-        raw = await self._redis.hget(_WALLET_KEY.format(user_id=user_id), "address")
-        if raw is None:
-            return None
-        return raw.decode() if isinstance(raw, bytes) else raw
+        return await self._kv.kv_get(f"wallet:{user_id}")
 
     # ------------------------------------------------------------------
     # Balance

@@ -15,8 +15,6 @@ from src.handlers import (
     handle_set_model,
     handle_inference,
     handle_webapp_data,
-    PENDING_TASKS_KEY,
-    PREFS_KEY,
 )
 from src.models import ModelTier
 from src.wallet import BalanceUnavailableError, WalletManager
@@ -310,21 +308,26 @@ class TestHandleModels:
 
 class TestHandleSetModel:
     @pytest.mark.asyncio
-    async def test_set_model(self, mock_bot, mock_redis):
+    async def test_set_model(self, mock_bot):
+        relayer = AsyncMock(spec=RelayerClient)
+        relayer.kv_get = AsyncMock(return_value=None)
+        relayer.kv_set = AsyncMock()
         update = _make_update("/model llama3.1:70b")
 
-        await handle_set_model(update, mock_bot, mock_redis)
+        await handle_set_model(update, mock_bot, relayer)
 
-        mock_redis.hset.assert_called_once()
+        relayer.kv_set.assert_called_once()
         text = mock_bot.send_message.call_args[1]["text"]
         assert "llama3.1:70b" in text
 
     @pytest.mark.asyncio
-    async def test_show_current_model(self, mock_bot, mock_redis):
-        mock_redis.hget.return_value = "mistral:7b"
+    async def test_show_current_model(self, mock_bot):
+        relayer = AsyncMock(spec=RelayerClient)
+        relayer.kv_get = AsyncMock(return_value="mistral:7b")
+        relayer.kv_set = AsyncMock()
         update = _make_update("/model")
 
-        await handle_set_model(update, mock_bot, mock_redis)
+        await handle_set_model(update, mock_bot, relayer)
 
         text = mock_bot.send_message.call_args[1]["text"]
         assert "mistral:7b" in text
@@ -337,7 +340,7 @@ class TestHandleSetModel:
 
 class TestHandleInference:
     @pytest.fixture
-    def deps(self, mock_bot, mock_redis):
+    def deps(self, mock_bot):
         wallet_mgr = AsyncMock(spec=WalletManager)
         wallet_mgr.get_linked_address.return_value = "0x" + "ab" * 32
         wallet_mgr.has_sufficient_balance.return_value = True
@@ -349,12 +352,11 @@ class TestHandleInference:
             {"node_id": "n1", "gpu": "RTX4090", "ram_gb": 64, "supported_tiers": ["small"]}
         ]
         relayer.submit_inference.return_value = "task-xyz"
-
-        mock_redis.hget.return_value = None  # No user model pref
+        relayer.kv_get = AsyncMock(return_value=None)
+        relayer.kv_set = AsyncMock()
 
         return {
             "bot": mock_bot,
-            "redis": mock_redis,
             "wallet_mgr": wallet_mgr,
             "payment_mgr": payment_mgr,
             "relayer": relayer,
@@ -367,7 +369,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],
@@ -384,7 +385,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],
@@ -402,7 +402,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],
@@ -419,7 +418,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],
@@ -435,7 +433,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],
@@ -453,7 +450,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],
@@ -470,7 +466,6 @@ class TestHandleInference:
         await handle_inference(
             update,
             deps["bot"],
-            deps["redis"],
             deps["wallet_mgr"],
             deps["payment_mgr"],
             deps["relayer"],

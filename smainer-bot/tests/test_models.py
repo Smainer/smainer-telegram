@@ -7,7 +7,6 @@ from src.models import (
     InferenceRequest,
     ModelTier,
     MODEL_TIER_REQUIREMENTS,
-    StreamChunk,
     TaskCallback,
     TaskStatusResponse,
     TaskSubmissionPayload,
@@ -183,35 +182,6 @@ class TestTaskStatusResponse:
 
 
 # ---------------------------------------------------------------------------
-# StreamChunk
-# ---------------------------------------------------------------------------
-
-
-class TestStreamChunk:
-    def test_partial_chunk(self):
-        c = StreamChunk(task_id="t1", chunk="Hello ")
-        assert c.done is False
-        assert c.chunk == "Hello "
-
-    def test_final_chunk(self):
-        c = StreamChunk(task_id="t1", chunk="world!", done=True)
-        assert c.done is True
-
-    def test_from_json(self):
-        raw = b'{"task_id":"t2","chunk":"data","done":false}'
-        c = StreamChunk.model_validate_json(raw)
-        assert c.task_id == "t2"
-
-    def test_missing_task_id(self):
-        with pytest.raises(ValidationError):
-            StreamChunk(chunk="no task id")
-
-    def test_missing_chunk(self):
-        with pytest.raises(ValidationError):
-            StreamChunk(task_id="t1")
-
-
-# ---------------------------------------------------------------------------
 # TaskCallback
 # ---------------------------------------------------------------------------
 
@@ -241,3 +211,16 @@ class TestTaskCallback:
     def test_missing_status(self):
         with pytest.raises(ValidationError):
             TaskCallback(task_id="t1")
+
+    def test_callback_with_routing_fields(self):
+        cb = TaskCallback(
+            task_id="t1", status="completed",
+            chat_id=67890, message_id=999,
+        )
+        assert cb.chat_id == 67890
+        assert cb.message_id == 999
+
+    def test_callback_routing_fields_optional(self):
+        cb = TaskCallback(task_id="t1", status="completed")
+        assert cb.chat_id is None
+        assert cb.message_id is None

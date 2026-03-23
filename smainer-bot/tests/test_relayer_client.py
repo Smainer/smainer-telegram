@@ -104,8 +104,8 @@ class TestSubmitInference:
 
             call_kwargs = mock_http.post.call_args
             body = call_kwargs[1]["json"]
-            assert body["payload"]["stream_callback_url"] == "https://test-bot.vercel.app/api/callback/stream"
             assert body["payload"]["complete_callback_url"] == "https://test-bot.vercel.app/api/callback/complete"
+            assert "stream_callback_url" not in body["payload"]
 
 
 # ---------------------------------------------------------------------------

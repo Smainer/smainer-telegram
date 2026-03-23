@@ -1,9 +1,7 @@
 """Pydantic models shared across the Smainer Bot serverless modules.
 
-Copied and adapted from the polling-bot models.py. Callback fields have
-been updated: the bot no longer runs its own callback server — Vercel
-functions at /api/callback/stream and /api/callback/complete receive
-relayer pushes directly.
+Task results arrive via Vercel function at /api/callback/complete.
+Routing state (chat_id, message_id) is encoded in callback URL query params.
 """
 
 from enum import Enum
@@ -74,14 +72,6 @@ class TaskStatusResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class StreamChunk(BaseModel):
-    """A streaming chunk pushed by the Relayer to /api/callback/stream."""
-
-    task_id: str
-    chunk: str  # partial text
-    done: bool = False
-
-
 class TaskCallback(BaseModel):
     """Final payload pushed by the Relayer to /api/callback/complete."""
 
@@ -90,3 +80,6 @@ class TaskCallback(BaseModel):
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     execution_time: Optional[float] = None
+    # Routing fields — enriched by relayer from original task payload
+    chat_id: Optional[int] = None
+    message_id: Optional[int] = None

@@ -15,7 +15,6 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler
 
-import redis.asyncio as aioredis
 from telegram import Bot
 
 from src.config import settings
@@ -59,72 +58,61 @@ def _verify_webhook_secret(secret_header: str | None) -> bool:
 async def _process_update(update: dict) -> None:
     """Route the Telegram update to the appropriate handler.
     
-    Creates Redis connection, Bot instance, and all dependencies per invocation.
-    Handlers are responsible for sending responses directly via bot.send_message().
+    Creates Bot instance and all dependencies per invocation.
+    No Redis — wallet/prefs persist via relayer KV API, callback
+    routing state is encoded in callback URL query params.
     """
-    # Create dependencies for this invocation
-    redis_client = aioredis.from_url(
-        settings.redis_url,
-        decode_responses=True,
-        socket_timeout=10,
-        socket_connect_timeout=5,
-    )
-    
-    try:
-        bot = Bot(token=settings.telegram_bot_token)
-        wallet_mgr = WalletManager(redis_client)
-        payment_mgr = PaymentManager(redis_client)
-        relayer = RelayerClient(callback_base_url=settings.callback_base_url)
-        
-        # Determine update type and route
-        message = update.get("message", {})
-        
-        # Check for web_app_data first (special message type)
-        if "web_app_data" in message:
-            await handle_webapp_data(update, bot, wallet_mgr)
-            return
-        
-        text = message.get("text", "")
-        
-        if not text:
-            # Non-text message (photo, document, etc.) — ignore
-            return
-        
-        # Route commands
-        if text.startswith("/start"):
-            await handle_start(update, bot, wallet_mgr)
-        elif text.startswith("/help"):
-            await handle_help(update, bot)
-        elif text.startswith("/link"):
-            await handle_link(update, bot, wallet_mgr)
-        elif text.startswith("/unlink"):
-            await handle_unlink(update, bot, wallet_mgr)
-        elif text.startswith("/balance"):
-            await handle_balance(update, bot, wallet_mgr)
-        elif text.startswith("/models"):
-            await handle_models(update, bot, relayer)
-        elif text.startswith("/model"):
-            await handle_set_model(update, bot, redis_client)
-        elif not text.startswith("/"):
-            # Any plain text that isn't a command → treat as inference request
-            await handle_inference(
-                update,
-                bot,
-                redis_client,
-                wallet_mgr,
-                payment_mgr,
-                relayer,
+    bot = Bot(token=settings.telegram_bot_token)
+    relayer = RelayerClient(callback_base_url=settings.callback_base_url)
+    wallet_mgr = WalletManager(relayer)
+    payment_mgr = PaymentManager()
+
+    # Determine update type and route
+    message = update.get("message", {})
+
+    # Check for web_app_data first (special message type)
+    if "web_app_data" in message:
+        await handle_webapp_data(update, bot, wallet_mgr)
+        return
+
+    text = message.get("text", "")
+
+    if not text:
+        # Non-text message (photo, document, etc.) — ignore
+        return
+
+    # Route commands
+    if text.startswith("/start"):
+        await handle_start(update, bot, wallet_mgr)
+    elif text.startswith("/help"):
+        await handle_help(update, bot)
+    elif text.startswith("/link"):
+        await handle_link(update, bot, wallet_mgr)
+    elif text.startswith("/unlink"):
+        await handle_unlink(update, bot, wallet_mgr)
+    elif text.startswith("/balance"):
+        await handle_balance(update, bot, wallet_mgr)
+    elif text.startswith("/models"):
+        await handle_models(update, bot, relayer)
+    elif text.startswith("/model"):
+        await handle_set_model(update, bot, relayer)
+    elif not text.startswith("/"):
+        # Any plain text that isn't a command → treat as inference request
+        await handle_inference(
+            update,
+            bot,
+            wallet_mgr,
+            payment_mgr,
+            relayer,
+        )
+    else:
+        # Unknown command — send help hint
+        chat_id = message.get("chat", {}).get("id")
+        if chat_id:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Unknown command. Try /help for available commands.",
             )
-        else:
-            # Unknown command — send help hint
-            chat_id = message.get("chat", {}).get("id")
-            if chat_id:
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text="Unknown command. Try /help for available commands.",
-                )
-    finally:
-        await redis_client.aclose()
 
 
 class handler(BaseHTTPRequestHandler):

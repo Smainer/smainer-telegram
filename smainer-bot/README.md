@@ -17,11 +17,11 @@ Telegram
   │
   └──◄─────────────────────────────  POST /api/callback/complete  (Vercel function)
   │
-  ├──► wallet.py    ──► Redis (Upstash) + Starknet RPC
-  └──► payment.py   ──► Redis (Upstash)
+  ├──► wallet.py    ──► Relayer KV API + Starknet RPC
+  └──► payment.py   ──► Log-only (stateless)
 ```
 
-**Key difference from the polling bot:** Every handler is a stateless HTTP function invoked by Telegram's webhook push. Redis (Upstash) persists wallet links and pending payment state between invocations.
+**Key difference from the polling bot:** Every handler is a stateless HTTP function invoked by Telegram's webhook push. The Relayer KV API persists wallet links between invocations. Payment tracking is log-only.
 
 ## Directory Layout
 
@@ -37,8 +37,8 @@ smainer-bot/
 │   ├── config.py            # Pydantic Settings — all env vars
 │   ├── handlers.py          # Stateless command/message handler functions
 │   ├── relayer_client.py    # httpx client for Relayer REST API
-│   ├── wallet.py            # Wallet link/unlink + STRK balance via Redis
-│   ├── payment.py           # Payment intent lifecycle via Redis
+│   ├── wallet.py            # Wallet link/unlink + STRK balance via Relayer KV
+│   ├── payment.py           # Payment lifecycle (log-only, stateless)
 │   └── models.py            # Pydantic schemas
 ├── tests/
 ├── vercel.json
@@ -96,7 +96,7 @@ See [.env.example](.env.example) for the full list with descriptions.
 | `RELAYER_API_URL` | ✅ | Smainer Relayer base URL |
 | `RELAYER_API_KEY` | ✅ | Relayer API authentication key |
 | `CALLBACK_SIGNING_SECRET` | ✅ | HMAC key for relayer→bot callback verification |
-| `REDIS_URL` | ✅ | Upstash Redis TLS URL (`rediss://...`) |
+| `CALLBACK_BASE_URL` | ✅ | Base URL for bot callbacks (e.g., https://smainer-bot.vercel.app) |
 | `STARKNET_RPC_URL` | ✅ | Starknet JSON-RPC endpoint |
 | `STRK_TOKEN_ADDRESS` | ✅ | $STRK ERC-20 contract address |
 | `SMAINER_CONTRACT_ADDRESS` | ✅ | SmainerEscrow contract address |

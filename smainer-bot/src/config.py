@@ -43,14 +43,6 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
-    # Redis (Upstash — TCP or HTTP compatible)
-    # ------------------------------------------------------------------
-    redis_url: str = Field(
-        default="redis://localhost:6379/1",
-        description="Redis / Upstash URL — use 'rediss://' for TLS (Upstash)",
-    )
-
-    # ------------------------------------------------------------------
     # Starknet
     # ------------------------------------------------------------------
     starknet_rpc_url: str = Field(

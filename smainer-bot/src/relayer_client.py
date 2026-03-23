@@ -37,8 +37,7 @@ class RelayerClient:
             "Authorization": f"Bearer {settings.relayer_api_key}",
             "Content-Type": "application/json",
         }
-        # Vercel function URLs that the Relayer will push results back to.
-        self._stream_callback_url = f"{callback_base_url.rstrip('/')}/api/callback/stream"
+        # Full Vercel endpoint URL — relayer will POST directly to this.
         self._complete_callback_url = f"{callback_base_url.rstrip('/')}/api/callback/complete"
 
     async def submit_inference(self, req: InferenceRequest) -> Optional[str]:
@@ -53,7 +52,6 @@ class RelayerClient:
                 "telegram_user_id": req.telegram_user_id,
                 "chat_id": req.chat_id,
                 "message_id": req.message_id,
-                "stream_callback_url": self._stream_callback_url,
                 "complete_callback_url": self._complete_callback_url,
             },
             requirements={
@@ -228,3 +226,53 @@ class RelayerClient:
         except httpx.RequestError as e:
             logger.error(f"Error listing nodes: {e}")
             return []
+
+    # ------------------------------------------------------------------
+    # Relayer KV store (bot state persistence)
+    # ------------------------------------------------------------------
+
+    async def kv_get(self, key: str) -> Optional[str]:
+        """Get a value from the relayer KV store."""
+        try:
+            async with httpx.AsyncClient(
+                headers=self._headers, timeout=DEFAULT_TIMEOUT
+            ) as client:
+                resp = await client.get(f"{self._base}/api/v1/bot/kv/{key}")
+                if resp.status_code == 404:
+                    return None
+                resp.raise_for_status()
+                return resp.json().get("value")
+        except httpx.RequestError as e:
+            logger.warning(f"KV get error for key={key}: {e}")
+            return None
+
+    async def kv_set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        """Set a value in the relayer KV store."""
+        try:
+            body: Dict[str, Any] = {"value": value}
+            if ttl:
+                body["ttl_seconds"] = ttl
+            async with httpx.AsyncClient(
+                headers=self._headers, timeout=DEFAULT_TIMEOUT
+            ) as client:
+                resp = await client.put(
+                    f"{self._base}/api/v1/bot/kv/{key}",
+                    json=body,
+                )
+                resp.raise_for_status()
+                return True
+        except httpx.RequestError as e:
+            logger.warning(f"KV set error for key={key}: {e}")
+            return False
+
+    async def kv_delete(self, key: str) -> bool:
+        """Delete a key from the relayer KV store."""
+        try:
+            async with httpx.AsyncClient(
+                headers=self._headers, timeout=DEFAULT_TIMEOUT
+            ) as client:
+                resp = await client.delete(f"{self._base}/api/v1/bot/kv/{key}")
+                return resp.status_code in (200, 404)
+        except httpx.RequestError as e:
+            logger.warning(f"KV delete error for key={key}: {e}")
+            return False
