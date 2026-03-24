@@ -1,65 +1,33 @@
 import React from 'react';
 
 /**
- * AnimatedLogo - Drop-in replacement for SmainerLogo with 3D spin-to-front animation
- * on the 2 blue accent squares.
+ * AnimatedLogo - Refined branded logo with subtle floating animation.
  * 
  * Usage: <AnimatedLogo size={64} />
  * 
- * The animation uses CSS 3D transforms to create a subtle spin-and-float effect
- * on only the blue squares while keeping the white blocks static.
+ * Implements a gentle float effect while maintaining the static block arrangement
+ * for a premium, non-distracting feel.
  */
 
 const styles = `
-@keyframes spinFloat {
+@keyframes gentleFloat {
   0% {
-    transform: perspective(400px) rotateX(0deg);
-  }
-  25% {
-    transform: perspective(400px) rotateX(90deg);
+    transform: translateY(0px);
   }
   50% {
-    transform: perspective(400px) rotateX(180deg);
-  }
-  75% {
-    transform: perspective(400px) rotateX(270deg);
+    transform: translateY(-4px);
   }
   100% {
-    transform: perspective(400px) rotateX(360deg);
+    transform: translateY(0px);
   }
 }
 
-@keyframes spinFloatDelayed {
-  0% {
-    transform: perspective(400px) rotateX(180deg);
-  }
-  25% {
-    transform: perspective(400px) rotateX(270deg);
-  }
-  50% {
-    transform: perspective(400px) rotateX(360deg);
-  }
-  75% {
-    transform: perspective(400px) rotateX(450deg);
-  }
-  100% {
-    transform: perspective(400px) rotateX(540deg);
-  }
+.smainer-logo-container {
+  animation: gentleFloat 3s ease-in-out infinite;
 }
 
-.smainer-logo-blue-block-1 {
-  animation: spinFloat 4s ease-in-out infinite;
-  transform-origin: center center;
-  transform-style: preserve-3d;
-  backface-visibility: visible;
-}
-
-.smainer-logo-blue-block-2 {
-  animation: spinFloatDelayed 4s ease-in-out infinite;
-  animation-delay: -2s;
-  transform-origin: center center;
-  transform-style: preserve-3d;
-  backface-visibility: visible;
+.smainer-logo-glow {
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
 }
 `;
 
@@ -70,15 +38,14 @@ interface AnimatedLogoProps {
 
 export function AnimatedLogo({ size = 40, className = '' }: AnimatedLogoProps) {
   return (
-    <>
+    <div className={`smainer-logo-container ${className}`} style={{ width: size, height: size }}>
       <style>{styles}</style>
       <svg 
-        width={size} 
-        height={size} 
+        width="100%" 
+        height="100%" 
         viewBox="100 80 312 352" 
         fill="none" 
         xmlns="http://www.w3.org/2000/svg"
-        className={className}
         style={{ overflow: 'visible' }}
       >
         {/* Official: 7 compute blocks in distributed S-formation */}
@@ -86,10 +53,8 @@ export function AnimatedLogo({ size = 40, className = '' }: AnimatedLogoProps) {
         {/* White block - top center wide */}
         <rect x="200" y="104" width="112" height="48" rx="8" fill="#FFFFFF" />
         
-        {/* BLUE block 1 - top right (animated) */}
-        <g className="smainer-logo-blue-block-1">
-          <rect x="328" y="104" width="48" height="48" rx="8" fill="#3B82F6" />
-        </g>
+        {/* BLUE block 1 - top right */}
+        <rect x="328" y="104" width="48" height="48" rx="8" fill="#3B82F6" className="smainer-logo-glow" />
         
         {/* White block - upper left */}
         <rect x="136" y="168" width="48" height="48" rx="8" fill="#FFFFFF" />
@@ -100,15 +65,13 @@ export function AnimatedLogo({ size = 40, className = '' }: AnimatedLogoProps) {
         {/* White block - lower right */}
         <rect x="328" y="296" width="48" height="48" rx="8" fill="#FFFFFF" />
         
-        {/* BLUE block 2 - bottom left (animated) */}
-        <g className="smainer-logo-blue-block-2">
-          <rect x="136" y="360" width="48" height="48" rx="8" fill="#3B82F6" />
-        </g>
+        {/* BLUE block 2 - bottom left */}
+        <rect x="136" y="360" width="48" height="48" rx="8" fill="#3B82F6" className="smainer-logo-glow" />
         
         {/* White block - bottom center wide */}
         <rect x="200" y="360" width="112" height="48" rx="8" fill="#FFFFFF" />
       </svg>
-    </>
+    </div>
   );
 }
 

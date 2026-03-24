@@ -356,9 +356,9 @@ function MainApp() {
             transform: 'translateX(-50%)', 
             width: 600, 
             height: 400, 
-            background: '#3B82F6', 
-            opacity: 0.1, 
-            filter: 'blur(120px)' 
+            background: 'radial-gradient(circle, #3B82F6 0%, rgba(59, 130, 246, 0.4) 30%, transparent 70%)',
+            opacity: 0.15, 
+            filter: 'blur(80px)' 
           }} />
         </div>
 
