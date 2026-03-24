@@ -148,13 +148,10 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
           <>
             <div className="wallet-telegram-notice">
               <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 12, textAlign: 'center' }}>
-                Browser wallets aren't available inside Telegram.
-              </p>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>
-                Open in your mobile browser to connect Argent or Braavos.
+                Tap a wallet below to connect via the mobile app.
               </p>
             </div>
-            <OpenInBrowserButton />
+            <TelegramWalletDeepLinks />
           </>
         ) : availableConnectors.length === 0 ? (
           <>
@@ -308,45 +305,83 @@ function WalletLink({ name, href }: { name: string; href: string }) {
   );
 }
 
-function OpenInBrowserButton() {
-  const handleOpenInBrowser = () => {
+function TelegramWalletDeepLinks() {
+  const handleWalletDeepLink = (walletType: 'braavos' | 'argent') => {
     const tg = (window as any).Telegram?.WebApp;
-    const url = 'https://app.smainer.io';
-    // Use window.open to force system browser (tg.openLink opens in-app browser)
-    // This triggers the external browser even on mobile Telegram
-    if (typeof window !== 'undefined') {
-      window.open(url, '_blank');
-    } else if (tg?.openLink) {
-      // Fallback: try with try_instant_view: false to avoid miniapp re-render
+    const returnUrl = `${window.location.origin}/connect?return=telegram`;
+    
+    // Braavos dApp deep link format
+    // Format: https://link.braavos.app/dapp/<host>/<path>
+    const braavosUrl = `https://link.braavos.app/dapp/${window.location.host}/connect?return=telegram`;
+    
+    // Argent dApp deep link format  
+    // Format: https://www.argent.xyz/app/dapp/<url>
+    const argentUrl = `https://www.argent.xyz/app/dapp/${encodeURIComponent(returnUrl)}`;
+    
+    const url = walletType === 'braavos' ? braavosUrl : argentUrl;
+    
+    // Use Telegram's openLink to open external URL
+    if (tg?.openLink) {
       tg.openLink(url, { try_instant_view: false });
+    } else {
+      window.open(url, '_blank');
     }
   };
 
   return (
-    <button
-      onClick={handleOpenInBrowser}
-      style={{
-        width: '100%',
-        padding: '14px 20px',
-        background: 'var(--blue)',
-        border: 'none',
-        borderRadius: 12,
-        color: 'white',
-        fontSize: 15,
-        fontWeight: 600,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        marginTop: 12,
-      }}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-      </svg>
-      Open in Browser
-    </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <button
+        onClick={() => handleWalletDeepLink('braavos')}
+        style={{
+          width: '100%',
+          padding: '14px 20px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 12,
+          color: 'white',
+          fontSize: 15,
+          fontWeight: 600,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+        }}
+      >
+        <WalletIcon walletId="braavos" />
+        Connect with Braavos
+      </button>
+      <button
+        onClick={() => handleWalletDeepLink('argent')}
+        style={{
+          width: '100%',
+          padding: '14px 20px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 12,
+          color: 'white',
+          fontSize: 15,
+          fontWeight: 600,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+        }}
+      >
+        <WalletIcon walletId="argentx" />
+        Connect with Argent X
+      </button>
+      <p style={{ 
+        color: 'var(--text-muted)', 
+        fontSize: 12, 
+        textAlign: 'center',
+        marginTop: 8,
+        lineHeight: 1.5,
+      }}>
+        This will open your wallet app. After connecting, you'll return to Telegram.
+      </p>
+    </div>
   );
 }
 

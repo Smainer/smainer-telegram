@@ -42,16 +42,16 @@ HANDLER_TIMEOUT = 25  # seconds — Vercel functions have 30s max
 # ---------------------------------------------------------------------------
 
 
-def _open_app_keyboard() -> ReplyKeyboardMarkup:
-    """Build a persistent keyboard with the 'Open App' MiniApp button."""
-    open_button = KeyboardButton(
-        text="\U0001f680 Open App",
-        web_app=WebAppInfo(url=settings.get_miniapp_open_url()),
+def _connect_wallet_keyboard() -> ReplyKeyboardMarkup:
+    """Build a one-time keyboard with 'Connect Wallet' button for unlinked users."""
+    connect_button = KeyboardButton(
+        text="\U0001f517 Connect Wallet",
+        web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
     )
     return ReplyKeyboardMarkup(
-        keyboard=[[open_button]],
+        keyboard=[[connect_button]],
         resize_keyboard=True,
-        one_time_keyboard=False,
+        one_time_keyboard=True,  # Disappears after use to prevent stacking
     )
 
 
@@ -144,9 +144,9 @@ async def handle_start(
                 await wallet_mgr.link_wallet(user_id, address)
                 await bot.send_message(
                     chat_id=chat_id,
-                    text=f"✅ Wallet connected: `{address}`\n\nTap *Open App* below to start using Smainer.",
+                    text=f"✅ Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_markup=_open_app_keyboard(),
+                    reply_markup=ReplyKeyboardRemove(),
                 )
                 return
             except ValueError:
@@ -166,23 +166,13 @@ async def handle_start(
             text=(
                 "*Welcome back to Smainer*\n\n"
                 f"Wallet: `{linked_address}`\n\n"
-                "Tap *Open App* below to start a compute task, "
-                "or send any message directly.\n\n"
+                "Send any message to run AI inference.\n\n"
                 "/help for all commands"
             ),
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=_open_app_keyboard(),
+            reply_markup=ReplyKeyboardRemove(),
         )
     else:
-        connect_button = KeyboardButton(
-            text="\U0001f517 Connect Wallet",
-            web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
-        )
-        keyboard = ReplyKeyboardMarkup(
-            [[connect_button]],
-            resize_keyboard=True,
-            one_time_keyboard=True,
-        )
         await bot.send_message(
             chat_id=chat_id,
             text=(
@@ -192,7 +182,7 @@ async def handle_start(
                 "/help for all commands"
             ),
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=keyboard,
+            reply_markup=_connect_wallet_keyboard(),
         )
 
 
@@ -286,9 +276,9 @@ async def handle_webapp_data(
 
     await bot.send_message(
         chat_id=chat_id,
-        text=f"✅ Wallet connected: `{address}`\n\nTap *Open App* below to start using Smainer.",
+        text=f"✅ Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_open_app_keyboard(),
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 
