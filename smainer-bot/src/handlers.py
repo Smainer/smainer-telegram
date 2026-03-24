@@ -42,6 +42,19 @@ HANDLER_TIMEOUT = 25  # seconds — Vercel functions have 30s max
 # ---------------------------------------------------------------------------
 
 
+def _open_app_keyboard() -> ReplyKeyboardMarkup:
+    """Build a persistent keyboard with the 'Open App' MiniApp button."""
+    open_button = KeyboardButton(
+        text="\U0001f680 Open App",
+        web_app=WebAppInfo(url=settings.get_miniapp_open_url()),
+    )
+    return ReplyKeyboardMarkup(
+        keyboard=[[open_button]],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
 def escape_md(text: str) -> str:
     """Escape special characters for Telegram Markdown (V1)."""
     return text.replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
@@ -131,9 +144,9 @@ async def handle_start(
                 await wallet_mgr.link_wallet(user_id, address)
                 await bot.send_message(
                     chat_id=chat_id,
-                    text=f"✅ Wallet connected: `{address}`\n\nSend any message to run a compute task.",
+                    text=f"✅ Wallet connected: `{address}`\n\nTap *Open App* below to start using Smainer.",
                     parse_mode=ParseMode.MARKDOWN,
-                    reply_markup=ReplyKeyboardRemove(),
+                    reply_markup=_open_app_keyboard(),
                 )
                 return
             except ValueError:
@@ -144,32 +157,43 @@ async def handle_start(
                 )
                 return
 
-    # No deep link — show welcome with wallet connect button
-    connect_button = KeyboardButton(
-        text="Connect Wallet",
-        web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
-    )
-    open_button = KeyboardButton(
-        text="Open App",
-        web_app=WebAppInfo(url=settings.get_miniapp_open_url()),
-    )
-    keyboard = ReplyKeyboardMarkup(
-        [[connect_button], [open_button]],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
-    await bot.send_message(
-        chat_id=chat_id,
-        text=(
-            "*Welcome to Smainer*\n\n"
-            "Private compute on Starknet hardware. Pay per task in $STRK.\n\n"
-            "Connect your Starknet wallet below, "
-            "then send any message to run compute tasks.\n\n"
-            "/help for all commands"
-        ),
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=keyboard,
-    )
+    # No deep link — check wallet state and gate accordingly
+    linked_address = await wallet_mgr.get_linked_address(user_id)
+
+    if linked_address:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "*Welcome back to Smainer*\n\n"
+                f"Wallet: `{linked_address}`\n\n"
+                "Tap *Open App* below to start a compute task, "
+                "or send any message directly.\n\n"
+                "/help for all commands"
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_open_app_keyboard(),
+        )
+    else:
+        connect_button = KeyboardButton(
+            text="\U0001f517 Connect Wallet",
+            web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
+        )
+        keyboard = ReplyKeyboardMarkup(
+            [[connect_button]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "*Welcome to Smainer*\n\n"
+                "Private compute on Starknet hardware. Pay per task in $STRK.\n\n"
+                "Connect your Starknet wallet below to get started.\n\n"
+                "/help for all commands"
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -259,12 +283,12 @@ async def handle_webapp_data(
 
     wallet_type = payload.get("wallet_type", "unknown")
     logger.info("Wallet connected via miniapp: user=%s wallet_type=%s", user_id, wallet_type)
-    
+
     await bot.send_message(
         chat_id=chat_id,
-        text=f"✅ Wallet connected: `{address}`\n\nSend any message to run a compute task.",
+        text=f"✅ Wallet connected: `{address}`\n\nTap *Open App* below to start using Smainer.",
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=ReplyKeyboardRemove(),
+        reply_markup=_open_app_keyboard(),
     )
 
 
