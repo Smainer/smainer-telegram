@@ -311,7 +311,7 @@ function WalletLink({ name, href }: { name: string; href: string }) {
 function OpenInBrowserButton() {
   const handleOpenInBrowser = () => {
     const tg = (window as any).Telegram?.WebApp;
-    const url = 'https://app.smainer.io';
+    const url = 'https://smainer-miniapp.vercel.app';
     // Use window.open to force system browser (tg.openLink opens in-app browser)
     // This triggers the external browser even on mobile Telegram
     if (typeof window !== 'undefined') {

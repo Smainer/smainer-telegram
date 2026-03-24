@@ -4,6 +4,7 @@ import { Routes, Route, useNavigate, useLocation, Navigate, NavigateFunction } f
 import { WalletConnect } from './components/WalletConnect';
 import { ChatInterface } from './components/ChatInterface';
 import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
+import { AnimatedLogo } from './components/AnimatedLogo';
 import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
 import type { ConnectedWallet, InferenceRequest } from './types';
@@ -329,7 +330,7 @@ function MainApp() {
         background: '#09090B'
       }}>
         <div className="animate-in delay-1">
-          <SmainerLogo size={64} />
+          <AnimatedLogo size={64} />
         </div>
         <h1 className="animate-in delay-2" style={{ marginTop: 24, fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>SMAINER</h1>
         <p className="animate-in delay-3" style={{ marginTop: 8, fontSize: 14, color: '#71717A' }}>Private Compute</p>
@@ -365,7 +366,7 @@ function MainApp() {
           {/* Logo & Title */}
           <div style={{ textAlign: 'center', marginBottom: 40 }} className="animate-in">
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <SmainerLogo size={72} />
+              <AnimatedLogo size={72} />
             </div>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: 8 }}>SMAINER</h1>
             <p style={{ fontSize: 15, color: '#A1A1AA' }}>Private compute on Starknet</p>
@@ -435,7 +436,7 @@ function MainApp() {
       <header style={{ padding: '12px 20px', borderBottom: '1px solid #27272A', background: '#09090B' }}>
         <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SmainerLogo size={28} />
+            <AnimatedLogo size={28} />
             <span style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF' }}>SMAINER</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
