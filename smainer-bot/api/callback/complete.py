@@ -34,7 +34,12 @@ async def _handle_task_complete(
     payment_mgr = PaymentManager()
 
     if callback.status == "completed" and callback.result:
-        response_text = callback.result.get("response", "No response generated.")
+        # Relayer sends AI text in "result" or "stdout", not "response"
+        response_text = (
+            callback.result.get("result")
+            or callback.result.get("stdout")
+            or "No response generated."
+        )
         exec_time = callback.execution_time or 0
 
         safe_text = escape_md(response_text)
