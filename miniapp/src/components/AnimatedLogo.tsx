@@ -13,37 +13,37 @@ import React from 'react';
 const styles = `
 @keyframes spinFloat {
   0% {
-    transform: perspective(400px) rotateY(0deg) translateY(0px);
+    transform: perspective(400px) rotateX(0deg);
   }
   25% {
-    transform: perspective(400px) rotateY(90deg) translateY(-3px);
+    transform: perspective(400px) rotateX(90deg);
   }
   50% {
-    transform: perspective(400px) rotateY(180deg) translateY(0px);
+    transform: perspective(400px) rotateX(180deg);
   }
   75% {
-    transform: perspective(400px) rotateY(270deg) translateY(-3px);
+    transform: perspective(400px) rotateX(270deg);
   }
   100% {
-    transform: perspective(400px) rotateY(360deg) translateY(0px);
+    transform: perspective(400px) rotateX(360deg);
   }
 }
 
 @keyframes spinFloatDelayed {
   0% {
-    transform: perspective(400px) rotateY(180deg) translateY(0px);
+    transform: perspective(400px) rotateX(180deg);
   }
   25% {
-    transform: perspective(400px) rotateY(270deg) translateY(-3px);
+    transform: perspective(400px) rotateX(270deg);
   }
   50% {
-    transform: perspective(400px) rotateY(360deg) translateY(0px);
+    transform: perspective(400px) rotateX(360deg);
   }
   75% {
-    transform: perspective(400px) rotateY(450deg) translateY(-3px);
+    transform: perspective(400px) rotateX(450deg);
   }
   100% {
-    transform: perspective(400px) rotateY(540deg) translateY(0px);
+    transform: perspective(400px) rotateX(540deg);
   }
 }
 
