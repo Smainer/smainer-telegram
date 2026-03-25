@@ -19,10 +19,16 @@ class PaymentManager:
         user_id: int,
         starknet_address: str,
         amount: int,
+        on_chain_task_id: int | None = None,
     ) -> None:
         logger.info(
             "Payment reserved",
-            extra={"task_id": task_id, "user_id": user_id, "amount": amount},
+            extra={
+                "task_id": task_id,
+                "user_id": user_id,
+                "amount": amount,
+                "on_chain_task_id": on_chain_task_id,
+            },
         )
 
     async def settle_payment(self, task_id: str) -> bool:

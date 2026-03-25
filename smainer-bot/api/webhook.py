@@ -73,7 +73,7 @@ async def _process_update(update: dict) -> None:
 
     # Check for web_app_data first (special message type)
     if "web_app_data" in message:
-        await handle_webapp_data(update, bot, wallet_mgr)
+        await handle_webapp_data(update, bot, wallet_mgr, payment_mgr, relayer)
         return
 
     text = message.get("text", "")

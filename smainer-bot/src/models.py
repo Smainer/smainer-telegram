@@ -83,3 +83,5 @@ class TaskCallback(BaseModel):
     # Routing fields — enriched by relayer from original task payload
     chat_id: Optional[int] = None
     message_id: Optional[int] = None
+    # On-chain escrow task ID (if payment was made via escrow contract)
+    on_chain_task_id: Optional[int] = None

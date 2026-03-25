@@ -17,6 +17,8 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 from telegram import (
     Bot,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -227,8 +229,10 @@ async def handle_webapp_data(
     update: Dict[str, Any],
     bot: Bot,
     wallet_mgr: WalletManager,
+    payment_mgr: PaymentManager,
+    relayer: RelayerClient,
 ) -> None:
-    """Handle wallet connection data sent from the Telegram MiniApp via sendData()."""
+    """Handle wallet connection and payment data sent from the Telegram MiniApp via sendData()."""
     message = update.get("message", {})
     user_id = message.get("from", {}).get("id")
     chat_id = message.get("chat", {}).get("id")
@@ -248,37 +252,120 @@ async def handle_webapp_data(
         return
 
     action = payload.get("action")
-    address = payload.get("address")
 
-    if action != "wallet_connect" or not address:
+    # Handle wallet connection from MiniApp
+    if action == "wallet_connect":
+        address = payload.get("address")
+        if not address:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="No wallet address received. Please try again.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        try:
+            await wallet_mgr.link_wallet(user_id, address)
+        except ValueError:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    "Invalid Starknet address received from miniapp. "
+                    "Please try again or use /link `<address>` manually."
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        wallet_type = payload.get("wallet_type", "unknown")
+        logger.info("Wallet connected via miniapp: user=%s wallet_type=%s", user_id, wallet_type)
+
         await bot.send_message(
             chat_id=chat_id,
-            text="Unexpected data from miniapp. Please try /start again.",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return
-
-    try:
-        await wallet_mgr.link_wallet(user_id, address)
-    except ValueError:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "Invalid Starknet address received from miniapp. "
-                "Please try again or use /link `<address>` manually."
-            ),
+            text=f"✅ Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=ReplyKeyboardRemove(),
         )
         return
 
-    wallet_type = payload.get("wallet_type", "unknown")
-    logger.info("Wallet connected via miniapp: user=%s wallet_type=%s", user_id, wallet_type)
+    # Handle payment completion from MiniApp
+    if action == "payment_complete":
+        on_chain_task_id = payload.get("on_chain_task_id")
+        prompt = payload.get("prompt", "")
+        tier = payload.get("tier", "small")
+        original_chat_id = payload.get("chat_id")
+        original_message_id = payload.get("message_id")
 
+        if not on_chain_task_id or not prompt:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Payment confirmation missing required data. Please try again.",
+            )
+            return
+
+        # Get linked wallet address
+        starknet_address = await wallet_mgr.get_linked_address(user_id)
+        if not starknet_address:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Wallet not linked. Use /link first.",
+            )
+            return
+
+        # Determine model from user prefs
+        user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
+        model_tier = infer_tier(user_model)
+
+        # Send typing + placeholder
+        await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        placeholder = await bot.send_message(
+            chat_id=chat_id,
+            text=f"💎 Payment confirmed! (Task #{on_chain_task_id})\nRunning compute task...",
+        )
+
+        # Build request and submit to relayer with on_chain_task_id
+        req = InferenceRequest(
+            telegram_user_id=user_id,
+            chat_id=chat_id,
+            message_id=placeholder.message_id,
+            prompt=prompt,
+            model=user_model,
+            model_tier=model_tier,
+            starknet_address=starknet_address,
+            cost_strk=settings.prompt_cost_strk,
+        )
+
+        task_id = await relayer.submit_inference(req, on_chain_task_id=int(on_chain_task_id))
+        if not task_id:
+            await bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=placeholder.message_id,
+                text="Failed to submit task. Please try again.",
+            )
+            return
+
+        # Log payment reservation with on_chain_task_id
+        await payment_mgr.reserve_payment(
+            task_id=task_id,
+            user_id=user_id,
+            starknet_address=starknet_address,
+            amount=settings.prompt_cost_strk,
+            on_chain_task_id=int(on_chain_task_id),
+        )
+
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=placeholder.message_id,
+            text=f"💎 Task #{on_chain_task_id} submitted (`{task_id[:8]}...`). Computing results...",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    # Unknown action
     await bot.send_message(
         chat_id=chat_id,
-        text=f"✅ Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
-        parse_mode=ParseMode.MARKDOWN,
+        text="Unexpected data from miniapp. Please try /start again.",
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -639,45 +726,42 @@ async def handle_inference(
             )
         return
 
-    # 5. Send typing indicator + placeholder
-    await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    # 5. Send placeholder with payment info
+    cost_strk = settings.prompt_cost_strk / 1e18
     placeholder = await bot.send_message(
         chat_id=chat_id,
-        text="Running compute task...",
-    )
-
-    # 6. Submit to relayer (chat_id/msg_id encoded in callback URL)
-    req = InferenceRequest(
-        telegram_user_id=user_id,
-        chat_id=chat_id,
-        message_id=placeholder.message_id,
-        prompt=prompt_text,
-        model=user_model,
-        model_tier=tier,
-        starknet_address=address,
-        cost_strk=settings.prompt_cost_strk,
-    )
-
-    task_id = await relayer.submit_inference(req)
-    if not task_id:
-        await bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=placeholder.message_id,
-            text="Failed to submit task. No compute nodes may be available.",
-        )
-        return
-
-    # 7. Log payment reservation
-    await payment_mgr.reserve_payment(
-        task_id=task_id,
-        user_id=user_id,
-        starknet_address=address,
-        amount=settings.prompt_cost_strk,
-    )
-
-    await bot.edit_message_text(
-        chat_id=chat_id,
-        message_id=placeholder.message_id,
-        text=f"Task submitted (`{task_id[:8]}...`). Computing results...",
+        text=(
+            f"*Ready to compute*\n\n"
+            f"📝 Prompt: _{escape_md(prompt_text[:50])}{'...' if len(prompt_text) > 50 else ''}_\n"
+            f"🤖 Model: `{user_model}` ({tier.value})\n"
+            f"💰 Cost: {cost_strk:.4f} $STRK\n\n"
+            "Tap below to pay via on-chain escrow and start compute."
+        ),
         parse_mode=ParseMode.MARKDOWN,
+    )
+
+    # 6. Build MiniApp pay URL with routing state
+    pay_url = settings.get_miniapp_pay_url(
+        prompt=prompt_text,
+        tier=tier.value,
+        chat_id=chat_id,
+        message_id=placeholder.message_id,
+    )
+
+    # 7. Show "Pay & Compute" button opening MiniApp payment flow
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💎 Pay & Compute",
+                    web_app=WebAppInfo(url=pay_url),
+                )
+            ]
+        ]
+    )
+
+    await bot.edit_message_reply_markup(
+        chat_id=chat_id,
+        message_id=placeholder.message_id,
+        reply_markup=keyboard,
     )
