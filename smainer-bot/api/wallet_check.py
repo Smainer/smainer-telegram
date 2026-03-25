@@ -20,8 +20,9 @@ import logging
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
+import httpx
+
 from src.config import settings
-from src.relayer_client import RelayerClient
 
 logger = logging.getLogger(__name__)
 
@@ -94,13 +95,11 @@ class handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         """Handle CORS preflight."""
-        self._send_cors_headers()
         self.send_response(204)
+        self._send_cors_headers()
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
-        import asyncio
-        
         # Parse query string
         path_parts = self.path.split("?", 1)
         query_string = path_parts[1] if len(path_parts) > 1 else ""
@@ -129,7 +128,7 @@ class handler(BaseHTTPRequestHandler):
         
         # Check wallet link via Relayer KV
         try:
-            address = asyncio.run(self._get_linked_wallet(user_id))
+            address = self._get_linked_wallet(user_id)
             
             if address:
                 self._send_json_response(200, {
@@ -143,10 +142,26 @@ class handler(BaseHTTPRequestHandler):
             logger.exception(f"Error checking wallet: {e}")
             self._send_json_response(500, {"error": "internal_error"})
 
-    async def _get_linked_wallet(self, user_id: int) -> str | None:
-        """Query relayer KV for linked wallet address."""
-        relayer = RelayerClient(callback_base_url=settings.callback_base_url)
-        return await relayer.kv_get(f"wallet:{user_id}")
+    def _get_linked_wallet(self, user_id: int) -> str | None:
+        """Query relayer KV for linked wallet address (sync)."""
+        base = settings.relayer_api_url.rstrip("/")
+        headers = {
+            "Authorization": f"Bearer {settings.relayer_api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = httpx.get(
+                f"{base}/api/v1/bot/kv/wallet:{user_id}",
+                headers=headers,
+                timeout=10,
+            )
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return resp.json().get("value")
+        except Exception as e:
+            logger.warning(f"KV get error: {e}")
+            return None
 
     def _send_cors_headers(self) -> None:
         """Add CORS headers for MiniApp access."""

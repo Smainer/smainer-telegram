@@ -306,32 +306,37 @@ function WalletLink({ name, href }: { name: string; href: string }) {
 }
 
 function TelegramWalletDeepLinks() {
-  const handleWalletDeepLink = (walletType: 'braavos' | 'argent') => {
-    const tg = (window as any).Telegram?.WebApp;
-    const returnUrl = `${window.location.origin}/connect?return=telegram`;
-    
+  const tg = (window as any).Telegram?.WebApp;
+
+  const handleBraavosDeepLink = () => {
     // Braavos dApp deep link format
     // Format: https://link.braavos.app/dapp/<host>/<path>
     const braavosUrl = `https://link.braavos.app/dapp/${window.location.host}/connect?return=telegram`;
     
-    // Argent dApp deep link format  
-    // Format: https://www.argent.xyz/app/dapp/<url>
-    const argentUrl = `https://www.argent.xyz/app/dapp/${encodeURIComponent(returnUrl)}`;
-    
-    const url = walletType === 'braavos' ? braavosUrl : argentUrl;
-    
-    // Use Telegram's openLink to open external URL
     if (tg?.openLink) {
-      tg.openLink(url, { try_instant_view: false });
+      tg.openLink(braavosUrl, { try_instant_view: false });
     } else {
-      window.open(url, '_blank');
+      window.open(braavosUrl, '_blank');
+    }
+  };
+
+  const handleArgentBrowserConnect = () => {
+    // Argent X doesn't have mobile deep links like Braavos.
+    // Open the connect page in the user's external browser where
+    // the Argent X extension is available.
+    const browserConnectUrl = `${window.location.origin}/connect?return=telegram`;
+    
+    if (tg?.openLink) {
+      tg.openLink(browserConnectUrl, { try_instant_view: false });
+    } else {
+      window.open(browserConnectUrl, '_blank');
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <button
-        onClick={() => handleWalletDeepLink('braavos')}
+        onClick={handleBraavosDeepLink}
         style={{
           width: '100%',
           padding: '14px 20px',
@@ -352,7 +357,7 @@ function TelegramWalletDeepLinks() {
         Connect with Braavos
       </button>
       <button
-        onClick={() => handleWalletDeepLink('argent')}
+        onClick={handleArgentBrowserConnect}
         style={{
           width: '100%',
           padding: '14px 20px',
@@ -370,7 +375,7 @@ function TelegramWalletDeepLinks() {
         }}
       >
         <WalletIcon walletId="argentx" />
-        Connect with Argent X
+        Connect with Argent X (Browser)
       </button>
       <p style={{ 
         color: 'var(--text-muted)', 
@@ -379,7 +384,7 @@ function TelegramWalletDeepLinks() {
         marginTop: 8,
         lineHeight: 1.5,
       }}>
-        This will open your wallet app. After connecting, you'll return to Telegram.
+        Braavos opens your wallet app. Argent X opens a browser where the extension can connect.
       </p>
     </div>
   );
