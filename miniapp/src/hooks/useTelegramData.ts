@@ -32,6 +32,7 @@ interface TelegramMiniApp {
 
 interface TelegramData {
   initData: TelegramInitData | undefined;
+  initDataRaw: string | undefined;  // Raw initData string for signature verification
   miniApp: TelegramMiniApp | undefined;
   isInTelegram: boolean;
 }
@@ -39,6 +40,7 @@ interface TelegramData {
 export function useTelegramData(): TelegramData {
   const [telegramData, setTelegramData] = useState<TelegramData>({
     initData: undefined,
+    initDataRaw: undefined,
     miniApp: undefined,
     isInTelegram: false,
   });
@@ -53,6 +55,9 @@ export function useTelegramData(): TelegramData {
       
       // Extract initData from initDataUnsafe (this is safe as we're just reading user info)
       const initData: TelegramInitData | undefined = tgWebApp.initDataUnsafe;
+      
+      // Raw initData string for API verification
+      const initDataRaw: string | undefined = tgWebApp.initData;
       
       // Create a simplified miniApp interface
       const miniApp: TelegramMiniApp = {
@@ -72,6 +77,7 @@ export function useTelegramData(): TelegramData {
 
       setTelegramData({
         initData,
+        initDataRaw,
         miniApp,
         isInTelegram: true,
       });
@@ -79,6 +85,7 @@ export function useTelegramData(): TelegramData {
       console.log('Running outside Telegram, using fallback mode');
       setTelegramData({
         initData: undefined,
+        initDataRaw: undefined,
         miniApp: undefined,
         isInTelegram: false,
       });

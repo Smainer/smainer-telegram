@@ -185,12 +185,15 @@ function MainApp() {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | null>(() => loadPersistedWallet());
+  const [botWalletChecked, setBotWalletChecked] = useState(false);
   
   // Default to 'home' for root path or empty path
   const pathView = location.pathname.replace('/', '') || 'home';
   const currentView = pathView as 'home' | 'chat' | 'nft' | 'dashboard';
 
-  const { initData, miniApp, isInTelegram } = useTelegramData();
+  const { initData, initDataRaw, miniApp, isInTelegram } = useTelegramData();
+  const botApiUrl = import.meta.env.VITE_BOT_API_URL || 'https://bot.smainer.io';
+  
   const tgUser = initData?.user as {
     id?: number;
     username?: string;
@@ -228,6 +231,46 @@ function MainApp() {
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
   }, [miniApp, isInTelegram]);
+
+  // Check if user already has a linked wallet via the bot
+  useEffect(() => {
+    const checkBotWallet = async () => {
+      // Skip if we already have a wallet or if not in Telegram
+      if (connectedWallet || !isInTelegram || !initDataRaw) {
+        setBotWalletChecked(true);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${botApiUrl}/api/wallet-check?initData=${encodeURIComponent(initDataRaw)}`,
+          { method: 'GET' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.linked && data.address) {
+            // User already has a linked wallet via bot - apply it
+            const wallet: ConnectedWallet = {
+              address: data.address,
+              type: 'bot-linked',
+              balance_strk: '0',
+              balance_smainer: '0',
+            };
+            setConnectedWallet(wallet);
+            addDebugBootStep('bot_wallet_found', 'success', data.address.slice(0, 10) + '...');
+          }
+        }
+      } catch (err) {
+        console.log('Could not check bot wallet state:', err);
+        // Non-fatal - continue with normal flow
+      } finally {
+        setBotWalletChecked(true);
+      }
+    };
+
+    checkBotWallet();
+  }, [isInTelegram, initDataRaw, botApiUrl, connectedWallet]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

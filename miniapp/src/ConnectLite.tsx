@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 
 interface ConnectLiteProps {}
 
@@ -11,6 +11,8 @@ type StarknetInjectedWallet = {
 type TelegramWebApp = {
   sendData?: (data: string) => void
   openLink?: (url: string) => void
+  initData?: string
+  initDataUnsafe?: { user?: { id?: number } }
 }
 
 type WindowWithWallets = Window & {
@@ -36,11 +38,16 @@ export default function ConnectLite({}: ConnectLiteProps) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isCheckingBotWallet, setIsCheckingBotWallet] = useState(true)
+  const autoConnectAttempted = useRef(false)
 
   const ADDRESS_REGEX = /^0x[0-9a-fA-F]{1,64}$/
   const runtimeWindow = window as WindowWithWallets
   const telegramWebApp = runtimeWindow.Telegram?.WebApp
-  const viteEnv = (import.meta as ImportMeta & { env?: { VITE_TELEGRAM_BOT_USERNAME?: string } }).env
+  const viteEnv = (import.meta as ImportMeta & { env?: { 
+    VITE_TELEGRAM_BOT_USERNAME?: string
+    VITE_BOT_API_URL?: string 
+  } }).env
 
   const isInTelegram = Boolean(telegramWebApp)
   const currentUrl = window.location.href
@@ -48,6 +55,7 @@ export default function ConnectLite({}: ConnectLiteProps) {
   const urlParams = new URLSearchParams(window.location.search)
   const shouldReturnToTelegram = urlParams.get('return') === 'telegram'
   const botUsername = viteEnv?.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'
+  const botApiUrl = viteEnv?.VITE_BOT_API_URL || 'https://bot.smainer.io'
   const browserConnectUrl = `${window.location.origin}/connect?return=telegram`
   const braavosConnectUrl = `https://link.braavos.app/dapp/${window.location.host}/connect?return=telegram`
   const injectedWallets = [
@@ -65,28 +73,8 @@ export default function ConnectLite({}: ConnectLiteProps) {
     },
   ].filter((wallet) => wallet.provider)
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(WALLET_STORAGE_KEY)
-      if (!raw) {
-        return
-      }
-
-      const parsed = JSON.parse(raw) as { address?: string }
-      const storedAddress = parsed.address?.trim()
-      if (!storedAddress || !ADDRESS_REGEX.test(storedAddress)) {
-        window.localStorage.removeItem(WALLET_STORAGE_KEY)
-        return
-      }
-
-      setAddress(storedAddress)
-      setSuccess(true)
-    } catch {
-      window.localStorage.removeItem(WALLET_STORAGE_KEY)
-    }
-  }, [])
-
-  const persistWalletState = (connectedAddress: string, walletType: string) => {
+  // Helper functions (defined before hooks that use them)
+  const persistWalletState = useCallback((connectedAddress: string, walletType: string) => {
     try {
       window.localStorage.setItem(
         WALLET_STORAGE_KEY,
@@ -100,9 +88,9 @@ export default function ConnectLite({}: ConnectLiteProps) {
     } catch {
       // Best effort persistence only.
     }
-  }
+  }, [])
 
-  const broadcastWallet = (connectedAddress: string, walletType: string) => {
+  const broadcastWallet = useCallback((connectedAddress: string, walletType: string) => {
     try {
       const channel = new BroadcastChannel('smainer-wallet')
       channel.postMessage({
@@ -114,9 +102,9 @@ export default function ConnectLite({}: ConnectLiteProps) {
     } catch {
       // BroadcastChannel not supported
     }
-  }
+  }, [])
 
-  const finalizeWalletLink = (connectedAddress: string, walletType: string) => {
+  const finalizeWalletLink = useCallback((connectedAddress: string, walletType: string) => {
     persistWalletState(connectedAddress, walletType)
     broadcastWallet(connectedAddress, walletType)
 
@@ -145,9 +133,9 @@ export default function ConnectLite({}: ConnectLiteProps) {
 
     setAddress(connectedAddress)
     setSuccess(true)
-  }
+  }, [isInTelegram, telegramWebApp, shouldReturnToTelegram, botUsername, persistWalletState, broadcastWallet])
 
-  const handleInjectedConnect = async (walletType: string, provider?: StarknetInjectedWallet) => {
+  const handleInjectedConnect = useCallback(async (walletType: string, provider?: StarknetInjectedWallet) => {
     if (!provider) {
       setError(`${walletType} wallet is not available in this browser`)
       return
@@ -174,7 +162,83 @@ export default function ConnectLite({}: ConnectLiteProps) {
     } finally {
       setIsConnecting(false)
     }
-  }
+  }, [finalizeWalletLink])
+
+  // Check if user already has a linked wallet via the bot
+  useEffect(() => {
+    const checkBotWallet = async () => {
+      // Only check if in Telegram with valid initData
+      const initData = telegramWebApp?.initData
+      if (!initData || !isInTelegram) {
+        setIsCheckingBotWallet(false)
+        return
+      }
+
+      try {
+        const response = await fetch(
+          `${botApiUrl}/api/wallet-check?initData=${encodeURIComponent(initData)}`,
+          { method: 'GET' }
+        )
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.linked && data.address) {
+            // User already has a linked wallet - show success state
+            setAddress(data.address)
+            setSuccess(true)
+            // Also persist to localStorage for consistency
+            persistWalletState(data.address, 'bot-linked')
+          }
+        }
+      } catch (err) {
+        console.log('Could not check bot wallet state:', err)
+        // Non-fatal - continue with normal flow
+      } finally {
+        setIsCheckingBotWallet(false)
+      }
+    }
+
+    checkBotWallet()
+  }, [isInTelegram, telegramWebApp?.initData, botApiUrl, persistWalletState])
+
+  // Check localStorage for existing wallet
+  useEffect(() => {
+    if (isCheckingBotWallet) return // Wait for bot check first
+    
+    try {
+      const raw = window.localStorage.getItem(WALLET_STORAGE_KEY)
+      if (!raw) {
+        return
+      }
+
+      const parsed = JSON.parse(raw) as { address?: string }
+      const storedAddress = parsed.address?.trim()
+      if (!storedAddress || !ADDRESS_REGEX.test(storedAddress)) {
+        window.localStorage.removeItem(WALLET_STORAGE_KEY)
+        return
+      }
+
+      setAddress(storedAddress)
+      setSuccess(true)
+    } catch {
+      window.localStorage.removeItem(WALLET_STORAGE_KEY)
+    }
+  }, [isCheckingBotWallet])
+
+  // Auto-connect when returning from wallet app with ?return=telegram
+  useEffect(() => {
+    if (autoConnectAttempted.current) return
+    if (isCheckingBotWallet) return
+    if (success) return // Already connected
+    if (!shouldReturnToTelegram) return // Not a return from wallet
+    if (injectedWallets.length === 0) return // No wallet available
+    
+    // We're returning from wallet app and have an injected wallet - auto-connect!
+    autoConnectAttempted.current = true
+    const wallet = injectedWallets[0] // Use first available wallet
+    console.log(`Auto-connecting to ${wallet.id} after return from wallet app`)
+    handleInjectedConnect(wallet.id, wallet.provider)
+  }, [isCheckingBotWallet, success, shouldReturnToTelegram, injectedWallets, handleInjectedConnect])
 
   const openBrowserLink = (targetUrl: string) => {
     try {
@@ -205,6 +269,16 @@ export default function ConnectLite({}: ConnectLiteProps) {
 
     const trimmedAddress = address.trim()
     finalizeWalletLink(trimmedAddress, 'manual')
+  }
+
+  // ─── Loading State (checking bot wallet) ───
+  if (isCheckingBotWallet) {
+    return (
+      <div className="min-h-screen p-4 pt-10 flex flex-col items-center justify-center" style={{ background: '#09090B', color: '#FAFAFA', fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div className="w-12 h-12 rounded-full border-2 border-t-transparent animate-spin mb-4" style={{ borderColor: '#B5A082', borderTopColor: 'transparent' }} />
+        <p className="text-sm" style={{ color: '#A1A1AA' }}>Checking wallet...</p>
+      </div>
+    )
   }
 
   // ─── Success State ───
