@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { AIModel, InferenceRequest, InferenceTaskStatus } from '@/types';
 import { ModelSelector } from './ModelSelector';
 import { NFTPreview } from './NFTPreview';
+import { PaymentFlow } from './PaymentFlow';
+import { ComputeTier } from '@/lib/starknet';
 
 interface ChatInterfaceProps {
   walletAddress: string;
   availableModels: AIModel[];
-  onSubmitTask: (task: InferenceRequest) => Promise<string>;
+  onSubmitTask: (task: InferenceRequest, onChainTaskId?: string) => Promise<string>;
   onTaskUpdate?: (taskId: string, status: InferenceTaskStatus) => void;
 }
 
@@ -35,6 +37,11 @@ export function ChatInterface({
   const [showNFTPreview, setShowNFTPreview] = useState(false);
   const [selectedImageForNFT, setSelectedImageForNFT] = useState<string | null>(null);
   
+  // Payment flow state
+  const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string>('');
+  const [selectedTier, setSelectedTier] = useState<ComputeTier>('BASIC');
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -54,10 +61,27 @@ export function ChatInterface({
     
     if (!currentMessage.trim() || !selectedModel || isGenerating) return;
 
+    // Store the prompt and show payment flow
+    setPendingPrompt(currentMessage);
+    setShowPaymentFlow(true);
+  };
+
+  // Handle successful payment and task creation
+  const handlePaymentSuccess = async (onChainTaskId: string) => {
+    if (!selectedModel || !pendingPrompt) return;
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
-      content: currentMessage,
+      content: pendingPrompt,
+      timestamp: new Date(),
+    };
+
+    const paymentConfirmId = `payment-${Date.now()}`;
+    const paymentMessage: ChatMessage = {
+      id: paymentConfirmId,
+      type: 'system',
+      content: '✓ Payment confirmed. Sending to compute network...',
       timestamp: new Date(),
     };
 
@@ -70,14 +94,15 @@ export function ChatInterface({
       isLoading: true,
     };
 
-    setMessages(prev => [...prev, userMessage, loadingMessage]);
+    setMessages(prev => [...prev, userMessage, paymentMessage, loadingMessage]);
     setCurrentMessage('');
     setIsGenerating(true);
+    setShowPaymentFlow(false);
 
     try {
       const inferenceRequest: InferenceRequest = {
         model_name: selectedModel.name,
-        prompt: currentMessage,
+        prompt: pendingPrompt,
         max_tokens: 512,
         temperature: 0.7,
         metadata: {
@@ -86,12 +111,13 @@ export function ChatInterface({
         }
       };
 
-      const taskId = await onSubmitTask(inferenceRequest);
+      // Submit task with on-chain task ID
+      const taskId = await onSubmitTask(inferenceRequest, onChainTaskId);
 
       // Simulate streaming response (replace with real WebSocket/SSE in production)
-      const isImageGeneration = currentMessage.toLowerCase().includes('image') || 
-                                currentMessage.toLowerCase().includes('picture') ||
-                                currentMessage.toLowerCase().includes('generate');
+      const isImageGeneration = pendingPrompt.toLowerCase().includes('image') || 
+                                pendingPrompt.toLowerCase().includes('picture') ||
+                                pendingPrompt.toLowerCase().includes('generate');
       
       const responseContent = isImageGeneration 
         ? 'Image generation task submitted. Results will appear here when the compute node responds.'
@@ -133,6 +159,15 @@ export function ChatInterface({
       ));
       setIsGenerating(false);
     }
+
+    // Clear pending prompt
+    setPendingPrompt('');
+  };
+
+  // Handle payment cancellation
+  const handlePaymentCancel = () => {
+    setShowPaymentFlow(false);
+    setPendingPrompt('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -258,6 +293,16 @@ export function ChatInterface({
             setShowNFTPreview(false);
             setSelectedImageForNFT(null);
           }}
+        />
+      )}
+
+      {/* Payment Flow Modal */}
+      {showPaymentFlow && pendingPrompt && (
+        <PaymentFlow
+          prompt={pendingPrompt}
+          tier={selectedTier}
+          onSuccess={handlePaymentSuccess}
+          onCancel={handlePaymentCancel}
         />
       )}
     </div>

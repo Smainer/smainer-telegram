@@ -82,7 +82,10 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
     }
   };
 
-  const submitInferenceTask = async (request: InferenceRequest): Promise<string> => {
+  const submitInferenceTask = async (
+    request: InferenceRequest, 
+    onChainTaskId?: string
+  ): Promise<string> => {
     try {
       setError(null);
       
@@ -105,6 +108,8 @@ export function useRelayerAPI(config: RelayerAPIConfig) {
         },
         token_amount: 1,
         description: `Telegram miniapp inference (${request.model_name})`,
+        // Add on-chain task ID for payment verification
+        ...(onChainTaskId && { on_chain_task_id: onChainTaskId }),
       };
 
       const response = await fetch(`${config.baseUrl}/api/v1/tasks`, {

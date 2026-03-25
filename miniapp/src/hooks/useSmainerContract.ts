@@ -1,0 +1,214 @@
+import { useState, useCallback } from 'react';
+import { useAccount, useContract } from '@starknet-react/core';
+import { Contract, hash } from 'starknet';
+import { 
+  CONTRACT_ADDRESSES,
+  SMAINER_COMPUTE_ABI,
+  ERC20_ABI,
+  ComputeTier,
+  getPromptCost,
+  hashPrompt,
+  formatTokenAmount,
+  TOKEN_DECIMALS
+} from '@/lib/starknet';
+
+interface ContractTxState {
+  loading: boolean;
+  error: string | null;
+  txHash?: string;
+}
+
+interface CreateTaskResult {
+  success: boolean;
+  taskId?: string;
+  txHash?: string;
+  error?: string;
+}
+
+export function useSmainerContract() {
+  const { address, account } = useAccount();
+  const [txState, setTxState] = useState<ContractTxState>({
+    loading: false,
+    error: null
+  });
+
+  // Contract instances
+  const { contract: smainerContract } = useContract({
+    address: CONTRACT_ADDRESSES.SMAINER_COMPUTE,
+    abi: SMAINER_COMPUTE_ABI,
+  });
+
+  const { contract: strkContract } = useContract({
+    address: CONTRACT_ADDRESSES.STRK_TOKEN,
+    abi: ERC20_ABI,
+  });
+
+  // Check current STRK allowance for the compute contract
+  const checkAllowance = useCallback(async (): Promise<bigint> => {
+    if (!address || !strkContract) {
+      throw new Error('Wallet not connected or contract not available');
+    }
+
+    try {
+      const result = await strkContract.call('allowance', [
+        address,
+        CONTRACT_ADDRESSES.SMAINER_COMPUTE
+      ]);
+      return result as bigint;
+    } catch (error) {
+      console.error('Failed to check allowance:', error);
+      throw new Error('Failed to check allowance');
+    }
+  }, [address, strkContract]);
+
+  // Check STRK balance
+  const checkBalance = useCallback(async (): Promise<string> => {
+    if (!address || !strkContract) {
+      throw new Error('Wallet not connected');
+    }
+
+    try {
+      const result = await strkContract.call('balance_of', [address]);
+      const balance = result as bigint;
+      return formatTokenAmount(balance.toString(), TOKEN_DECIMALS.STRK);
+    } catch (error) {
+      console.error('Failed to check balance:', error);
+      throw new Error('Failed to check balance');
+    }
+  }, [address, strkContract]);
+
+  // Get prompt cost for a specific tier
+  const getPromptCostForTier = useCallback((tier: ComputeTier): string => {
+    const costWei = getPromptCost(tier);
+    return formatTokenAmount(costWei.toString(), TOKEN_DECIMALS.STRK);
+  }, []);
+
+  // Create a task with on-chain payment
+  const createTask = useCallback(async (
+    prompt: string,
+    tier: ComputeTier = 'BASIC'
+  ): Promise<CreateTaskResult> => {
+    if (!address || !account || !smainerContract || !strkContract) {
+      throw new Error('Wallet not connected or contracts not available');
+    }
+
+    setTxState({ loading: true, error: null });
+
+    try {
+      // Calculate required amounts
+      const promptCost = getPromptCost(tier);
+      const promptHash = await hashPrompt(prompt);
+      
+      // Check if we need to approve more tokens
+      const currentAllowance = await checkAllowance();
+      const needsApproval = currentAllowance < promptCost;
+
+      // Prepare multicall transactions
+      const calls = [];
+
+      // Add approval if needed
+      if (needsApproval) {
+        // Approve for this specific amount + small buffer for gas
+        const approveAmount = promptCost + BigInt('10000000000000000'); // +0.01 STRK buffer
+        calls.push({
+          contractAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
+          entrypoint: 'approve',
+          calldata: [CONTRACT_ADDRESSES.SMAINER_COMPUTE, approveAmount.toString()],
+        });
+      }
+
+      // Add create_tiered_task call
+      calls.push({
+        contractAddress: CONTRACT_ADDRESSES.SMAINER_COMPUTE,
+        entrypoint: 'create_tiered_task',
+        calldata: [
+          CONTRACT_ADDRESSES.STRK_TOKEN, // token_address
+          promptCost.toString(),          // base_amount  
+          tier === 'BASIC' ? '1' : tier === 'PRO' ? '2' : '3', // required_tier
+          promptHash                      // task_hash
+        ],
+      });
+
+      // Execute multicall
+      const result = await account.execute(calls);
+      
+      if (!result.transaction_hash) {
+        throw new Error('Transaction failed - no hash returned');
+      }
+
+      // Wait for transaction confirmation
+      const receipt = await account.waitForTransaction(result.transaction_hash);
+
+      // Extract task_id from transaction receipt
+      let taskId: string;
+      try {
+        // Get TaskCreated event selector
+        const taskCreatedSelector = hash.getSelectorFromName('TaskCreated');
+        
+        // Find the TaskCreated event from our contract
+        const taskCreatedEvent = receipt.events?.find(event => 
+          event.from_address === CONTRACT_ADDRESSES.SMAINER_COMPUTE &&
+          event.keys[0] === taskCreatedSelector
+        );
+
+        if (taskCreatedEvent && taskCreatedEvent.keys.length >= 3) {
+          // TaskCreated event has task_id as first keyed field (after selector)
+          // task_id (u256) is split into low (keys[1]) and high (keys[2]) parts
+          const taskIdLow = BigInt(taskCreatedEvent.keys[1]);
+          const taskIdHigh = BigInt(taskCreatedEvent.keys[2]);
+          const fullTaskId = taskIdHigh * (BigInt(2) ** BigInt(128)) + taskIdLow;
+          taskId = fullTaskId.toString();
+        } else {
+          // Fallback: read task_count from contract (should be latest task_id)
+          console.warn('Could not parse TaskCreated event, using fallback method');
+          const taskCountResult = await smainerContract.call('task_count');
+          taskId = (taskCountResult as bigint).toString();
+        }
+      } catch (error) {
+        console.error('Failed to parse task_id from events:', error);
+        // Last resort fallback
+        const taskCountResult = await smainerContract.call('task_count');
+        taskId = (taskCountResult as bigint).toString();
+      }
+
+      setTxState({ loading: false, error: null, txHash: result.transaction_hash });
+
+      return {
+        success: true,
+        taskId,
+        txHash: result.transaction_hash
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setTxState({ loading: false, error: errorMessage });
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }, [address, account, smainerContract, strkContract, checkAllowance]);
+
+  // Reset transaction state
+  const resetTxState = useCallback(() => {
+    setTxState({ loading: false, error: null });
+  }, []);
+
+  return {
+    // Contract interactions
+    createTask,
+    checkAllowance,
+    checkBalance,
+    getPromptCostForTier,
+    
+    // Transaction state
+    isLoading: txState.loading,
+    error: txState.error,
+    txHash: txState.txHash,
+    resetTxState,
+    
+    // Contract availability
+    isContractReady: !!(smainerContract && strkContract && address),
+  };
+}

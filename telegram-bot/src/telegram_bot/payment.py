@@ -34,16 +34,31 @@ class PaymentManager:
         user_id: int,
         starknet_address: str,
         amount: int,
+        on_chain_task_id: Optional[int] = None,
     ) -> None:
-        """Record a pending payment intent in Redis."""
+        """Record a pending payment intent in Redis.
+        
+        Args:
+            task_id: Relayer task ID
+            user_id: Telegram user ID
+            starknet_address: User's Starknet wallet address
+            amount: Payment amount in wei
+            on_chain_task_id: Optional on-chain escrow task ID from MiniApp payment
+        """
+        mapping = {
+            "user_id": str(user_id),
+            "starknet_address": starknet_address,
+            "amount": str(amount),
+            "status": "pending",
+        }
+        
+        # Include on-chain task ID if provided (from MiniApp payment flow)
+        if on_chain_task_id is not None:
+            mapping["on_chain_task_id"] = str(on_chain_task_id)
+        
         await self._redis.hset(
             _PENDING_PAYMENT.format(task_id=task_id),
-            mapping={
-                "user_id": str(user_id),
-                "starknet_address": starknet_address,
-                "amount": str(amount),
-                "status": "pending",
-            },
+            mapping=mapping,
         )
         # Auto-expire after 1 hour if never settled
         await self._redis.expire(
@@ -51,7 +66,11 @@ class PaymentManager:
         )
         logger.info(
             "Payment reserved",
-            extra={"task_id": task_id, "amount": amount},
+            extra={
+                "task_id": task_id,
+                "amount": amount,
+                "on_chain_task_id": on_chain_task_id,
+            },
         )
 
     async def settle_payment(self, task_id: str) -> bool:

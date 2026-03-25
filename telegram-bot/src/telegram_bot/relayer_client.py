@@ -36,20 +36,36 @@ class RelayerClient:
     # Task submission
     # ------------------------------------------------------------------
 
-    async def submit_inference(self, req: InferenceRequest) -> Optional[str]:
-        """Submit an AI inference task and return the task_id."""
+    async def submit_inference(
+        self, req: InferenceRequest, on_chain_task_id: Optional[int] = None
+    ) -> Optional[str]:
+        """Submit an AI inference task and return the task_id.
+        
+        Args:
+            req: The inference request details
+            on_chain_task_id: Optional on-chain task ID from MiniApp payment flow
+            
+        Returns:
+            The relayer task_id on success, None on failure
+        """
         tier_reqs = MODEL_TIER_REQUIREMENTS[req.model_tier]
 
+        payload_data = {
+            "type": "ai_inference",
+            "prompt": req.prompt,
+            "model": req.model,
+            "telegram_user_id": req.telegram_user_id,
+            "chat_id": req.chat_id,
+            "message_id": req.message_id,
+            "callback_url": self._callback_url,
+        }
+        
+        # Include on-chain task ID if provided (from MiniApp payment flow)
+        if on_chain_task_id is not None:
+            payload_data["on_chain_task_id"] = on_chain_task_id
+
         payload = TaskSubmissionPayload(
-            payload={
-                "type": "ai_inference",
-                "prompt": req.prompt,
-                "model": req.model,
-                "telegram_user_id": req.telegram_user_id,
-                "chat_id": req.chat_id,
-                "message_id": req.message_id,
-                "callback_url": self._callback_url,
-            },
+            payload=payload_data,
             requirements={
                 "cpu_threads": 4,
                 "ram_gb": tier_reqs["ram_gb"],
@@ -69,7 +85,10 @@ class RelayerClient:
             if resp.status_code == 201:
                 data = resp.json()
                 task_id = data["task_id"]
-                logger.info("Task submitted", extra={"task_id": task_id})
+                logger.info(
+                    "Task submitted",
+                    extra={"task_id": task_id, "on_chain_task_id": on_chain_task_id},
+                )
                 return task_id
             else:
                 logger.error(

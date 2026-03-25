@@ -138,6 +138,36 @@ class Settings(BaseSettings):
             return self.miniapp_open_url.rstrip("/")
         return self.miniapp_url.rstrip("/")
 
+    def get_miniapp_pay_url(
+        self,
+        prompt: str,
+        tier: str,
+        chat_id: int,
+        message_id: int,
+    ) -> str:
+        """Return the MiniApp URL for the payment flow with encoded parameters.
+        
+        Args:
+            prompt: The user's AI prompt text
+            tier: Model tier (small/medium/large)
+            chat_id: Telegram chat ID for callback routing
+            message_id: Message ID to edit with results
+            
+        Returns:
+            Full MiniApp URL with query params for payment action
+        """
+        from urllib.parse import urlencode
+        
+        base = self.miniapp_url.rstrip("/")
+        params = urlencode({
+            "action": "pay",
+            "prompt": prompt,
+            "tier": tier,
+            "chat_id": str(chat_id),
+            "message_id": str(message_id),
+        })
+        return f"{base}/?{params}"
+
     @model_validator(mode="after")
     def _validate_miniapp_urls(self) -> "Settings":
         """Validate MiniApp URLs early to prevent runtime 404 misconfiguration."""

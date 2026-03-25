@@ -355,8 +355,11 @@ function MainApp() {
     } catch { /* ignore */ }
   };
 
-  const handleSubmitInferenceTask = async (request: InferenceRequest): Promise<string> => {
-    const taskId = await relayerAPI.submitInferenceTask(request);
+  const handleSubmitInferenceTask = async (
+    request: InferenceRequest, 
+    onChainTaskId?: string
+  ): Promise<string> => {
+    const taskId = await relayerAPI.submitInferenceTask(request, onChainTaskId);
     console.log('Task submitted:', taskId);
     return taskId;
   };

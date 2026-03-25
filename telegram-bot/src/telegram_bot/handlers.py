@@ -7,9 +7,12 @@ import json
 import logging
 import time
 from typing import Awaitable, Callable
+from urllib.parse import urlencode
 
 import redis.asyncio as aioredis
 from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     KeyboardButton,
     MenuButtonWebApp,
     ReplyKeyboardMarkup,
@@ -38,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 # Redis key schemas
 _PENDING_TASKS_KEY = "tgbot:tasks:pending"
+_PENDING_PROMPTS_KEY = "tgbot:prompts:pending"  # Prompts awaiting MiniApp payment
 _STARTUP_CHECK_KEY = "tgbot:startup:check"
 
 # Timeout constants
@@ -429,50 +433,164 @@ class SmainerBot:
     async def _handle_webapp_data(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle wallet connection data sent from the Telegram MiniApp via sendData()."""
+        """Handle data sent from the Telegram MiniApp via sendData().
+        
+        Supports two actions:
+        1. wallet_connect: Link a Starknet wallet
+        2. payment_complete: On-chain task created, ready for relayer submission
+        """
         raw = update.effective_message.web_app_data.data
         try:
             payload = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             logger.warning("Invalid webapp data from user %s", update.effective_user.id)
             await update.message.reply_text(
-                "Failed to process wallet data. Please try again.",
+                "Failed to process data from app. Please try again.",
                 reply_markup=ReplyKeyboardRemove(),
             )
             return
 
         action = payload.get("action")
-        address = payload.get("address")
-
-        if action != "wallet_connect" or not address:
-            await update.message.reply_text(
-                "Unexpected data from miniapp. Please try /start again.",
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            return
-
         user_id = update.effective_user.id
-        try:
-            await self._wallet.link_wallet(user_id, address)
-        except ValueError:
+
+        # ----- Wallet Connection Flow -----
+        if action == "wallet_connect":
+            address = payload.get("address")
+            if not address:
+                await update.message.reply_text(
+                    "No wallet address received. Please try /start again.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return
+
+            try:
+                await self._wallet.link_wallet(user_id, address)
+            except ValueError:
+                await update.message.reply_text(
+                    "Invalid Starknet address received from miniapp. "
+                    "Please try again or use /link `<address>` manually.",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return
+
+            wallet_type = payload.get("wallet_type", "unknown")
+            logger.info(
+                "Wallet connected via miniapp: user=%s wallet_type=%s",
+                user_id,
+                wallet_type,
+            )
             await update.message.reply_text(
-                "Invalid Starknet address received from miniapp. "
-                "Please try again or use /link `<address>` manually.",
+                f"\u2705 Wallet connected: `{address}`\n\n"
+                "Send any message to run a compute task.",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=ReplyKeyboardRemove(),
             )
             return
 
-        wallet_type = payload.get("wallet_type", "unknown")
-        logger.info(
-            "Wallet connected via miniapp: user=%s wallet_type=%s",
-            user_id,
-            wallet_type,
-        )
+        # ----- Payment Completion Flow -----
+        if action == "payment_complete":
+            on_chain_task_id = payload.get("on_chain_task_id")
+            prompt = payload.get("prompt")
+            tier_str = payload.get("tier", "small")
+            chat_id = payload.get("chat_id")
+            message_id = payload.get("message_id")
+
+            if not on_chain_task_id or not prompt:
+                await update.message.reply_text(
+                    "Payment data incomplete. Please try again.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return
+
+            # Map tier string to enum
+            try:
+                tier = ModelTier(tier_str.lower())
+            except ValueError:
+                tier = ModelTier.SMALL
+
+            # Get wallet address
+            address = await self._wallet.get_linked_address(user_id)
+            if not address:
+                await update.message.reply_text(
+                    "Wallet not linked. Please use /link first.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return
+
+            # Determine model from user prefs
+            user_model = await self._redis.hget(
+                f"tgbot:prefs:{user_id}", "model"
+            ) or settings.default_model
+
+            # Send typing indicator and create placeholder
+            await update.effective_chat.send_action(ChatAction.TYPING)
+            placeholder = await update.message.reply_text(
+                f"💎 Payment confirmed! (Task #{on_chain_task_id})\n"
+                "Running compute task..."
+            )
+
+            # Submit to relayer with on-chain task ID
+            req = InferenceRequest(
+                telegram_user_id=user_id,
+                chat_id=update.effective_chat.id,
+                message_id=placeholder.message_id,
+                prompt=prompt,
+                model=user_model,
+                model_tier=tier,
+                starknet_address=address,
+                cost_strk=settings.prompt_cost_strk,
+            )
+
+            task_id = await self._relayer.submit_inference(
+                req, on_chain_task_id=on_chain_task_id
+            )
+            if not task_id:
+                await placeholder.edit_text(
+                    "Failed to submit task. Please try again."
+                )
+                return
+
+            # Reserve payment with on-chain reference
+            await self._payment.reserve_payment(
+                task_id=task_id,
+                user_id=user_id,
+                starknet_address=address,
+                amount=settings.prompt_cost_strk,
+                on_chain_task_id=on_chain_task_id,
+            )
+
+            # Track for callback routing
+            await self._redis.hset(
+                _PENDING_TASKS_KEY,
+                task_id,
+                f"{update.effective_chat.id}:{placeholder.message_id}",
+            )
+
+            await placeholder.edit_text(
+                f"Task submitted (`{task_id[:8]}...`). Computing results...",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+
+            logger.info(
+                "Payment flow completed: user=%s on_chain_task_id=%s relayer_task_id=%s",
+                user_id,
+                on_chain_task_id,
+                task_id,
+            )
+            return
+
+        # ----- Payment Cancelled -----
+        if action == "payment_cancelled":
+            await update.message.reply_text(
+                "Payment cancelled. Send your prompt again when ready.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        # Unknown action
         await update.message.reply_text(
-            f"\u2705 Wallet connected: `{address}`\n\n"
-            "Send any message to run a compute task.",
-            parse_mode=ParseMode.MARKDOWN,
+            "Unexpected data from miniapp. Please try /start again.",
             reply_markup=ReplyKeyboardRemove(),
         )
 
@@ -627,7 +745,7 @@ class SmainerBot:
             )
             return
 
-        # 2. Check balance
+        # 2. Check balance (basic check - user must have some STRK)
         try:
             has_funds = await self._wallet.has_sufficient_balance(user_id)
         except BalanceUnavailableError:
@@ -643,26 +761,22 @@ class SmainerBot:
             )
             return
 
-        # 3. Determine model
+        # 3. Determine model and tier
         user_model = await self._redis.hget(
             f"tgbot:prefs:{user_id}", "model"
         ) or settings.default_model
-
-        # Infer tier from model name
         tier = self._infer_tier(user_model)
 
-        # 3.5 Ensure there is at least one GPU-capable node online with better error handling
+        # 4. Check that compatible nodes are available
         available_nodes = await self._relayer.list_available_models()
         if not available_nodes:
-            # More informative error message with troubleshooting hint
-            error_msg = "No compute nodes online. Try again in 2 minutes."
-            await update.message.reply_text(error_msg)
+            await update.message.reply_text(
+                "No compute nodes online. Try again in 2 minutes."
+            )
             return
         
-        # Additional resilience: check if any nodes support the required tier
-        compatible_nodes = [n for n in available_nodes if tier in n.get("supported_tiers", [])]
+        compatible_nodes = [n for n in available_nodes if tier.value in n.get("supported_tiers", [])]
         if not compatible_nodes:
-            # Graceful degradation: suggest alternative tiers if none support current selection
             available_tiers = set()
             for node in available_nodes:
                 available_tiers.update(node.get("supported_tiers", []))
@@ -670,8 +784,9 @@ class SmainerBot:
             if available_tiers:
                 tier_list = ", ".join(sorted(available_tiers))
                 await update.message.reply_text(
-                    f"No nodes currently support {tier} tier models. "
-                    f"Available tiers: {tier_list}. Try `/model` to change your preference."
+                    f"No nodes currently support {tier.value} tier models. "
+                    f"Available tiers: {tier_list}. Try `/model` to change your preference.",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 await update.message.reply_text(
@@ -680,47 +795,66 @@ class SmainerBot:
                 )
             return
 
-        # 4. Send typing indicator + placeholder
-        await update.effective_chat.send_action(ChatAction.TYPING)
-        placeholder = await update.message.reply_text("Running compute task...")
+        # 5. Build MiniApp payment URL with prompt data
+        prompt = update.message.text
+        
+        # Create a placeholder message that we'll reference
+        placeholder = await update.message.reply_text(
+            "💰 *Payment required*\n\n"
+            f"Prompt: _{escape_md(prompt[:100])}{'...' if len(prompt) > 100 else ''}_\n"
+            f"Model tier: `{tier.value}`\n"
+            f"Cost: `{settings.prompt_cost_strk / 1e18:.2f} $STRK`\n\n"
+            "Tap the button below to approve payment in your wallet:",
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
-        # 5. Submit to relayer
-        req = InferenceRequest(
-            telegram_user_id=user_id,
+        # Build payment URL with all necessary params
+        pay_url = settings.get_miniapp_pay_url(
+            prompt=prompt,
+            tier=tier.value,
             chat_id=chat_id,
             message_id=placeholder.message_id,
-            prompt=update.message.text,
-            model=user_model,
-            model_tier=tier,
-            starknet_address=address,
-            cost_strk=settings.prompt_cost_strk,
         )
 
-        task_id = await self._relayer.submit_inference(req)
-        if not task_id:
-            await placeholder.edit_text(
-                "Failed to submit task. No compute nodes may be available."
-            )
-            return
-
-        # 6. Reserve payment
-        await self._payment.reserve_payment(
-            task_id=task_id,
-            user_id=user_id,
-            starknet_address=address,
-            amount=settings.prompt_cost_strk,
-        )
-
-        # 7. Track for callback routing in Redis
-        await self._redis.hset(
-            _PENDING_TASKS_KEY,
-            task_id,
-            f"{chat_id}:{placeholder.message_id}",
-        )
+        # Send inline keyboard with WebApp button
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                text="💎 Pay & Compute",
+                web_app=WebAppInfo(url=pay_url),
+            )]
+        ])
 
         await placeholder.edit_text(
-            f"Task submitted (`{task_id[:8]}...`). Computing results...",
+            "💰 *Payment required*\n\n"
+            f"Prompt: _{escape_md(prompt[:100])}{'...' if len(prompt) > 100 else ''}_\n"
+            f"Model tier: `{tier.value}`\n"
+            f"Cost: `{settings.prompt_cost_strk / 1e18:.2f} $STRK`\n\n"
+            "Tap the button below to approve payment in your wallet:",
             parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard,
+        )
+
+        # Store pending prompt data for potential timeout/cancel handling
+        await self._redis.hset(
+            _PENDING_PROMPTS_KEY,
+            f"{user_id}:{placeholder.message_id}",
+            json.dumps({
+                "prompt": prompt,
+                "tier": tier.value,
+                "model": user_model,
+                "address": address,
+                "chat_id": chat_id,
+                "created_at": int(time.time()),
+            }),
+        )
+        # Auto-expire pending prompts after 10 minutes
+        await self._redis.expire(_PENDING_PROMPTS_KEY, 600)
+
+        logger.info(
+            "Payment requested: user=%s tier=%s prompt_len=%d",
+            user_id,
+            tier.value,
+            len(prompt),
         )
 
     # ------------------------------------------------------------------
