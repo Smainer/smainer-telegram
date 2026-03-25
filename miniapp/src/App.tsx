@@ -299,12 +299,12 @@ function MainApp() {
       channel.close();
     } catch { /* ignore */ }
 
-    navigate('/chat');
+    navigate('/chat', { replace: true });
   };
 
   const handleWalletDisconnect = () => {
     setConnectedWallet(null);
-    navigate('/');
+    navigate('/', { replace: true });
     try {
       const channel = new BroadcastChannel('smainer-wallet');
       channel.postMessage({ action: 'wallet_disconnect' });
@@ -424,7 +424,7 @@ function MainApp() {
             </div>
           </div>
         </div>
-        <NavBar currentView={currentView} navigate={navigate} />
+        {/* NavBar intentionally omitted during onboarding — keep the connect flow focused */}
       </main>
     );
   }

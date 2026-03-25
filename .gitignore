@@ -22,3 +22,4 @@ node_modules/
 *.bak
 miniapp/src/apply_redesign.py
 miniapp/src/apply_redesign2.py
+.vercel

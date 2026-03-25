@@ -207,6 +207,7 @@ async def handle_help(
             "/link `<address>` — Link your Starknet wallet\n"
             "/unlink — Remove wallet link\n"
             "/balance — Check $STRK balance\n"
+            "/availNodes — Show network status\n"
             "/models — Show available AI models\n"
             "/model `<name>` — Set your preferred model\n"
             "/help — This message\n\n"
@@ -394,6 +395,70 @@ async def handle_balance(
             f"*Balance:* {balance_strk:.4f} $STRK\n"
             f"*Prompts remaining:* ~{prompts_remaining}"
         ),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# ---------------------------------------------------------------------------
+# /availNodes command
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("avail_nodes")
+async def handle_avail_nodes(
+    update: Dict[str, Any],
+    bot: Bot,
+    relayer: RelayerClient,
+) -> None:
+    """Handle /availNodes — display network status summary."""
+    message = update.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+
+    summary = await relayer.get_node_summary()
+
+    if summary is None:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Unable to reach network. Try again in a moment.",
+        )
+        return
+
+    total_nodes = summary.get("total_nodes", 0)
+
+    if total_nodes == 0:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="No compute nodes currently online. Check back soon!",
+        )
+        return
+
+    by_tier = summary.get("by_tier", {})
+    by_vendor = summary.get("by_vendor", {})
+    total_vram = summary.get("total_vram_gb", 0.0)
+
+    premium = by_tier.get("premium", 0)
+    pro = by_tier.get("pro", 0)
+    basic = by_tier.get("basic", 0)
+
+    nvidia = by_vendor.get("nvidia", 0)
+    amd = by_vendor.get("amd", 0)
+    other = by_vendor.get("unknown", 0)
+
+    text = (
+        "🌐 *Smainer Network Status*\n\n"
+        f"📊 *Nodes Online:* {total_nodes}\n\n"
+        f"🔥 Premium (≥32GB VRAM): {premium} node{'s' if premium != 1 else ''}\n"
+        f"⚡ Pro (≥16GB VRAM): {pro} node{'s' if pro != 1 else ''}\n"
+        f"🌟 Basic (<16GB VRAM): {basic} node{'s' if basic != 1 else ''}\n\n"
+        "🖥️ *Hardware Diversity:*\n"
+        f"  NVIDIA: {nvidia} | AMD: {amd} | Other: {other}\n\n"
+        f"💾 *Total Network VRAM:* {total_vram:.1f} GB\n\n"
+        "🔗 Visit app.smainer.io for detailed node info"
+    )
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=text,
         parse_mode=ParseMode.MARKDOWN,
     )
 

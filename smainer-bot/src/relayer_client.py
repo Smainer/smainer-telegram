@@ -276,3 +276,30 @@ class RelayerClient:
         except httpx.RequestError as e:
             logger.warning(f"KV delete error for key={key}: {e}")
             return False
+
+    async def get_node_summary(self) -> Optional[Dict[str, Any]]:
+        """Get network summary from GET /api/v1/nodes/summary.
+
+        Returns dict with:
+          - total_nodes: int
+          - by_tier: {"premium": N, "pro": N, "basic": N}
+          - by_vendor: {"nvidia": N, "amd": N, "unknown": N}
+          - total_vram_gb: float
+
+        Returns None on error.
+        """
+        try:
+            async with httpx.AsyncClient(
+                headers=self._headers, timeout=DEFAULT_TIMEOUT
+            ) as client:
+                resp = await client.get(f"{self._base}/api/v1/nodes/summary")
+                if resp.status_code == 200:
+                    return resp.json()
+                logger.warning(
+                    "Node summary endpoint returned non-200",
+                    extra={"status_code": resp.status_code},
+                )
+                return None
+        except httpx.RequestError as e:
+            logger.error(f"Error fetching node summary: {e}")
+            return None
