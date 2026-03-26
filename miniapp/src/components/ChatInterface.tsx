@@ -252,7 +252,7 @@ export function ChatInterface({
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={selectedModel ? "Describe your task..." : "Select a model above"}
+            placeholder={selectedModel ? "Ask anything... e.g., 'Explain quantum computing'" : "Select a model above"}
             disabled={!selectedModel || isGenerating}
             className="input flex-1 min-h-[52px] max-h-32 resize-none"
             rows={1}
