@@ -85,3 +85,5 @@ class TaskCallback(BaseModel):
     message_id: Optional[int] = None
     # On-chain escrow task ID (if payment was made via escrow contract)
     on_chain_task_id: Optional[int] = None
+    # User's Starknet wallet address (for NFT minting)
+    wallet_address: Optional[str] = None

@@ -24,6 +24,43 @@ from src.payment import PaymentManager
 logger = logging.getLogger(__name__)
 
 
+async def _mint_completion_badge(callback: TaskCallback) -> None:
+    """Mint a completion badge NFT for the user who completed a task.
+    
+    Fire-and-forget: failures are logged but never block the main flow.
+    """
+    import httpx
+    
+    relayer_url = settings.relayer_api_url.rstrip("/")
+    if not relayer_url or not callback.wallet_address:
+        return  # No relayer configured or no wallet to mint to
+    
+    # Category 3 = COMPUTE_CERTIFICATE
+    category = 3
+    
+    mint_payload = {
+        "to_address": callback.wallet_address,
+        "category": category,
+        "metadata": {
+            "task_id": callback.task_id,
+            "completed_at": getattr(callback, "timestamp", None),
+        },
+    }
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            f"{relayer_url}/api/v1/nft/mint",
+            json=mint_payload,
+            headers={
+                "X-API-Key": settings.relayer_api_key,
+            },
+        )
+        if resp.status_code < 300:
+            logger.info(f"NFT badge minted for task {callback.task_id}")
+        else:
+            logger.warning(f"NFT mint returned {resp.status_code}: {resp.text[:200]}")
+
+
 async def _handle_task_complete(
     callback: TaskCallback,
     chat_id: int,
@@ -62,6 +99,13 @@ async def _handle_task_complete(
             )
 
         await payment_mgr.settle_payment(callback.task_id)
+
+        # Fire-and-forget NFT badge mint for completed task
+        try:
+            await _mint_completion_badge(callback)
+        except Exception as e:
+            logger.warning(f"NFT badge mint skipped: {e}")
+
         logger.info(
             "Task completed",
             extra={"task_id": callback.task_id, "exec_time": exec_time},
