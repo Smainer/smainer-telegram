@@ -749,6 +749,8 @@ async def handle_inference(
     )
 
     # 7. Show "Pay & Compute" button opening MiniApp payment flow
+    # IMPORTANT: This is a PAYMENT GATE — user MUST pay before compute starts.
+    # No AI inference happens until user completes payment in MiniApp.
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -765,3 +767,14 @@ async def handle_inference(
         message_id=placeholder.message_id,
         reply_markup=keyboard,
     )
+
+    logger.info(
+        "Payment gate shown: user=%s chat=%s message=%s cost=%s tier=%s",
+        user_id,
+        chat_id,
+        placeholder.message_id,
+        cost_strk,
+        tier.value,
+    )
+    # STOP HERE — do NOT proceed with inference until payment_complete callback
+    return
