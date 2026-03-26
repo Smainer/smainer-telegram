@@ -55,6 +55,7 @@ class TaskSubmissionPayload(BaseModel):
     requirements: Dict[str, Any]
     token_amount: int
     description: Optional[str] = None
+    on_chain_task_id: Optional[int] = None  # Must be TOP LEVEL for Relayer's TaskSubmission
 
 
 class TaskStatusResponse(BaseModel):
@@ -83,6 +84,8 @@ class TaskCallback(BaseModel):
     # Routing fields — enriched by relayer from original task payload
     chat_id: Optional[int] = None
     message_id: Optional[int] = None
+    # Model name used for inference (enriched by relayer)
+    model: Optional[str] = None
     # On-chain escrow task ID (if payment was made via escrow contract)
     on_chain_task_id: Optional[int] = None
     # User's Starknet wallet address (for NFT minting)

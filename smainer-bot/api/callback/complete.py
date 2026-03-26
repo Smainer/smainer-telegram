@@ -78,9 +78,10 @@ async def _handle_task_complete(
             or "No response generated."
         )
         exec_time = callback.execution_time or 0
+        model_name = callback.model or "unknown"
 
         safe_text = escape_md(response_text)
-        footer = f"\n\n_Computed in {exec_time:.1f}s_"
+        footer = f"\n\n_Computed in {exec_time:.1f}s \u00b7 model: {escape_md(model_name)}_"
         text = safe_text[:3900] + footer
 
         try:
@@ -95,7 +96,7 @@ async def _handle_task_complete(
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text=response_text[:3900] + f"\n\nComputed in {exec_time:.1f}s",
+                text=response_text[:3900] + f"\n\nComputed in {exec_time:.1f}s \u00b7 model: {model_name}",
             )
 
         await payment_mgr.settle_payment(callback.task_id)

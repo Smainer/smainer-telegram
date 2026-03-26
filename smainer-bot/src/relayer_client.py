@@ -62,8 +62,6 @@ class RelayerClient:
             "message_id": req.message_id,
             "complete_callback_url": self._complete_callback_url,
         }
-        if on_chain_task_id is not None:
-            payload_dict["on_chain_task_id"] = on_chain_task_id
 
         body = TaskSubmissionPayload(
             payload=payload_dict,
@@ -75,6 +73,7 @@ class RelayerClient:
             },
             token_amount=req.cost_strk,
             description=f"AI inference ({req.model}) via Telegram",
+            on_chain_task_id=on_chain_task_id,  # TOP LEVEL for Relayer's TaskSubmission model
         )
 
         try:

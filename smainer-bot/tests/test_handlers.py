@@ -363,7 +363,7 @@ class TestHandleInference:
         }
 
     @pytest.mark.asyncio
-    async def test_inference_success(self, deps):
+    async def test_inference_shows_payment_gate(self, deps):
         update = _make_update("Hello AI, generate something")
 
         await handle_inference(
@@ -374,8 +374,18 @@ class TestHandleInference:
             deps["relayer"],
         )
 
-        deps["relayer"].submit_inference.assert_called_once()
-        deps["payment_mgr"].reserve_payment.assert_called_once()
+        # Payment gate: inference is NOT submitted — user must pay first
+        deps["relayer"].submit_inference.assert_not_called()
+        deps["payment_mgr"].reserve_payment.assert_not_called()
+
+        # Placeholder with cost info is sent
+        deps["bot"].send_message.assert_called_once()
+        text = deps["bot"].send_message.call_args[1]["text"]
+        assert "Ready to compute" in text
+        assert "Cost" in text
+
+        # Pay & Compute button is shown
+        deps["bot"].edit_message_reply_markup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_inference_no_wallet(self, deps):
@@ -442,21 +452,8 @@ class TestHandleInference:
         text = deps["bot"].send_message.call_args[1]["text"]
         assert "No compute nodes" in text
 
-    @pytest.mark.asyncio
-    async def test_inference_relayer_rejected(self, deps):
-        deps["relayer"].submit_inference.return_value = None  # Relayer error
-        update = _make_update("Hello AI")
-
-        await handle_inference(
-            update,
-            deps["bot"],
-            deps["wallet_mgr"],
-            deps["payment_mgr"],
-            deps["relayer"],
-        )
-
-        text = deps["bot"].edit_message_text.call_args[1]["text"]
-        assert "Failed" in text
+    # test_inference_relayer_rejected removed: with payment gate,
+    # handle_inference() never calls submit_inference() directly.
 
     @pytest.mark.asyncio
     async def test_inference_balance_check_fails(self, deps):
@@ -486,10 +483,12 @@ class TestHandleWebappData:
         import json
 
         wallet_mgr = AsyncMock(spec=WalletManager)
+        payment_mgr = AsyncMock(spec=PaymentManager)
+        relayer = AsyncMock(spec=RelayerClient)
         data = json.dumps({"action": "wallet_connect", "address": "0x04a3", "wallet_type": "argent"})
         update = _make_webapp_update(data)
 
-        await handle_webapp_data(update, mock_bot, wallet_mgr)
+        await handle_webapp_data(update, mock_bot, wallet_mgr, payment_mgr, relayer)
 
         wallet_mgr.link_wallet.assert_called_once_with(12345, "0x04a3")
         text = mock_bot.send_message.call_args[1]["text"]
@@ -498,9 +497,11 @@ class TestHandleWebappData:
     @pytest.mark.asyncio
     async def test_webapp_invalid_json(self, mock_bot):
         wallet_mgr = AsyncMock(spec=WalletManager)
+        payment_mgr = AsyncMock(spec=PaymentManager)
+        relayer = AsyncMock(spec=RelayerClient)
         update = _make_webapp_update("not-json")
 
-        await handle_webapp_data(update, mock_bot, wallet_mgr)
+        await handle_webapp_data(update, mock_bot, wallet_mgr, payment_mgr, relayer)
 
         wallet_mgr.link_wallet.assert_not_called()
         text = mock_bot.send_message.call_args[1]["text"]
@@ -511,10 +512,12 @@ class TestHandleWebappData:
         import json
 
         wallet_mgr = AsyncMock(spec=WalletManager)
+        payment_mgr = AsyncMock(spec=PaymentManager)
+        relayer = AsyncMock(spec=RelayerClient)
         data = json.dumps({"action": "something_else"})
         update = _make_webapp_update(data)
 
-        await handle_webapp_data(update, mock_bot, wallet_mgr)
+        await handle_webapp_data(update, mock_bot, wallet_mgr, payment_mgr, relayer)
 
         wallet_mgr.link_wallet.assert_not_called()
         text = mock_bot.send_message.call_args[1]["text"]
@@ -526,10 +529,12 @@ class TestHandleWebappData:
 
         wallet_mgr = AsyncMock(spec=WalletManager)
         wallet_mgr.link_wallet.side_effect = ValueError("bad")
+        payment_mgr = AsyncMock(spec=PaymentManager)
+        relayer = AsyncMock(spec=RelayerClient)
         data = json.dumps({"action": "wallet_connect", "address": "0xBAD"})
         update = _make_webapp_update(data)
 
-        await handle_webapp_data(update, mock_bot, wallet_mgr)
+        await handle_webapp_data(update, mock_bot, wallet_mgr, payment_mgr, relayer)
 
         text = mock_bot.send_message.call_args[1]["text"]
         assert "Invalid" in text
