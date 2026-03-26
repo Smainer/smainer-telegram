@@ -7,6 +7,7 @@ import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
 import { AnimatedLogo } from './components/AnimatedLogo';
 import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
+import { useWalletBalance } from './hooks/useWalletBalance';
 import type { ConnectedWallet, InferenceRequest } from './types';
 
 const WALLET_STORAGE_KEY = 'smainer_connected_wallet';
@@ -213,6 +214,16 @@ function MainApp() {
     // NOTE: api.smainer.ai does not resolve yet — fallback uses api.smainer.io (138.197.11.147)
     walletAddress: connectedWallet?.address,
   });
+
+  // Fetch STRK balance from chain
+  const { balance: fetchedBalance, refetch: refetchBalance } = useWalletBalance();
+
+  // Sync fetched balance to connectedWallet state
+  useEffect(() => {
+    if (connectedWallet && fetchedBalance && fetchedBalance !== '0' && fetchedBalance !== connectedWallet.balance_strk) {
+      setConnectedWallet(prev => prev ? { ...prev, balance_strk: fetchedBalance } : null);
+    }
+  }, [connectedWallet, fetchedBalance]);
 
   useEffect(() => {
     if (miniApp) {
