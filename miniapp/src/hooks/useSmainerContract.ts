@@ -64,15 +64,51 @@ export function useSmainerContract() {
   // Check STRK balance
   const checkBalance = useCallback(async (): Promise<string> => {
     if (!address || !strkContract) {
+      console.log('[checkBalance] Not ready - address:', address, 'contract:', !!strkContract);
       throw new Error('Wallet not connected');
     }
 
     try {
+      console.log('[checkBalance] Calling balance_of for address:', address);
       const result = await strkContract.call('balance_of', [address]);
-      const balance = result as bigint;
-      return formatTokenAmount(balance.toString(), TOKEN_DECIMALS.STRK);
+      console.log('[checkBalance] Raw result:', result, 'type:', typeof result);
+      
+      // Handle u256 return format - can be bigint, {low, high}, or array
+      // Note: 2^128 = 340282366920938463463374607431768211456n
+      const U128_MAX_PLUS_ONE = BigInt('340282366920938463463374607431768211456');
+      let balance: bigint;
+      
+      if (typeof result === 'bigint') {
+        balance = result;
+      } else if (result && typeof result === 'object') {
+        const obj = result as Record<string, unknown>;
+        if ('low' in obj && 'high' in obj) {
+          // u256 as {low: bigint, high: bigint}
+          const low = BigInt(String(obj.low));
+          const high = BigInt(String(obj.high));
+          balance = high * U128_MAX_PLUS_ONE + low;
+          console.log('[checkBalance] Parsed u256 {low, high}:', { low, high, balance });
+        } else if (Array.isArray(result)) {
+          // u256 as [low, high] array
+          balance = BigInt(String(result[0]));
+          if (result[1]) {
+            const high = BigInt(String(result[1]));
+            balance = high * U128_MAX_PLUS_ONE + balance;
+          }
+          console.log('[checkBalance] Parsed u256 array:', balance);
+        } else {
+          console.warn('[checkBalance] Unknown object format:', result);
+          balance = BigInt(0);
+        }
+      } else {
+        balance = BigInt(String(result) || '0');
+      }
+      
+      const formatted = formatTokenAmount(balance.toString(), TOKEN_DECIMALS.STRK);
+      console.log('[checkBalance] Final balance:', balance.toString(), 'formatted:', formatted);
+      return formatted;
     } catch (error) {
-      console.error('Failed to check balance:', error);
+      console.error('[checkBalance] Failed:', error);
       throw new Error('Failed to check balance');
     }
   }, [address, strkContract]);
