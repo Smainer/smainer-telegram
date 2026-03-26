@@ -4,6 +4,7 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "rewrites": [
+    { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/connect", "destination": "/connect.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],

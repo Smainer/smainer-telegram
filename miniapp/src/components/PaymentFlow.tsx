@@ -4,7 +4,96 @@ import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v2';
+const BUILD_VERSION = '2026-03-27-v3';
+
+// Deep link component for opening MiniApp in wallet browsers (for Telegram WebView)
+function WalletDeepLinks() {
+  // Build the full MiniApp URL with all current query params
+  const buildMiniAppUrl = () => {
+    const currentUrl = new URL(window.location.href);
+    // Use the canonical production URL
+    const miniAppUrl = `https://smainer-miniapp.vercel.app${currentUrl.pathname}${currentUrl.search}`;
+    return miniAppUrl;
+  };
+
+  const handleOpenInWallet = (wallet: 'braavos' | 'argent') => {
+    const miniAppUrl = buildMiniAppUrl();
+    const encodedUrl = encodeURIComponent(miniAppUrl);
+    
+    let deepLink: string;
+    
+    if (wallet === 'braavos') {
+      // Braavos deep link patterns - try universal link first
+      deepLink = `https://link.braavos.app/dapp?url=${encodedUrl}`;
+    } else {
+      // Argent deep link patterns  
+      deepLink = `https://app.argent.xyz/dapp?url=${encodedUrl}`;
+    }
+    
+    console.log(`[PaymentFlow] Opening ${wallet} deep link:`, deepLink);
+    
+    // Try Telegram WebApp openLink first (handles external apps better)
+    if (window.Telegram?.WebApp?.openLink) {
+      window.Telegram.WebApp.openLink(deepLink);
+    } else {
+      // Fallback to window.open
+      window.open(deepLink, '_blank');
+    }
+  };
+
+  return (
+    <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] space-y-4">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 mx-auto rounded-full bg-[var(--surface-elevated)] flex items-center justify-center">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" stroke="var(--blue)" strokeWidth="2" fill="none"/>
+            <path d="M12 22V12M4 7l8 5 8-5" stroke="var(--blue)" strokeWidth="2"/>
+          </svg>
+        </div>
+        <p className="text-white font-medium">Open in Your Wallet</p>
+        <p className="text-[var(--text-muted)] text-sm">
+          Tap below to open in your wallet's secure browser for signing
+        </p>
+      </div>
+
+      {/* Wallet Buttons */}
+      <div className="space-y-2">
+        <button
+          onClick={() => handleOpenInWallet('braavos')}
+          className="w-full px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 bg-gradient-to-r from-[#F5841F] to-[#FFB84D] hover:from-[#E07419] hover:to-[#F0A83D] text-black active:scale-[0.98] shadow-lg"
+        >
+          {WALLET_BRANDS.braavos.icon}
+          <span>Open in Braavos</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="ml-auto">
+            <path d="M7 17l9.2-9.2M17 17V7H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        
+        <button
+          onClick={() => handleOpenInWallet('argent')}
+          className="w-full px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 bg-gradient-to-r from-[#FF875B] to-[#FF6B4A] hover:from-[#FF7849] hover:to-[#FF5B39] text-white active:scale-[0.98] shadow-lg"
+        >
+          {WALLET_BRANDS.argent.icon}
+          <span>Open in Argent</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="ml-auto">
+            <path d="M7 17l9.2-9.2M17 17V7H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Info Footer */}
+      <div className="pt-2 border-t border-[var(--border-subtle)]">
+        <p className="text-[var(--text-muted)] text-xs text-center flex items-center justify-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          Secure signing in your wallet app
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface PaymentFlowProps {
   prompt: string;
@@ -391,35 +480,7 @@ export function PaymentFlow({
                     })}
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] text-center space-y-3">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-[var(--surface-elevated)] flex items-center justify-center">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="6" width="18" height="12" rx="2" stroke="var(--text-muted)" strokeWidth="2"/>
-                        <path d="M3 10h18" stroke="var(--text-muted)" strokeWidth="2"/>
-                      </svg>
-                    </div>
-                    <p className="text-[var(--text-muted)] text-sm">
-                      No wallet detected. Install a Starknet wallet to continue.
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <a
-                        href="https://www.argent.xyz/argent-x/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#FF875B] to-[#FF6B4A] text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                      >
-                        Argent X
-                      </a>
-                      <a
-                        href="https://braavos.app/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#F5841F] to-[#FFB84D] text-black text-sm font-medium hover:opacity-90 transition-opacity"
-                      >
-                        Braavos
-                      </a>
-                    </div>
-                  </div>
+                  <WalletDeepLinks />
                 )}
               </div>
 
