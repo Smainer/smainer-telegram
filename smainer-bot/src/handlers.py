@@ -763,6 +763,19 @@ async def handle_inference(
         chat_id=chat_id,
         message_id=placeholder.message_id,
     )
+    
+    # Telegram has URL length limits for WebApp buttons (typically ~512 chars max).
+    # Log the URL for debugging and warn if it's suspiciously long.
+    logger.info(
+        "MiniApp pay URL: len=%d url=%s",
+        len(pay_url),
+        pay_url[:200] + ("..." if len(pay_url) > 200 else ""),
+    )
+    if len(pay_url) > 512:
+        logger.warning(
+            "MiniApp URL exceeds 512 chars (%d) — may fail on Telegram",
+            len(pay_url),
+        )
 
     # 7. Update button with actual MiniApp payment URL
     # IMPORTANT: This is a PAYMENT GATE — user MUST pay before compute starts.
@@ -784,13 +797,17 @@ async def handle_inference(
             message_id=placeholder.message_id,
             reply_markup=keyboard,
         )
+        logger.info("Successfully updated button to WebAppInfo (message=%s)", placeholder.message_id)
     except Exception as e:
-        # If edit fails, log but don't crash - user still has a button (preparing state)
-        logger.warning(
-            "Failed to update payment button: %s (chat=%s message=%s)",
+        # Log the full exception type and message for debugging
+        logger.error(
+            "Failed to update payment button: type=%s msg=%s (chat=%s message=%s url_len=%d)",
+            type(e).__name__,
             str(e),
             chat_id,
             placeholder.message_id,
+            len(pay_url),
+            exc_info=True,  # Include full traceback in logs
         )
 
     logger.info(
