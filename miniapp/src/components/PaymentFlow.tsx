@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 
@@ -9,7 +10,7 @@ interface PaymentFlowProps {
   onCancel: () => void;
 }
 
-type PaymentStep = 'confirm' | 'processing' | 'success' | 'error';
+type PaymentStep = 'connect' | 'confirm' | 'processing' | 'success' | 'error';
 
 export function PaymentFlow({ 
   prompt, 
@@ -17,14 +18,36 @@ export function PaymentFlow({
   onSuccess, 
   onCancel 
 }: PaymentFlowProps) {
-  const [step, setStep] = useState<PaymentStep>('confirm');
   const [balance, setBalance] = useState<string>('0');
   const [taskId, setTaskId] = useState<string>('');
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Read URL parameters for Telegram integration
   const searchParams = new URLSearchParams(window.location.search);
   const chatId = searchParams.get('chat_id');
   const messageId = searchParams.get('message_id');
+
+  // Wallet connection hooks
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  // Filter to only available connectors
+  const availableConnectors = useMemo(() => {
+    try {
+      return connectors.filter(c => {
+        try {
+          return c.available();
+        } catch {
+          return false;
+        }
+      });
+    } catch (e) {
+      console.error('Failed to check connectors:', e);
+      return [];
+    }
+  }, [connectors]);
 
   const {
     createTask,
@@ -36,17 +59,47 @@ export function PaymentFlow({
     resetTxState
   } = useSmainerContract();
 
+  // Determine initial step based on wallet connection
+  const [step, setStep] = useState<PaymentStep>(() => {
+    return isConnected ? 'confirm' : 'connect';
+  });
+
+  // Update step when wallet connects
+  useEffect(() => {
+    if (isConnected && step === 'connect') {
+      setStep('confirm');
+    }
+  }, [isConnected, step]);
+
   const promptCost = getPromptCostForTier(tier);
   const tierInfo = COMPUTE_TIERS[tier];
 
-  // Load balance on mount
+  // Load balance when contract is ready
   useEffect(() => {
-    if (isContractReady) {
+    if (isContractReady && isConnected) {
       checkBalance()
         .then(setBalance)
-        .catch(console.error);
+        .catch((e) => {
+          console.error('Failed to check balance:', e);
+          setInitError('Failed to load wallet balance');
+        });
     }
-  }, [isContractReady, checkBalance]);
+  }, [isContractReady, isConnected, checkBalance]);
+
+  // Handle wallet connection
+  const handleConnect = async (connector: any) => {
+    if (connectingId) return;
+    try {
+      setConnectingId(connector.id);
+      await connect({ connector });
+      // Step will update via useEffect when isConnected changes
+    } catch (e) {
+      console.error('Wallet connection failed:', e);
+      setInitError('Failed to connect wallet. Please try again.');
+    } finally {
+      setConnectingId(null);
+    }
+  };
 
   // Handle payment process
   const handlePayment = async () => {
@@ -102,13 +155,14 @@ export function PaymentFlow({
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-white">
+            {step === 'connect' && 'Connect Wallet'}
             {step === 'confirm' && 'Confirm Payment'}
             {step === 'processing' && 'Processing Payment'}
             {step === 'success' && 'Payment Successful'}
             {step === 'error' && 'Payment Failed'}
           </h3>
           
-          {(step === 'confirm' || step === 'error') && (
+          {(step === 'connect' || step === 'confirm' || step === 'error') && (
             <button
               onClick={onCancel}
               className="text-[var(--text-muted)] hover:text-white transition-colors"
@@ -125,6 +179,89 @@ export function PaymentFlow({
             </button>
           )}
         </div>
+
+        {/* Connect Wallet Step */}
+        {step === 'connect' && (
+          <div className="space-y-6">
+            {/* Prompt Preview */}
+            <div className="p-3 rounded-lg bg-[var(--void)] border border-[var(--border-subtle)]">
+              <p className="text-sm text-[var(--text-muted)] mb-1">Prompt:</p>
+              <p className="text-white text-sm line-clamp-2">{prompt}</p>
+            </div>
+
+            {/* Cost Info */}
+            <div className="flex justify-between items-center p-3 rounded-lg bg-[var(--void)]">
+              <span className="text-[var(--text-muted)]">Cost:</span>
+              <span className="text-white font-semibold">{promptCost} STRK</span>
+            </div>
+
+            {/* Instructions */}
+            <p className="text-[var(--text-muted)] text-sm text-center">
+              Connect your Starknet wallet to approve the payment
+            </p>
+
+            {/* Init Error */}
+            {initError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {initError}
+              </div>
+            )}
+
+            {/* Wallet Connectors */}
+            <div className="space-y-3">
+              {availableConnectors.length > 0 ? (
+                availableConnectors.map((connector) => (
+                  <button
+                    key={connector.id}
+                    onClick={() => handleConnect(connector)}
+                    disabled={connectingId !== null}
+                    className="w-full px-4 py-3 rounded-xl border border-[var(--border-subtle)] text-white hover:border-[var(--blue)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {connectingId === connector.id ? (
+                      <span className="animate-pulse">Connecting...</span>
+                    ) : (
+                      <>
+                        <span className="capitalize">{connector.id}</span>
+                      </>
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="text-center space-y-3">
+                  <p className="text-[var(--text-muted)] text-sm">
+                    No wallet detected. Install Argent X or Braavos.
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <a
+                      href="https://www.argent.xyz/argent-x/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-lg bg-[var(--blue)] text-white text-sm hover:opacity-90"
+                    >
+                      Argent X
+                    </a>
+                    <a
+                      href="https://braavos.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-lg bg-[var(--green)] text-black text-sm hover:opacity-90"
+                    >
+                      Braavos
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              onClick={onCancel}
+              className="w-full px-4 py-3 rounded-xl border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-white hover:border-white transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
         {/* Confirmation Step */}
         {step === 'confirm' && (

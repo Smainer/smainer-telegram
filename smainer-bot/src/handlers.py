@@ -726,8 +726,23 @@ async def handle_inference(
             )
         return
 
-    # 5. Send placeholder with payment info
+    # 5. Build MiniApp pay URL - we'll use a placeholder message_id initially
+    # and update with actual message_id after sending
     cost_strk = settings.prompt_cost_strk / 1e18
+    
+    # First, send message with a temporary "preparing" button
+    # This ensures user always sees a button even if the follow-up edit fails
+    temp_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⏳ Preparing payment...",
+                    callback_data="payment_preparing",
+                )
+            ]
+        ]
+    )
+    
     placeholder = await bot.send_message(
         chat_id=chat_id,
         text=(
@@ -738,9 +753,10 @@ async def handle_inference(
             "Tap below to pay via on-chain escrow and start compute."
         ),
         parse_mode=ParseMode.MARKDOWN,
+        reply_markup=temp_keyboard,
     )
 
-    # 6. Build MiniApp pay URL with routing state
+    # 6. Build MiniApp pay URL with actual message_id
     pay_url = settings.get_miniapp_pay_url(
         prompt=prompt_text,
         tier=tier.value,
@@ -748,7 +764,7 @@ async def handle_inference(
         message_id=placeholder.message_id,
     )
 
-    # 7. Show "Pay & Compute" button opening MiniApp payment flow
+    # 7. Update button with actual MiniApp payment URL
     # IMPORTANT: This is a PAYMENT GATE — user MUST pay before compute starts.
     # No AI inference happens until user completes payment in MiniApp.
     keyboard = InlineKeyboardMarkup(
@@ -762,11 +778,20 @@ async def handle_inference(
         ]
     )
 
-    await bot.edit_message_reply_markup(
-        chat_id=chat_id,
-        message_id=placeholder.message_id,
-        reply_markup=keyboard,
-    )
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=chat_id,
+            message_id=placeholder.message_id,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        # If edit fails, log but don't crash - user still has a button (preparing state)
+        logger.warning(
+            "Failed to update payment button: %s (chat=%s message=%s)",
+            str(e),
+            chat_id,
+            placeholder.message_id,
+        )
 
     logger.info(
         "Payment gate shown: user=%s chat=%s message=%s cost=%s tier=%s",

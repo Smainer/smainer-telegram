@@ -76,6 +76,27 @@ async def _process_update(update: dict) -> None:
         await handle_webapp_data(update, bot, wallet_mgr, payment_mgr, relayer)
         return
 
+    # Handle callback queries (inline button clicks)
+    callback_query = update.get("callback_query", {})
+    if callback_query:
+        callback_data = callback_query.get("data", "")
+        callback_query_id = callback_query.get("id")
+        
+        if callback_data == "payment_preparing":
+            # User clicked the "Preparing..." button before it was updated
+            await bot.answer_callback_query(
+                callback_query_id=callback_query_id,
+                text="Payment is being prepared. Please wait a moment and try again.",
+                show_alert=False,
+            )
+        else:
+            # Unknown callback - just acknowledge
+            await bot.answer_callback_query(
+                callback_query_id=callback_query_id,
+                text="",
+            )
+        return
+
     text = message.get("text", "")
 
     if not text:
