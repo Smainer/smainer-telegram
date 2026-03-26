@@ -3,12 +3,28 @@ import { Routes, Route, useNavigate, useLocation, Navigate, NavigateFunction } f
 
 import { WalletConnect } from './components/WalletConnect';
 import { ChatInterface } from './components/ChatInterface';
+import { PaymentFlow } from './components/PaymentFlow';
 import { DebugOverlay, addDebugBootStep } from './components/DebugOverlay';
 import { AnimatedLogo } from './components/AnimatedLogo';
 import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
 import { useWalletBalance } from './hooks/useWalletBalance';
+import { ComputeTier } from './lib/starknet';
 import type { ConnectedWallet, InferenceRequest } from './types';
+
+// Map bot tier names (small/medium/large) to MiniApp ComputeTier (BASIC/PRO/PREMIUM)
+function mapBotTierToComputeTier(botTier: string): ComputeTier {
+  const tierMap: Record<string, ComputeTier> = {
+    small: 'BASIC',
+    medium: 'PRO',
+    large: 'PREMIUM',
+    // Also handle direct tier names in case they're sent
+    basic: 'BASIC',
+    pro: 'PRO',
+    premium: 'PREMIUM',
+  };
+  return tierMap[botTier.toLowerCase()] || 'BASIC';
+}
 
 const WALLET_STORAGE_KEY = 'smainer_connected_wallet';
 
@@ -164,7 +180,95 @@ function SmainerLogo({ size = 40 }: { size?: number }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAYMENT FLOW WRAPPER (for bot-initiated payment)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface PaymentFlowParams {
+  prompt: string;
+  tier: ComputeTier;
+  chatId: string;
+  messageId: string;
+}
+
+function PaymentFlowWrapper({ params }: { params: PaymentFlowParams }) {
+  const handleSuccess = (taskId: string) => {
+    // sendData() in PaymentFlow already closes the MiniApp and sends data to bot
+    // This callback is for any additional cleanup if needed
+    console.log('Payment flow completed, task:', taskId);
+  };
+
+  const handleCancel = () => {
+    // Close the MiniApp when user cancels
+    try {
+      window.Telegram?.WebApp?.close();
+    } catch (e) {
+      // Fallback: navigate back or show message
+      console.log('Could not close WebApp:', e);
+    }
+  };
+
+  return (
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#09090B',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+    }}>
+      {/* Brand header */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '20px', 
+        left: '50%', 
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+      }}>
+        <AnimatedLogo size={28} />
+        <span style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>SMAINER</span>
+      </div>
+
+      {/* PaymentFlow handles the rest */}
+      <PaymentFlow
+        prompt={params.prompt}
+        tier={params.tier}
+        onSuccess={handleSuccess}
+        onCancel={handleCancel}
+      />
+    </div>
+  );
+}
+
 export default function App() {
+  // Check for payment flow URL params (from bot "Pay & Compute" button)
+  const searchParams = new URLSearchParams(window.location.search);
+  const action = searchParams.get('action');
+
+  if (action === 'pay') {
+    const prompt = searchParams.get('prompt') || '';
+    const tierParam = searchParams.get('tier') || 'small';
+    const chatId = searchParams.get('chat_id') || '';
+    const messageId = searchParams.get('message_id') || '';
+
+    // Validate required params
+    if (!prompt) {
+      console.error('Payment flow missing prompt parameter');
+    }
+
+    const tier = mapBotTierToComputeTier(tierParam);
+
+    return (
+      <PaymentFlowWrapper 
+        params={{ prompt, tier, chatId, messageId }} 
+      />
+    );
+  }
+
+  // Normal app routing
   return (
     <Routes>
       <Route path="/" element={<MainApp />} />
