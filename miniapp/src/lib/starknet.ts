@@ -190,9 +190,32 @@ export const ERC20_ABI = [
 ] as const;
 
 // Utility functions
-export function formatTokenAmount(amount: string | number, decimals: number = 18): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return (num / Math.pow(10, decimals)).toFixed(4);
+export function formatTokenAmount(amount: string | number | bigint, decimals: number = 18): string {
+  // Convert to bigint for precise handling
+  let amountBigInt: bigint;
+  if (typeof amount === 'bigint') {
+    amountBigInt = amount;
+  } else if (typeof amount === 'string') {
+    // Handle decimal strings and integer strings
+    if (amount.includes('.')) {
+      // It's already a formatted decimal, just pass through
+      return parseFloat(amount).toFixed(4);
+    }
+    amountBigInt = BigInt(amount);
+  } else {
+    amountBigInt = BigInt(Math.floor(amount));
+  }
+  
+  // Divide by 10^decimals using bigint arithmetic
+  const divisor = BigInt(10 ** decimals);
+  const integerPart = amountBigInt / divisor;
+  const remainder = amountBigInt % divisor;
+  
+  // Calculate decimal places (up to 4 digits)
+  const decimalPart = (remainder * BigInt(10000)) / divisor;
+  const decimalStr = decimalPart.toString().padStart(4, '0');
+  
+  return `${integerPart}.${decimalStr}`;
 }
 
 export function parseTokenAmount(amount: string, decimals: number = 18): bigint {

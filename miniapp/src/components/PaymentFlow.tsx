@@ -3,6 +3,9 @@ import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 
+// Version for deployment verification (increment on each deploy)
+const BUILD_VERSION = '2026-03-27-v2';
+
 interface PaymentFlowProps {
   prompt: string;
   tier?: ComputeTier;
@@ -11,6 +14,14 @@ interface PaymentFlowProps {
 }
 
 type PaymentStep = 'connect' | 'confirm' | 'processing' | 'success' | 'error';
+
+// Debug info interface
+interface DebugInfo {
+  rawBalance: string | null;
+  balanceError: string | null;
+  contractReady: boolean;
+  address: string | null;
+}
 
 // Wallet brand colors and icons
 const WALLET_BRANDS = {
@@ -79,6 +90,13 @@ export function PaymentFlow({
   const [taskId, setTaskId] = useState<string>('');
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState<boolean>(false);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
+    rawBalance: null,
+    balanceError: null,
+    contractReady: false,
+    address: null,
+  });
 
   // Read URL parameters for Telegram integration
   const searchParams = new URLSearchParams(window.location.search);
@@ -140,16 +158,34 @@ export function PaymentFlow({
 
   // Load balance when contract is ready
   useEffect(() => {
+    // Update debug info
+    setDebugInfo(prev => ({
+      ...prev,
+      contractReady: isContractReady,
+      address: address || null,
+    }));
+    
     if (isContractReady && isConnected) {
       console.log('[PaymentFlow] Loading balance... contractReady:', isContractReady, 'connected:', isConnected, 'address:', address);
       checkBalance()
         .then((bal) => {
           console.log('[PaymentFlow] Balance loaded:', bal);
           setBalance(bal);
+          setDebugInfo(prev => ({
+            ...prev,
+            rawBalance: bal,
+            balanceError: null,
+          }));
         })
         .catch((e) => {
+          const errorMsg = e instanceof Error ? e.message : String(e);
           console.error('[PaymentFlow] Failed to check balance:', e);
           setInitError('Failed to load wallet balance. Please refresh.');
+          setDebugInfo(prev => ({
+            ...prev,
+            rawBalance: null,
+            balanceError: errorMsg,
+          }));
         });
     }
   }, [isContractReady, isConnected, checkBalance, address]);
@@ -478,6 +514,40 @@ export function PaymentFlow({
                   </svg>
                   Approve & Pay
                 </button>
+              </div>
+              
+              {/* Debug Panel - tap version to toggle */}
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowDebug(!showDebug)}
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors font-mono"
+                >
+                  v{BUILD_VERSION} {showDebug ? '▲' : '▼'}
+                </button>
+                
+                {showDebug && (
+                  <div className="mt-2 p-3 rounded-lg bg-black/40 border border-[var(--border-subtle)] text-xs font-mono space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Address:</span>
+                      <span className="text-white break-all">{debugInfo.address || 'Not connected'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Contract Ready:</span>
+                      <span className={debugInfo.contractReady ? 'text-[var(--success)]' : 'text-[var(--error)]'}>
+                        {debugInfo.contractReady ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Raw Balance:</span>
+                      <span className="text-white">{debugInfo.rawBalance ?? 'Loading...'}</span>
+                    </div>
+                    {debugInfo.balanceError && (
+                      <div className="pt-1 border-t border-[var(--border-subtle)]">
+                        <span className="text-[var(--error)]">Error: {debugInfo.balanceError}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

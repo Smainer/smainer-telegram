@@ -70,6 +70,8 @@ export function useSmainerContract() {
 
     try {
       console.log('[checkBalance] Calling balance_of for address:', address);
+      console.log('[checkBalance] STRK contract address:', CONTRACT_ADDRESSES.STRK_TOKEN);
+      
       const result = await strkContract.call('balance_of', [address]);
       console.log('[checkBalance] Raw result:', result, 'type:', typeof result);
       
@@ -79,15 +81,19 @@ export function useSmainerContract() {
       let balance: bigint;
       
       if (typeof result === 'bigint') {
+        console.log('[checkBalance] Result is direct bigint');
         balance = result;
       } else if (result && typeof result === 'object') {
         const obj = result as Record<string, unknown>;
+        const keys = Object.keys(obj);
+        console.log('[checkBalance] Result is object with keys:', keys);
+        
         if ('low' in obj && 'high' in obj) {
           // u256 as {low: bigint, high: bigint}
           const low = BigInt(String(obj.low));
           const high = BigInt(String(obj.high));
           balance = high * U128_MAX_PLUS_ONE + low;
-          console.log('[checkBalance] Parsed u256 {low, high}:', { low, high, balance });
+          console.log('[checkBalance] Parsed u256 {low, high}:', { low: low.toString(), high: high.toString(), balance: balance.toString() });
         } else if (Array.isArray(result)) {
           // u256 as [low, high] array
           balance = BigInt(String(result[0]));
@@ -95,21 +101,43 @@ export function useSmainerContract() {
             const high = BigInt(String(result[1]));
             balance = high * U128_MAX_PLUS_ONE + balance;
           }
-          console.log('[checkBalance] Parsed u256 array:', balance);
+          console.log('[checkBalance] Parsed u256 array:', balance.toString());
+        } else if ('balance' in obj) {
+          // Object with balance key (some SDKs return this)
+          const balVal = obj.balance;
+          if (typeof balVal === 'bigint') {
+            balance = balVal;
+          } else if (balVal && typeof balVal === 'object') {
+            // Nested {low, high}
+            const nested = balVal as Record<string, unknown>;
+            if ('low' in nested && 'high' in nested) {
+              const low = BigInt(String(nested.low));
+              const high = BigInt(String(nested.high));
+              balance = high * U128_MAX_PLUS_ONE + low;
+            } else {
+              console.warn('[checkBalance] Unknown nested balance format:', nested);
+              balance = BigInt(0);
+            }
+          } else {
+            balance = BigInt(String(balVal) || '0');
+          }
+          console.log('[checkBalance] Parsed from balance key:', balance.toString());
         } else {
-          console.warn('[checkBalance] Unknown object format:', result);
+          console.warn('[checkBalance] Unknown object format, raw:', JSON.stringify(result, (k, v) => typeof v === 'bigint' ? v.toString() : v));
           balance = BigInt(0);
         }
       } else {
         balance = BigInt(String(result) || '0');
+        console.log('[checkBalance] Converted from primitive:', balance.toString());
       }
       
-      const formatted = formatTokenAmount(balance.toString(), TOKEN_DECIMALS.STRK);
-      console.log('[checkBalance] Final balance:', balance.toString(), 'formatted:', formatted);
+      // Use bigint-safe formatting
+      const formatted = formatTokenAmount(balance, TOKEN_DECIMALS.STRK);
+      console.log('[checkBalance] Final balance wei:', balance.toString(), 'formatted:', formatted, 'STRK');
       return formatted;
     } catch (error) {
       console.error('[checkBalance] Failed:', error);
-      throw new Error('Failed to check balance');
+      throw new Error(`Failed to check balance: ${error instanceof Error ? error.message : String(error)}`);
     }
   }, [address, strkContract]);
 
