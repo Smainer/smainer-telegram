@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
+import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v5';
+const BUILD_VERSION = '2026-03-27-v6';
 
 // Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
 function WalletDeepLinks() {
@@ -191,6 +192,12 @@ export function PaymentFlow({
     contractReady: false,
     address: null,
   });
+  const [botLinkedWallet, setBotLinkedWallet] = useState<string | null>(null);
+  const [checkingBotWallet, setCheckingBotWallet] = useState(true);
+  
+  // Get bot API and telegram data
+  const { initDataRaw, isInTelegram } = useTelegramData();
+  const botApiUrl = import.meta.env.VITE_BOT_API_URL || 'https://bot.smainer.io';
 
   // Read URL parameters for Telegram integration
   const searchParams = new URLSearchParams(window.location.search);
@@ -235,6 +242,40 @@ export function PaymentFlow({
     resetTxState
   } = useSmainerContract();
 
+  // Fetch bot-linked wallet on mount
+  useEffect(() => {
+    if (!isInTelegram || !initDataRaw) {
+      setCheckingBotWallet(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        console.log('[PaymentFlow] Checking bot-linked wallet...');
+        const response = await fetch(
+          `${botApiUrl}/api/wallet-check?initData=${encodeURIComponent(initDataRaw)}`
+        );
+
+        if (!response.ok) {
+          console.warn('[PaymentFlow] wallet-check returned', response.status);
+          setCheckingBotWallet(false);
+          return;
+        }
+
+        const data = await response.json();
+        if (data.linked && data.address) {
+          console.log('[PaymentFlow] Bot-linked wallet found:', data.address);
+          setBotLinkedWallet(data.address);
+          setStep('confirm'); // Skip to confirm if wallet already linked
+        }
+      } catch (error) {
+        console.error('[PaymentFlow] Failed to check bot wallet:', error);
+      } finally {
+        setCheckingBotWallet(false);
+      }
+    })();
+  }, [isInTelegram, initDataRaw, botApiUrl]);
+
   // Determine initial step based on wallet connection
   const [step, setStep] = useState<PaymentStep>(() => {
     return isConnected ? 'confirm' : 'connect';
@@ -259,7 +300,7 @@ export function PaymentFlow({
       address: address || null,
     }));
     
-    if (isContractReady && isConnected) {
+    if (isContractReady && (isConnected || botLinkedWallet)) {
       console.log('[PaymentFlow] Loading balance... contractReady:', isContractReady, 'connected:', isConnected, 'address:', address);
       checkBalance()
         .then((bal) => {
@@ -269,6 +310,7 @@ export function PaymentFlow({
             ...prev,
             rawBalance: bal,
             balanceError: null,
+            address: address || botLinkedWallet,
           }));
         })
         .catch((e) => {
@@ -471,7 +513,8 @@ export function PaymentFlow({
                 </div>
               )}
 
-              {/* Wallet Connectors */}
+              {/* Skip wallet connectors if bot-linked wallet exists */}
+              {!botLinkedWallet && (
               <div className="space-y-2">
                 <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Select Wallet</span>
                 
@@ -508,7 +551,7 @@ export function PaymentFlow({
                 ) : (
                   <WalletDeepLinks />
                 )}
-              </div>
+              </div>)}
 
               {/* Cancel Button */}
               <button
@@ -590,6 +633,18 @@ export function PaymentFlow({
                 <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">Prompt</span>
                 <p className="text-white text-sm line-clamp-3 leading-relaxed">{prompt}</p>
               </div>
+
+              {/* Bot-linked Wallet Display */}
+              {botLinkedWallet && (
+                <div className="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--blue)]/30">
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                    Wallet (Linked via Telegram)
+                  </p>
+                  <p className="text-white font-mono text-sm break-all">
+                    {botLinkedWallet}
+                  </p>
+                </div>
+              )}
 
               {/* Insufficient Balance Warning */}
               {hasInsufficientBalance && (

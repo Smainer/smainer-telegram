@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAccount, useContract } from '@starknet-react/core';
-import { Contract, hash, RpcProvider, CallData } from 'starknet';
+import { hash, RpcProvider } from 'starknet';
 import { 
   CONTRACT_ADDRESSES,
   SMAINER_COMPUTE_ABI,
@@ -69,7 +69,12 @@ export function useSmainerContract() {
     }
 
     try {
-      console.log('[checkBalance] Using raw RPC for address:', address);
+      // Normalize address to 64 hex chars (matching bot's format)
+      // Wallet extensions may return short-form addresses
+      const hexPart = address.toLowerCase().replace(/^0x/, '');
+      const normalizedAddress = '0x' + hexPart.padStart(64, '0');
+      
+      console.log('[checkBalance] Using raw RPC for address:', normalizedAddress);
       console.log('[checkBalance] STRK contract address:', CONTRACT_ADDRESSES.STRK_TOKEN);
       
       // Use raw RpcProvider to bypass ABI type validation issues
@@ -77,11 +82,13 @@ export function useSmainerContract() {
         nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet' 
       });
       
-      // Call balance_of directly via callContract - no ABI needed
+      // Call balance_of directly via callContract
+      // IMPORTANT: Use positional array, not named object - CallData.compile({ name: val })
+      // only works with an ABI parameter, otherwise it produces malformed calldata
       const result = await provider.callContract({
         contractAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
         entrypoint: 'balance_of',
-        calldata: CallData.compile({ account: address }),
+        calldata: [normalizedAddress],
       });
       
       console.log('[checkBalance] Raw RPC result:', result);
