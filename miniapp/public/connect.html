@@ -298,7 +298,12 @@
   <script>
     var urlParams = new URLSearchParams(window.location.search);
     var shouldReturnToTelegram = urlParams.get('return') === 'telegram';
+    var initDataFromUrl = urlParams.get('initData') || '';
+    var BOT_API_URL = 'https://bot.smainer.io';
     var BOT_USERNAME = 'smainer_ai_bot';
+
+    // Will be populated from Telegram WebApp when in Telegram WebView
+    var telegramInitData = initDataFromUrl;
 
     var connectScreen = document.getElementById('connect-screen');
     var successScreen = document.getElementById('success-screen');
@@ -310,52 +315,12 @@
     var braavosBtn    = document.getElementById('braavos-btn');
     var browserBtn    = document.getElementById('browser-btn');
 
-    var browserConnectUrl = window.location.origin + '/connect?return=telegram';
-    var braavosConnectUrl = 'https://link.braavos.app/dapp/' + window.location.host + '/connect?return=telegram';
-
     var ADDRESS_RE = /^0x[0-9a-fA-F]{1,64}$/;
 
-    // ---- Encode address for /start deep-link ----
-    function encodeAddressForStartPayload(address) {
-      var normalized = address.trim().toLowerCase();
-      var hex = normalized.startsWith('0x') ? normalized.slice(2) : normalized;
-      var padded = hex.padStart(64, '0');
-      var bytes = [];
-      for (var i = 0; i < padded.length; i += 2) {
-        bytes.push(parseInt(padded.slice(i, i + 2), 16));
-      }
-      var binary = '';
-      for (var j = 0; j < bytes.length; j++) {
-        binary += String.fromCharCode(bytes[j]);
-      }
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    }
-
-    // ---- Show success and either sendData or redirect ----
-    function finalizeWallet(address, walletType) {
-      var tg = window.Telegram && window.Telegram.WebApp;
-
-      // In Telegram WebView — use sendData
-      if (tg && typeof tg.sendData === 'function') {
-        try {
-          tg.sendData(JSON.stringify({ action: 'wallet_connect', address: address, wallet_type: walletType }));
-          showSuccess(address);
-          return;
-        } catch (err) {
-          showAlert('Failed to send to Telegram: ' + (err.message || String(err)), 'error');
-          return;
-        }
-      }
-
-      // In external browser with ?return=telegram — deep-link back to bot
-      if (shouldReturnToTelegram) {
-        var encoded = encodeAddressForStartPayload(address);
-        window.location.assign('https://t.me/' + BOT_USERNAME + '?start=linkb_' + encoded);
-        return;
-      }
-
-      // Standalone — just show success
-      showSuccess(address);
+    function normalizeAddress(addr) {
+      var s = addr.trim().toLowerCase();
+      if (!s.startsWith('0x') || !ADDRESS_RE.test(s)) return null;
+      return '0x' + s.slice(2).padStart(64, '0');
     }
 
     function showSuccess(address) {
@@ -371,85 +336,145 @@
       alertBox.style.display = 'block';
     }
 
-    function openExternal(url) {
-      var tg = window.Telegram && window.Telegram.WebApp;
-      if (tg && typeof tg.openLink === 'function') {
-        tg.openLink(url);
-        return;
-      }
-      window.open(url, '_blank', 'noopener,noreferrer');
+    // POST wallet address directly to bot API — works from any browser
+    function postWalletLink(address, initData, onSuccess, onError) {
+      fetch(BOT_API_URL + '/api/wallet-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: address, init_data: initData })
+      }).then(function(resp) {
+        if (resp.ok) { onSuccess(); }
+        else {
+          resp.json().then(function(d) { onError(d.error || 'API error ' + resp.status); })
+               .catch(function() { onError('API error ' + resp.status); });
+        }
+      }).catch(function(err) { onError(err.message || String(err)); });
     }
 
-    // ---- Braavos auto-connect (runs when opened in Braavos dApp browser) ----
+    // Main wallet finalization — handles all paths
+    function finalizeWallet(address, walletType) {
+      var norm = normalizeAddress(address) || address.trim().toLowerCase();
+      var tg = window.Telegram && window.Telegram.WebApp;
+
+      // Path 1: In Telegram WebView — use sendData (most reliable)
+      if (tg && typeof tg.sendData === 'function') {
+        try {
+          tg.sendData(JSON.stringify({ action: 'wallet_connect', address: norm, wallet_type: walletType }));
+          // Belt-and-suspenders: also POST to API
+          if (telegramInitData) {
+            postWalletLink(norm, telegramInitData, function(){}, function(){});
+          }
+          showSuccess(norm);
+          return;
+        } catch(e) {
+          showAlert('sendData failed: ' + (e.message || String(e)), 'error');
+          return;
+        }
+      }
+
+      // Path 2: External browser with initData — POST directly to bot API
+      if (telegramInitData) {
+        loadingScreen.style.display = 'block';
+        connectScreen.style.display = 'none';
+        document.getElementById('loading-msg').textContent = 'Linking wallet to your Telegram account…';
+        postWalletLink(norm, telegramInitData,
+          function() { showSuccess(norm); },
+          function(err) {
+            loadingScreen.style.display = 'none';
+            connectScreen.style.display = 'block';
+            showAlert('Failed to link wallet: ' + err + '. Try copying your address and sending /link 0x... in the bot chat.', 'error');
+            document.getElementById('manual-details').open = true;
+          }
+        );
+        return;
+      }
+
+      // Path 3: No initData — just show success (standalone mode)
+      showSuccess(norm);
+    }
+
+    // Braavos auto-connect: runs when starknet_braavos is injected (Braavos dApp browser)
     function tryBraavosAutoConnect() {
       var braavos = window.starknet_braavos;
-      if (!braavos || !shouldReturnToTelegram) return false;
+      if (!braavos) return false;
+      if (!telegramInitData && !shouldReturnToTelegram) return false;
 
       connectScreen.style.display = 'none';
       loadingScreen.style.display = 'block';
       document.getElementById('loading-msg').textContent = 'Connecting Braavos wallet…';
 
       braavos.enable({ starknetVersion: 'v5' }).then(function(accounts) {
-        var address = typeof accounts === 'string' ? accounts
-          : Array.isArray(accounts) && accounts.length ? accounts[0] : null;
-
-        if (!address || !ADDRESS_RE.test(address.trim())) {
+        var addr = typeof accounts === 'string' ? accounts
+          : (Array.isArray(accounts) && accounts.length ? accounts[0] : null);
+        if (!addr || !ADDRESS_RE.test(addr.trim())) {
           loadingScreen.style.display = 'none';
           connectScreen.style.display = 'block';
           showAlert('Braavos returned an invalid address. Please paste manually.', 'error');
           document.getElementById('manual-details').open = true;
           return;
         }
-        finalizeWallet(address.trim(), 'braavos');
+        finalizeWallet(addr.trim(), 'braavos');
       }).catch(function(err) {
         loadingScreen.style.display = 'none';
         connectScreen.style.display = 'block';
         showAlert('Braavos connection failed: ' + (err.message || String(err)), 'error');
       });
-
       return true;
     }
 
-    // ---- Button handlers ----
-    braavosBtn.addEventListener('click', function() { openExternal(braavosConnectUrl); });
-    browserBtn.addEventListener('click', function() { openExternal(browserConnectUrl); });
+    // Build Braavos/Browser URLs with initData embedded
+    function buildExternalUrl(base) {
+      var url = base + '?return=telegram';
+      var tg = window.Telegram && window.Telegram.WebApp;
+      var initData = (tg && tg.initData) ? tg.initData : telegramInitData;
+      if (initData) url += '&initData=' + encodeURIComponent(initData);
+      return url;
+    }
 
-    // ---- Manual form submit ----
+    function openExternal(url) {
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg && typeof tg.openLink === 'function') { tg.openLink(url); return; }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    braavosBtn.addEventListener('click', function() {
+      openExternal(buildExternalUrl('https://link.braavos.app/dapp/' + window.location.host + '/connect'));
+    });
+
+    browserBtn.addEventListener('click', function() {
+      openExternal(buildExternalUrl(window.location.origin + '/connect'));
+    });
+
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       alertBox.style.display = 'none';
-
       var address = input.value.trim();
-      if (!address) { showAlert('Please enter your wallet address.', 'error'); return; }
+      if (!address) { showAlert('Enter your wallet address.', 'error'); return; }
       if (!ADDRESS_RE.test(address)) {
-        showAlert('Invalid format — must start with 0x followed by up to 64 hex characters.', 'error');
+        showAlert('Must start with 0x followed by up to 64 hex characters.', 'error');
         return;
       }
-
-      var tg = window.Telegram && window.Telegram.WebApp;
-      if (!tg || typeof tg.sendData !== 'function') {
-        showAlert('Open this page from inside Telegram (tap Connect Wallet in the bot chat).', 'error');
-        return;
-      }
-
       finalizeWallet(address, 'manual');
     });
 
-    // ---- Init ----
+    // Init: read initData, run diagnostics, try Braavos auto-connect
     setTimeout(function() {
       var tg = window.Telegram && window.Telegram.WebApp;
-      if (tg) { try { tg.expand(); } catch(e) {} }
+      if (tg) {
+        try { tg.expand(); } catch(e) {}
+        if (tg.initData) telegramInitData = tg.initData;
+      }
 
-      var hasSend = tg && typeof tg.sendData === 'function';
       var hasBraavos = !!window.starknet_braavos;
+      var hasSend = tg && typeof tg.sendData === 'function';
 
       document.getElementById('d-tg').innerHTML = tg ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
       document.getElementById('d-send').innerHTML = hasSend ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
       document.getElementById('d-braavos').innerHTML = hasBraavos ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
       document.getElementById('d-url').textContent = window.location.href.substring(0, 60);
 
-      // If Braavos is injected and we're returning from wallet app — auto-connect
-      if (hasBraavos && shouldReturnToTelegram) {
+      // Auto-connect if Braavos is injected and we have a way to identify the user
+      if (hasBraavos && (telegramInitData || shouldReturnToTelegram)) {
         tryBraavosAutoConnect();
       }
     }, 500);

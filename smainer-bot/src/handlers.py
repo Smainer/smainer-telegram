@@ -271,45 +271,10 @@ async def handle_webapp_data(
 
         await bot.send_message(
             chat_id=chat_id,
-            text=f"Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
+            text=f"Wallet connected: `{address}`\n\nSend any message to run AI inference.",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=ReplyKeyboardRemove(),
         )
-
-        # If user had a pending prompt (sent before wallet was linked), resume it
-        pending_prompt = await relayer.kv_get(f"pending:{user_id}")
-        if pending_prompt:
-            await relayer.kv_delete(f"pending:{user_id}")
-            user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
-            pending_tier = infer_tier(user_model)
-            cost_strk_val = settings.prompt_cost_strk / 1e18
-
-            pay_url = settings.get_miniapp_pay_url(
-                prompt=pending_prompt,
-                tier=pending_tier.value,
-                chat_id=chat_id,
-                message_id=0,
-            )
-            keyboard_pending = InlineKeyboardMarkup(
-                inline_keyboard=[[
-                    InlineKeyboardButton(
-                        text="Pay & Compute",
-                        web_app=WebAppInfo(url=pay_url),
-                    )
-                ]]
-            )
-            await bot.send_message(
-                chat_id=chat_id,
-                text=(
-                    f"*Your pending task is ready*\n\n"
-                    f"📝 _{escape_md(pending_prompt[:50])}{'...' if len(pending_prompt) > 50 else ''}_\n"
-                    f"🤖 Model: `{user_model}` ({pending_tier.value})\n"
-                    f"💰 Cost: {cost_strk_val:.4f} $STRK\n\n"
-                    "Tap below to pay and start compute."
-                ),
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=keyboard_pending,
-            )
         return
 
     # Handle payment completion from MiniApp
@@ -655,40 +620,13 @@ async def handle_inference(
             )
         return
 
-    # 5. Check wallet link — gate payment on wallet being known
-    starknet_address = await wallet_mgr.get_linked_address(user_id)
+    # 5. Build MiniApp pay URL - we'll use a placeholder message_id initially
+    # and update with actual message_id after sending
     cost_strk = settings.prompt_cost_strk / 1e18
 
-    if not starknet_address:
-        # No wallet linked — store the pending prompt, show Connect Wallet button
-        await relayer.kv_set(f"pending:{user_id}", prompt_text, ttl=3600)
+    # Check wallet link (for second button only — does NOT block Pay & Compute)
+    starknet_address = await wallet_mgr.get_linked_address(user_id)
 
-        connect_url = settings.get_miniapp_connect_url()
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[[
-                InlineKeyboardButton(
-                    text="Connect Wallet",
-                    web_app=WebAppInfo(url=connect_url),
-                )
-            ]]
-        )
-        await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                f"*Ready to compute*\n\n"
-                f"📝 _{escape_md(prompt_text[:50])}{'...' if len(prompt_text) > 50 else ''}_\n"
-                f"🤖 Model: `{user_model}` ({tier.value})\n"
-                f"💰 Cost: {cost_strk:.4f} $STRK\n\n"
-                "Connect your Starknet wallet to pay and run this task."
-            ),
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=keyboard,
-        )
-        return
-
-    # 6. Build MiniApp pay URL - we'll use a placeholder message_id initially
-    # and update with actual message_id after sending
-    
     # First, send message with a temporary "preparing" button
     # This ensures user always sees a button even if the follow-up edit fails
     temp_keyboard = InlineKeyboardMarkup(
@@ -701,7 +639,7 @@ async def handle_inference(
             ]
         ]
     )
-    
+
     placeholder = await bot.send_message(
         chat_id=chat_id,
         text=(
@@ -722,7 +660,7 @@ async def handle_inference(
         chat_id=chat_id,
         message_id=placeholder.message_id,
     )
-    
+
     # Telegram has URL length limits for WebApp buttons (typically ~512 chars max).
     # Log the URL for debugging and warn if it's suspiciously long.
     logger.info(
@@ -736,19 +674,19 @@ async def handle_inference(
             len(pay_url),
         )
 
-    # 7. Update button with actual MiniApp payment URL
-    # IMPORTANT: This is a PAYMENT GATE — user MUST pay before compute starts.
-    # No AI inference happens until user completes payment in MiniApp.
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="💎 Pay & Compute",
-                    web_app=WebAppInfo(url=pay_url),
-                )
-            ]
-        ]
-    )
+    # 7. Update button with actual MiniApp payment URL.
+    # If no wallet linked yet, also show Connect Wallet as second row.
+    inline_rows = [
+        [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
+    ]
+    if not starknet_address:
+        inline_rows.append([
+            InlineKeyboardButton(
+                text="Connect Wallet",
+                web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
+            )
+        ])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=inline_rows)
 
     try:
         await bot.edit_message_reply_markup(
