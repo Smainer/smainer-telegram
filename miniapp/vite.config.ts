@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { resolve } from 'path'
+import tailwindcss from 'tailwindcss'
+import autoprefixer from 'autoprefixer'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,6 +20,16 @@ export default defineConfig({
       },
     }),
   ],
+  // NUCLEAR FIX: Inline PostCSS config to guarantee Tailwind processing
+  // External postcss.config.js was not being picked up by Vercel builds
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss(),
+        autoprefixer(),
+      ],
+    },
+  },
   define: {
     global: 'globalThis',
   },

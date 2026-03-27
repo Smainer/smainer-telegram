@@ -4,120 +4,97 @@ import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v4';
+const BUILD_VERSION = '2026-03-27-v5';
 
-// Deep link component for opening MiniApp in wallet browsers (for Telegram WebView)
-// Uses copy-link approach since direct deep links are not reliable across wallet versions
+// Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
 function WalletDeepLinks() {
-  const [copied, setCopied] = React.useState(false);
-  
-  const miniAppUrl = React.useMemo(() => {
-    const currentUrl = new URL(window.location.href);
-    return `https://smainer-miniapp.vercel.app${currentUrl.pathname}${currentUrl.search}`;
-  }, []);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(miniAppUrl);
-      setCopied(true);
-      // Haptic feedback
-      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-      const ta = document.createElement('textarea');
-      ta.value = miniAppUrl;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleOpenExternal = () => {
+  const handleOpenInBrowser = () => {
+    const url = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
+    // Haptic feedback
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
     if (window.Telegram?.WebApp?.openLink) {
-      window.Telegram.WebApp.openLink(miniAppUrl);
+      window.Telegram.WebApp.openLink(url);
     } else {
-      window.open(miniAppUrl, '_blank');
+      window.open(url, '_blank');
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Info Card */}
-      <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)]">
-        <div className="text-center mb-4">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[var(--surface-elevated)] flex items-center justify-center">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" stroke="var(--blue)" strokeWidth="2" fill="none"/>
-              <path d="M12 22V12M4 7l8 5 8-5" stroke="var(--blue)" strokeWidth="2"/>
-            </svg>
-          </div>
-          <p className="text-white font-medium text-base">Connect via Wallet App</p>
-          <p className="text-[var(--text-muted)] text-sm mt-1">
-            Open this page in your wallet's built-in browser
-          </p>
-        </div>
-
-        {/* Steps */}
-        <div className="space-y-2 mb-4">
-          <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">1</span>
-            <p className="text-[var(--text-secondary)] text-sm">Copy the link below</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">2</span>
-            <p className="text-[var(--text-secondary)] text-sm">Open <strong className="text-white">Braavos</strong> or <strong className="text-white">Argent</strong> app</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">3</span>
-            <p className="text-[var(--text-secondary)] text-sm">Go to the <strong className="text-white">dApp Browser</strong> and paste the link</p>
-          </div>
-        </div>
-
-        {/* Copy Button */}
-        <button
-          onClick={handleCopy}
-          className="w-full px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-[var(--blue)] hover:bg-[var(--blue-hover)] text-white active:scale-[0.98] shadow-lg shadow-blue-500/20"
-        >
-          {copied ? (
-            <>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Copied!</span>
-            </>
-          ) : (
-            <>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-              <span>Copy Payment Link</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Open in Browser (alternative) */}
-      <button
-        onClick={handleOpenExternal}
-        className="w-full px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-[var(--surface-elevated)] hover:bg-[var(--surface-glass)] text-[var(--text-secondary)] hover:text-white"
+    <div 
+      style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '24px 16px' }}
+      className="flex flex-col gap-4 items-center p-6"
+    >
+      {/* Wallet Icon */}
+      <div 
+        style={{ 
+          width: '48px', 
+          height: '48px', 
+          borderRadius: '12px', 
+          background: 'rgba(59,130,246,0.15)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}
+        className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" stroke="#3B82F6" strokeWidth="2" fill="none"/>
+          <path d="M12 22V12M4 7l8 5 8-5" stroke="#3B82F6" strokeWidth="2"/>
+        </svg>
+      </div>
+      
+      {/* Explanation */}
+      <p 
+        style={{ color: '#A1A1AA', fontSize: '14px', textAlign: 'center', margin: '0' }}
+        className="text-zinc-400 text-sm text-center m-0"
+      >
+        Wallet extensions require a full browser
+      </p>
+      
+      {/* Single Action Button */}
+      <button
+        onClick={handleOpenInBrowser}
+        style={{
+          width: '100%',
+          padding: '14px 24px',
+          borderRadius: '12px',
+          background: '#3B82F6',
+          color: 'white',
+          border: 'none',
+          fontSize: '16px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+        }}
+        className="w-full px-6 py-3.5 rounded-xl bg-blue-500 text-white font-semibold flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        Open in Browser Instead
+        Open in Browser
       </button>
-
+      
       {/* Security note */}
-      <p className="text-[var(--text-muted)] text-xs text-center flex items-center justify-center gap-1.5">
+      <p 
+        style={{ 
+          color: '#71717A', 
+          fontSize: '12px', 
+          textAlign: 'center', 
+          margin: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px'
+        }}
+        className="text-zinc-500 text-xs text-center m-0 flex items-center justify-center gap-1.5"
+      >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2"/>
         </svg>
-        Secure on-chain signing in your wallet app
+        Then connect Argent or Braavos
       </p>
     </div>
   );
@@ -391,13 +368,19 @@ export function PaymentFlow({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div 
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)' }}
+    >
       <div 
         className="w-full max-w-md bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden"
-        style={{ animation: 'fadeInScale 0.2s ease-out' }}
+        style={{ width: '100%', maxWidth: '28rem', borderRadius: '1rem', overflow: 'hidden', animation: 'fadeInScale 0.2s ease-out' }}
       >
         {/* Branded Header */}
-        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--void)]/50">
+        <div 
+          className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--void)]/50"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}
+        >
           <SmainerLogo />
           
           {(step === 'connect' || step === 'confirm' || step === 'error') && (
@@ -435,30 +418,45 @@ export function PaymentFlow({
 
         {/* Connect Wallet Step */}
           {step === 'connect' && (
-            <div className="space-y-4">
+            <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Prompt Preview Card */}
-              <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Prompt</span>
-                  <span className="px-2 py-0.5 rounded-full bg-[var(--surface-elevated)] text-xs text-[var(--blue)] font-medium">
+              <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)]" style={{ padding: '16px', borderRadius: '12px' }}>
+                <div 
+                  className="flex items-center justify-between mb-2"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}
+                >
+                  <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide" style={{ fontSize: '12px', fontWeight: 500, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prompt</span>
+                  <span 
+                    className="px-2 py-0.5 rounded-full bg-[var(--surface-elevated)] text-xs text-[var(--blue)] font-medium"
+                    style={{ padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', color: '#3B82F6', fontWeight: 500 }}
+                  >
                     {tierInfo.name}
                   </span>
                 </div>
-                <p className="text-white text-sm line-clamp-2 leading-relaxed">{prompt}</p>
+                <p className="text-white text-sm line-clamp-2 leading-relaxed" style={{ color: 'white', fontSize: '14px', lineHeight: '1.6' }}>{prompt}</p>
               </div>
 
               {/* Cost Display Card */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-[var(--blue)]/10 to-transparent border border-[var(--blue)]/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[var(--blue)]/20 flex items-center justify-center">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-[var(--blue)]/10 to-transparent border border-[var(--blue)]/20" style={{ padding: '16px', borderRadius: '12px' }}>
+                <div 
+                  className="flex items-center justify-between"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <div 
+                    className="flex items-center gap-2"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full bg-[var(--blue)]/20 flex items-center justify-center"
+                      style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"/>
                       </svg>
                     </div>
-                    <span className="text-[var(--text-secondary)] font-medium">Total Cost</span>
+                    <span className="text-[var(--text-secondary)] font-medium" style={{ color: '#D4D4D8', fontWeight: 500 }}>Total Cost</span>
                   </div>
-                  <span className="text-xl font-bold text-white">{promptCost} STRK</span>
+                  <span className="text-xl font-bold text-white" style={{ fontSize: '20px', fontWeight: 700, color: 'white' }}>{promptCost} STRK</span>
                 </div>
               </div>
 
@@ -524,40 +522,64 @@ export function PaymentFlow({
 
         {/* Confirmation Step */}
           {step === 'confirm' && (
-            <div className="space-y-4">
+            <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Connected Wallet Display */}
               {address && (
-                <div className="p-3 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/20 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center">
+                <div 
+                  className="p-3 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/20 flex items-center justify-between"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
+                >
+                  <div 
+                    className="flex items-center gap-2"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <div 
+                      className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center"
+                      style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                         <path d="M5 12l5 5L20 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
-                    <span className="text-sm text-[var(--success)] font-medium">Connected</span>
+                    <span className="text-sm text-[var(--success)] font-medium" style={{ fontSize: '14px', color: '#22C55E', fontWeight: 500 }}>Connected</span>
                   </div>
-                  <span className="text-sm text-[var(--text-muted)] font-mono">{formatAddress(address)}</span>
+                  <span className="text-sm text-[var(--text-muted)] font-mono" style={{ fontSize: '14px', color: '#A1A1AA', fontFamily: 'monospace' }}>{formatAddress(address)}</span>
                 </div>
               )}
 
               {/* Cost Breakdown Card */}
-              <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[var(--text-muted)]">Compute Tier</span>
-                  <span className="text-white font-medium flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[var(--blue)]"></span>
+              <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] space-y-3" style={{ padding: '16px', borderRadius: '12px' }}>
+                <div 
+                  className="flex justify-between items-center"
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>Compute Tier</span>
+                  <span 
+                    className="text-white font-medium flex items-center gap-1.5"
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontWeight: 500 }}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[var(--blue)]" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3B82F6' }}></span>
                     {tierInfo.name}
-                    <span className="text-[var(--text-muted)] text-sm">(×{tierInfo.multiplier})</span>
+                    <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>(×{tierInfo.multiplier})</span>
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[var(--text-muted)]">Cost</span>
-                  <span className="text-white font-bold text-lg">{promptCost} STRK</span>
+                <div 
+                  className="flex justify-between items-center"
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>Cost</span>
+                  <span className="text-white font-bold text-lg" style={{ color: 'white', fontWeight: 700, fontSize: '18px' }}>{promptCost} STRK</span>
                 </div>
-                <div className="h-px bg-[var(--border-subtle)]"></div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[var(--text-muted)]">Your Balance</span>
-                  <span className={`font-semibold ${hasInsufficientBalance ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}>
+                <div className="h-px bg-[var(--border-subtle)]" style={{ height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                <div 
+                  className="flex justify-between items-center"
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>Your Balance</span>
+                  <span 
+                    className={`font-semibold ${hasInsufficientBalance ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}
+                    style={{ fontWeight: 600, color: hasInsufficientBalance ? '#EF4444' : '#22C55E' }}
+                  >
                     {balance} STRK
                   </span>
                 </div>
@@ -586,10 +608,14 @@ export function PaymentFlow({
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
+              <div 
+                className="flex gap-3 pt-2"
+                style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}
+              >
                 <button
                   onClick={onCancel}
                   className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
+                  style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -597,6 +623,7 @@ export function PaymentFlow({
                   onClick={handlePayment}
                   disabled={hasInsufficientBalance || !isContractReady}
                   className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--blue)] text-white font-semibold hover:bg-[var(--blue-hover)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                  style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady) ? 0.4 : 1 }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
