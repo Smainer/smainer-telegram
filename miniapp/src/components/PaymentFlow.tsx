@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
+import { useState, useEffect, useMemo } from 'react';
+import { useAccount, useConnect } from '@starknet-react/core';
 import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v6';
+const BUILD_VERSION = '2026-03-27-v7';
 
 // Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
 function WalletDeepLinks() {
   const handleOpenInBrowser = () => {
     const url = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
     // Haptic feedback
-    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+    try {
+      (window.Telegram?.WebApp as any)?.HapticFeedback?.notificationOccurred('success');
+    } catch (e) {
+      // Haptic feedback not available
+    }
     if (window.Telegram?.WebApp?.openLink) {
       window.Telegram.WebApp.openLink(url);
     } else {
@@ -193,7 +197,6 @@ export function PaymentFlow({
     address: null,
   });
   const [botLinkedWallet, setBotLinkedWallet] = useState<string | null>(null);
-  const [checkingBotWallet, setCheckingBotWallet] = useState(true);
   
   // Get bot API and telegram data
   const { initDataRaw, isInTelegram } = useTelegramData();
@@ -205,9 +208,11 @@ export function PaymentFlow({
   const messageId = searchParams.get('message_id');
 
   // Wallet connection hooks
-  const { address, isConnected } = useAccount();
+  const { address, account, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
+
+  // Prioritize MiniApp-connected wallet; fall back to bot-linked wallet for read-only ops
+  const effectiveAddress = useMemo(() => address || botLinkedWallet, [address, botLinkedWallet]);
 
   // Debug: Log connected address
   useEffect(() => {
@@ -236,7 +241,6 @@ export function PaymentFlow({
     createTask,
     checkBalance,
     getPromptCostForTier,
-    isLoading,
     error,
     isContractReady,
     resetTxState
@@ -245,7 +249,6 @@ export function PaymentFlow({
   // Fetch bot-linked wallet on mount
   useEffect(() => {
     if (!isInTelegram || !initDataRaw) {
-      setCheckingBotWallet(false);
       return;
     }
 
@@ -258,7 +261,6 @@ export function PaymentFlow({
 
         if (!response.ok) {
           console.warn('[PaymentFlow] wallet-check returned', response.status);
-          setCheckingBotWallet(false);
           return;
         }
 
@@ -270,8 +272,6 @@ export function PaymentFlow({
         }
       } catch (error) {
         console.error('[PaymentFlow] Failed to check bot wallet:', error);
-      } finally {
-        setCheckingBotWallet(false);
       }
     })();
   }, [isInTelegram, initDataRaw, botApiUrl]);
@@ -297,12 +297,12 @@ export function PaymentFlow({
     setDebugInfo(prev => ({
       ...prev,
       contractReady: isContractReady,
-      address: address || null,
+      address: effectiveAddress || null,
     }));
-    
-    if (isContractReady && (isConnected || botLinkedWallet)) {
-      console.log('[PaymentFlow] Loading balance... contractReady:', isContractReady, 'connected:', isConnected, 'address:', address);
-      checkBalance()
+
+    if (isContractReady && effectiveAddress) {
+      console.log('[PaymentFlow] Loading balance... contractReady:', isContractReady, 'effectiveAddress:', effectiveAddress);
+      checkBalance(effectiveAddress)
         .then((bal) => {
           console.log('[PaymentFlow] Balance loaded:', bal);
           setBalance(bal);
@@ -310,7 +310,7 @@ export function PaymentFlow({
             ...prev,
             rawBalance: bal,
             balanceError: null,
-            address: address || botLinkedWallet,
+            address: effectiveAddress,
           }));
         })
         .catch((e) => {
@@ -324,7 +324,7 @@ export function PaymentFlow({
           }));
         });
     }
-  }, [isContractReady, isConnected, checkBalance, address]);
+  }, [isContractReady, effectiveAddress, checkBalance]);
 
   // Handle wallet connection
   const handleConnect = async (connector: any) => {
@@ -333,7 +333,7 @@ export function PaymentFlow({
       setConnectingId(connector.id);
       setInitError(null);
       console.log('[PaymentFlow] Connecting wallet:', connector.id);
-      await connect({ connector });
+      connect({ connector });
       // Step will update via useEffect when isConnected changes
     } catch (e) {
       console.error('[PaymentFlow] Wallet connection failed:', e);
@@ -349,7 +349,7 @@ export function PaymentFlow({
     resetTxState();
 
     try {
-      const result = await createTask(prompt, tier);
+      const result = await createTask(prompt, tier, effectiveAddress ?? undefined);
       
       if (result.success && result.taskId) {
         setTaskId(result.taskId);
@@ -365,7 +365,7 @@ export function PaymentFlow({
             chat_id: chatId,
             message_id: messageId,
           });
-          window.Telegram?.WebApp?.sendData(webAppData);
+          window.Telegram?.WebApp?.sendData?.(webAppData);
         } catch (e) {
           console.error('Failed to send data to Telegram:', e);
         }
@@ -567,16 +567,16 @@ export function PaymentFlow({
           {step === 'confirm' && (
             <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Connected Wallet Display */}
-              {address && (
-                <div 
+              {effectiveAddress && (
+                <div
                   className="p-3 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/20 flex items-center justify-between"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
                 >
-                  <div 
+                  <div
                     className="flex items-center gap-2"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
-                    <div 
+                    <div
                       className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center"
                       style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
@@ -584,9 +584,9 @@ export function PaymentFlow({
                         <path d="M5 12l5 5L20 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
-                    <span className="text-sm text-[var(--success)] font-medium" style={{ fontSize: '14px', color: '#22C55E', fontWeight: 500 }}>Connected</span>
+                    <span className="text-sm text-[var(--success)] font-medium" style={{ fontSize: '14px', color: '#22C55E', fontWeight: 500 }}>{address ? 'Connected' : 'Wallet linked via Telegram'}</span>
                   </div>
-                  <span className="text-sm text-[var(--text-muted)] font-mono" style={{ fontSize: '14px', color: '#A1A1AA', fontFamily: 'monospace' }}>{formatAddress(address)}</span>
+                  <span className="text-sm text-[var(--text-muted)] font-mono" style={{ fontSize: '14px', color: '#A1A1AA', fontFamily: 'monospace' }}>{formatAddress(effectiveAddress)}</span>
                 </div>
               )}
 
@@ -634,8 +634,8 @@ export function PaymentFlow({
                 <p className="text-white text-sm line-clamp-3 leading-relaxed">{prompt}</p>
               </div>
 
-              {/* Bot-linked Wallet Display */}
-              {botLinkedWallet && (
+              {/* Bot-linked wallet detail (only when not overridden by MiniApp connection) */}
+              {!address && botLinkedWallet && (
                 <div className="p-4 rounded-xl bg-[var(--surface-elevated)] border border-[var(--blue)]/30">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2">
                     Wallet (Linked via Telegram)
@@ -643,6 +643,17 @@ export function PaymentFlow({
                   <p className="text-white font-mono text-sm break-all">
                     {botLinkedWallet}
                   </p>
+                </div>
+              )}
+
+              {/* Connect wallet hint when only bot-linked wallet is available */}
+              {!account && botLinkedWallet && !hasInsufficientBalance && (
+                <div className="p-3 rounded-xl bg-[var(--blue)]/10 border border-[var(--blue)]/20 flex items-start gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0">
+                    <circle cx="12" cy="12" r="10" stroke="var(--blue)" strokeWidth="2"/>
+                    <path d="M12 8v4M12 16h.01" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <span className="text-[var(--blue)] text-sm">Connect your Starknet wallet in-app to sign the transaction</span>
                 </div>
               )}
 
@@ -676,9 +687,9 @@ export function PaymentFlow({
                 </button>
                 <button
                   onClick={handlePayment}
-                  disabled={hasInsufficientBalance || !isContractReady}
+                  disabled={hasInsufficientBalance || !isContractReady || !account}
                   className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--blue)] text-white font-semibold hover:bg-[var(--blue-hover)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-                  style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady) ? 0.4 : 1 }}
+                  style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady || !account) ? 0.4 : 1 }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>

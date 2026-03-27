@@ -17,14 +17,16 @@ interface UseWalletBalanceResult {
   refetch: () => Promise<void>;
 }
 
-export function useWalletBalance(): UseWalletBalanceResult {
-  const { address, isConnected } = useAccount();
+export function useWalletBalance(overrideAddress?: string): UseWalletBalanceResult {
+  const { address: connectedAddress, isConnected } = useAccount();
+  // Use override (bot-linked / localStorage wallet) when starknet-react has no connected account
+  const address = connectedAddress || overrideAddress;
   const [balance, setBalance] = useState<string>('0');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBalance = useCallback(async () => {
-    if (!address || !isConnected) {
+    if (!address) {
       return;
     }
 
@@ -63,14 +65,14 @@ export function useWalletBalance(): UseWalletBalanceResult {
     } finally {
       setIsLoading(false);
     }
-  }, [address, isConnected]);
+  }, [address]);
 
-  // Fetch balance when wallet connects or address changes
+  // Fetch balance whenever we have an address (connected extension OR bot-linked/override)
   useEffect(() => {
-    if (isConnected && address) {
+    if (address) {
       fetchBalance();
     }
-  }, [isConnected, address, fetchBalance]);
+  }, [address, fetchBalance]);
 
   return {
     balance,

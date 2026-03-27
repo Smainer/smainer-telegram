@@ -319,8 +319,8 @@ function MainApp() {
     walletAddress: connectedWallet?.address,
   });
 
-  // Fetch STRK balance from chain
-  const { balance: fetchedBalance, refetch: refetchBalance } = useWalletBalance();
+  // Fetch STRK balance from chain — pass wallet address so bot-linked wallets also get a live balance
+  const { balance: fetchedBalance, refetch: refetchBalance } = useWalletBalance(connectedWallet?.address);
 
   // Sync fetched balance to connectedWallet state
   useEffect(() => {

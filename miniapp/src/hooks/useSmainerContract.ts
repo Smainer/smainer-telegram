@@ -62,8 +62,9 @@ export function useSmainerContract() {
   }, [address, strkContract]);
 
   // Check STRK balance using raw RPC (bypasses starknet-react contract wrapper issues)
-  const checkBalance = useCallback(async (): Promise<string> => {
-    if (!address) {
+  const checkBalance = useCallback(async (targetAddress?: string): Promise<string> => {
+    const addr = targetAddress || address;
+    if (!addr) {
       console.log('[checkBalance] Not ready - no address');
       throw new Error('Wallet not connected');
     }
@@ -71,9 +72,9 @@ export function useSmainerContract() {
     try {
       // Normalize address to 64 hex chars (matching bot's format)
       // Wallet extensions may return short-form addresses
-      const hexPart = address.toLowerCase().replace(/^0x/, '');
+      const hexPart = addr.toLowerCase().replace(/^0x/, '');
       const normalizedAddress = '0x' + hexPart.padStart(64, '0');
-      
+
       console.log('[checkBalance] Using raw RPC for address:', normalizedAddress);
       console.log('[checkBalance] STRK contract address:', CONTRACT_ADDRESSES.STRK_TOKEN);
       
@@ -116,7 +117,7 @@ export function useSmainerContract() {
       console.error('[checkBalance] Failed:', error);
       throw new Error(`Failed to check balance: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [address]);
+  }, [address]); // address is the fallback; targetAddress takes priority when provided
 
   // Get prompt cost for a specific tier
   const getPromptCostForTier = useCallback((tier: ComputeTier): string => {
@@ -127,9 +128,10 @@ export function useSmainerContract() {
   // Create a task with on-chain payment
   const createTask = useCallback(async (
     prompt: string,
-    tier: ComputeTier = 'BASIC'
+    tier: ComputeTier = 'BASIC',
+    _targetAddress?: string
   ): Promise<CreateTaskResult> => {
-    if (!address || !account || !smainerContract || !strkContract) {
+    if (!account || !smainerContract || !strkContract) {
       throw new Error('Wallet not connected or contracts not available');
     }
 
@@ -229,7 +231,7 @@ export function useSmainerContract() {
         error: errorMessage
       };
     }
-  }, [address, account, smainerContract, strkContract, checkAllowance]);
+  }, [account, smainerContract, strkContract, checkAllowance]);
 
   // Reset transaction state
   const resetTxState = useCallback(() => {
@@ -249,7 +251,7 @@ export function useSmainerContract() {
     txHash: txState.txHash,
     resetTxState,
     
-    // Contract availability
-    isContractReady: !!(smainerContract && strkContract && address),
+    // Contract availability (address not required — callers pass it where needed)
+    isContractReady: !!(smainerContract && strkContract),
   };
 }
