@@ -5,7 +5,7 @@ import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v7';
+const BUILD_VERSION = '2026-03-27-v8';
 
 // Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
 function WalletDeepLinks() {
@@ -647,16 +647,6 @@ export function PaymentFlow({
                 </div>
               )}
 
-              {/* Connect wallet hint when only bot-linked wallet is available */}
-              {!account && botLinkedWallet && !hasInsufficientBalance && (
-                <div className="p-3 rounded-xl bg-[var(--blue)]/10 border border-[var(--blue)]/20 flex items-start gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0">
-                    <circle cx="12" cy="12" r="10" stroke="var(--blue)" strokeWidth="2"/>
-                    <path d="M12 8v4M12 16h.01" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                  <span className="text-[var(--blue)] text-sm">Connect your Starknet wallet in-app to sign the transaction</span>
-                </div>
-              )}
 
               {/* Insufficient Balance Warning */}
               {hasInsufficientBalance && (
@@ -686,17 +676,40 @@ export function PaymentFlow({
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handlePayment}
-                  disabled={hasInsufficientBalance || !isContractReady || !account}
-                  className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--blue)] text-white font-semibold hover:bg-[var(--blue-hover)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-                  style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady || !account) ? 0.4 : 1 }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Approve & Pay
-                </button>
+                {!account && botLinkedWallet && !hasInsufficientBalance ? (
+                  <button
+                    onClick={() => {
+                      const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+                      try {
+                        (window as any).Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+                      } catch {}
+                      if ((window as any).Telegram?.WebApp?.openLink) {
+                        (window as any).Telegram.WebApp.openLink(payUrl);
+                      } else {
+                        window.open(payUrl, '_blank');
+                      }
+                    }}
+                    className="flex-1 px-4 py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg"
+                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Open in Browser to Pay
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePayment}
+                    disabled={hasInsufficientBalance || !isContractReady || !account}
+                    className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--blue)] text-white font-semibold hover:bg-[var(--blue-hover)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady || !account) ? 0.4 : 1 }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Approve & Pay
+                  </button>
+                )}
               </div>
               
               {/* Debug Panel - tap version to toggle */}

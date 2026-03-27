@@ -23,6 +23,7 @@ from src.handlers import (
     handle_balance,
     handle_help,
     handle_inference,
+    handle_link,
     handle_models,
     handle_set_model,
     handle_start,
@@ -103,7 +104,7 @@ async def _process_update(update: dict) -> None:
 
     # Route commands
     if text.startswith("/start"):
-        await handle_start(update, bot)
+        await handle_start(update, bot, wallet_mgr)
     elif text.startswith("/help"):
         await handle_help(update, bot)
     elif text.startswith("/balance"):
@@ -114,6 +115,8 @@ async def _process_update(update: dict) -> None:
         await handle_set_model(update, bot, relayer)
     elif text.startswith("/availNodes") or text.startswith("/availnodes"):
         await handle_avail_nodes(update, bot, relayer)
+    elif text.startswith("/link"):
+        await handle_link(update, bot, wallet_mgr)
     elif not text.startswith("/"):
         # Any plain text that isn't a command → treat as inference request
         await handle_inference(

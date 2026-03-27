@@ -12,7 +12,7 @@ import functools
 import json
 import logging
 import time
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 from telegram import (
     Bot,
@@ -90,10 +90,36 @@ def with_error_handling(handler_name: str):
 async def handle_start(
     update: Dict[str, Any],
     bot: Bot,
+    wallet_mgr: Optional["WalletManager"] = None,
 ) -> None:
-    """Handle /start command."""
+    """Handle /start command, including deep-link wallet connection (linkb_)."""
+    import base64
+
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
+    user_id = message.get("from", {}).get("id")
+    text = message.get("text", "")
+
+    # Parse deep-link payload: /start linkb_<base64url_encoded_address>
+    parts = text.split(maxsplit=1)
+    if len(parts) > 1 and parts[1].startswith("linkb_") and wallet_mgr and user_id:
+        encoded = parts[1][6:]  # strip "linkb_"
+        try:
+            pad = 4 - len(encoded) % 4
+            if pad != 4:
+                encoded += "=" * pad
+            decoded_bytes = base64.b64decode(encoded.replace("-", "+").replace("_", "/"))
+            hex_addr = decoded_bytes.hex().lstrip("0") or "0"
+            address = f"0x{hex_addr}"
+            await wallet_mgr.link_wallet(user_id, address)
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"Wallet linked: `{address}`\n\nSend any message to start a compute task.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+        except Exception as e:
+            logger.warning("Failed to parse linkb_ deep link: %s", e)
 
     await bot.send_message(
         chat_id=chat_id,
@@ -133,6 +159,50 @@ async def handle_help(
             "Send any text to start a compute task. "
             "Connect your wallet in the MiniApp when prompted."
         ),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# ---------------------------------------------------------------------------
+# /link command
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("link")
+async def handle_link(
+    update: Dict[str, Any],
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle /link <address> — manually link a Starknet wallet address."""
+    message = update.get("message", {})
+    user_id = message.get("from", {}).get("id")
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
+
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Usage: /link `0x<your_starknet_address>`",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    address = parts[1].strip()
+    try:
+        await wallet_mgr.link_wallet(user_id, address)
+    except ValueError:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Invalid Starknet address. Must start with `0x` followed by hex characters.",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=f"Wallet linked: `{address}`\n\nSend any message to start a compute task.",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -201,10 +271,45 @@ async def handle_webapp_data(
 
         await bot.send_message(
             chat_id=chat_id,
-            text=f"✅ Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
+            text=f"Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=ReplyKeyboardRemove(),
         )
+
+        # If user had a pending prompt (sent before wallet was linked), resume it
+        pending_prompt = await relayer.kv_get(f"pending:{user_id}")
+        if pending_prompt:
+            await relayer.kv_delete(f"pending:{user_id}")
+            user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
+            pending_tier = infer_tier(user_model)
+            cost_strk_val = settings.prompt_cost_strk / 1e18
+
+            pay_url = settings.get_miniapp_pay_url(
+                prompt=pending_prompt,
+                tier=pending_tier.value,
+                chat_id=chat_id,
+                message_id=0,
+            )
+            keyboard_pending = InlineKeyboardMarkup(
+                inline_keyboard=[[
+                    InlineKeyboardButton(
+                        text="Pay & Compute",
+                        web_app=WebAppInfo(url=pay_url),
+                    )
+                ]]
+            )
+            await bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    f"*Your pending task is ready*\n\n"
+                    f"📝 _{escape_md(pending_prompt[:50])}{'...' if len(pending_prompt) > 50 else ''}_\n"
+                    f"🤖 Model: `{user_model}` ({pending_tier.value})\n"
+                    f"💰 Cost: {cost_strk_val:.4f} $STRK\n\n"
+                    "Tap below to pay and start compute."
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard_pending,
+            )
         return
 
     # Handle payment completion from MiniApp
@@ -550,9 +655,39 @@ async def handle_inference(
             )
         return
 
-    # 5. Build MiniApp pay URL - we'll use a placeholder message_id initially
-    # and update with actual message_id after sending
+    # 5. Check wallet link — gate payment on wallet being known
+    starknet_address = await wallet_mgr.get_linked_address(user_id)
     cost_strk = settings.prompt_cost_strk / 1e18
+
+    if not starknet_address:
+        # No wallet linked — store the pending prompt, show Connect Wallet button
+        await relayer.kv_set(f"pending:{user_id}", prompt_text, ttl=3600)
+
+        connect_url = settings.get_miniapp_connect_url()
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="Connect Wallet",
+                    web_app=WebAppInfo(url=connect_url),
+                )
+            ]]
+        )
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"*Ready to compute*\n\n"
+                f"📝 _{escape_md(prompt_text[:50])}{'...' if len(prompt_text) > 50 else ''}_\n"
+                f"🤖 Model: `{user_model}` ({tier.value})\n"
+                f"💰 Cost: {cost_strk:.4f} $STRK\n\n"
+                "Connect your Starknet wallet to pay and run this task."
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard,
+        )
+        return
+
+    # 6. Build MiniApp pay URL - we'll use a placeholder message_id initially
+    # and update with actual message_id after sending
     
     # First, send message with a temporary "preparing" button
     # This ensures user always sees a button even if the follow-up edit fails
