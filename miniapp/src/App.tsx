@@ -460,7 +460,22 @@ function MainApp() {
     navigate('/chat', { replace: true });
   };
 
-  const handleWalletDisconnect = () => {
+  const handleWalletDisconnect = async () => {
+    // If in Telegram, also unlink from the bot's KV store
+    if (isInTelegram && initDataRaw) {
+      try {
+        await fetch(`${botApiUrl}/api/wallet-unlink`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData: initDataRaw }),
+        });
+      } catch (e) {
+        console.warn('[App] wallet-unlink request failed (continuing with local disconnect):', e);
+      }
+    }
+
+    // Clear local wallet state and localStorage
+    window.localStorage.removeItem(WALLET_STORAGE_KEY);
     setConnectedWallet(null);
     navigate('/', { replace: true });
     try {
@@ -624,7 +639,7 @@ function MainApp() {
           />
         )}
         {currentView === 'nft' && <NFTView navigate={navigate} walletAddress={connectedWallet?.address} />}
-        {currentView === 'dashboard' && <DashboardView connectedWallet={connectedWallet} relayerAPI={relayerAPI} onDisconnect={handleWalletDisconnect} />}
+        {currentView === 'dashboard' && <DashboardView connectedWallet={connectedWallet} relayerAPI={relayerAPI} onDisconnect={handleWalletDisconnect} isInTelegram={isInTelegram} />}
       </div>
       
       {/* Navigation */}
@@ -1645,14 +1660,16 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
    DASHBOARD VIEW — Compute Status & GPU Nodes
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function DashboardView({ 
-  connectedWallet, 
-  relayerAPI, 
-  onDisconnect 
-}: { 
+function DashboardView({
+  connectedWallet,
+  relayerAPI,
+  onDisconnect,
+  isInTelegram,
+}: {
   connectedWallet: ConnectedWallet
   relayerAPI: any
   onDisconnect: () => void
+  isInTelegram: boolean
 }) {
   const nodes = relayerAPI.availableModels || [];
   const nodesOnline = nodes.length;
@@ -2010,12 +2027,12 @@ function DashboardView({
           </div>
         </div>
 
-        {/* ─── Disconnect Button ─── */}
-        <button 
+        {/* ─── Disconnect / Unlink Button ─── */}
+        <button
           onClick={onDisconnect}
           className="animate-in delay-6"
-          style={{ 
-            width: '100%', 
+          style={{
+            width: '100%',
             padding: '14px 20px',
             background: 'transparent',
             border: '1px solid var(--border-subtle)',
@@ -2024,10 +2041,10 @@ function DashboardView({
             fontSize: 15,
             fontWeight: 500,
             cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
           }}
         >
-          Disconnect Wallet
+          {isInTelegram ? 'Disconnect & Unlink Wallet' : 'Disconnect Wallet'}
         </button>
       </div>
     </div>
