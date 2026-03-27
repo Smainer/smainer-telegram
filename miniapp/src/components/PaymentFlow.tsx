@@ -4,93 +4,121 @@ import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v3';
+const BUILD_VERSION = '2026-03-27-v4';
 
 // Deep link component for opening MiniApp in wallet browsers (for Telegram WebView)
+// Uses copy-link approach since direct deep links are not reliable across wallet versions
 function WalletDeepLinks() {
-  // Build the full MiniApp URL with all current query params
-  const buildMiniAppUrl = () => {
+  const [copied, setCopied] = React.useState(false);
+  
+  const miniAppUrl = React.useMemo(() => {
     const currentUrl = new URL(window.location.href);
-    // Use the canonical production URL
-    const miniAppUrl = `https://smainer-miniapp.vercel.app${currentUrl.pathname}${currentUrl.search}`;
-    return miniAppUrl;
+    return `https://smainer-miniapp.vercel.app${currentUrl.pathname}${currentUrl.search}`;
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(miniAppUrl);
+      setCopied(true);
+      // Haptic feedback
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = miniAppUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  const handleOpenInWallet = (wallet: 'braavos' | 'argent') => {
-    const miniAppUrl = buildMiniAppUrl();
-    const encodedUrl = encodeURIComponent(miniAppUrl);
-    
-    let deepLink: string;
-    
-    if (wallet === 'braavos') {
-      // Braavos deep link patterns - try universal link first
-      deepLink = `https://link.braavos.app/dapp?url=${encodedUrl}`;
-    } else {
-      // Argent deep link patterns  
-      deepLink = `https://app.argent.xyz/dapp?url=${encodedUrl}`;
-    }
-    
-    console.log(`[PaymentFlow] Opening ${wallet} deep link:`, deepLink);
-    
-    // Try Telegram WebApp openLink first (handles external apps better)
+  const handleOpenExternal = () => {
     if (window.Telegram?.WebApp?.openLink) {
-      window.Telegram.WebApp.openLink(deepLink);
+      window.Telegram.WebApp.openLink(miniAppUrl);
     } else {
-      // Fallback to window.open
-      window.open(deepLink, '_blank');
+      window.open(miniAppUrl, '_blank');
     }
   };
 
   return (
-    <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] space-y-4">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 mx-auto rounded-full bg-[var(--surface-elevated)] flex items-center justify-center">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" stroke="var(--blue)" strokeWidth="2" fill="none"/>
-            <path d="M12 22V12M4 7l8 5 8-5" stroke="var(--blue)" strokeWidth="2"/>
-          </svg>
+    <div className="space-y-4">
+      {/* Info Card */}
+      <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)]">
+        <div className="text-center mb-4">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[var(--surface-elevated)] flex items-center justify-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" stroke="var(--blue)" strokeWidth="2" fill="none"/>
+              <path d="M12 22V12M4 7l8 5 8-5" stroke="var(--blue)" strokeWidth="2"/>
+            </svg>
+          </div>
+          <p className="text-white font-medium text-base">Connect via Wallet App</p>
+          <p className="text-[var(--text-muted)] text-sm mt-1">
+            Open this page in your wallet's built-in browser
+          </p>
         </div>
-        <p className="text-white font-medium">Open in Your Wallet</p>
-        <p className="text-[var(--text-muted)] text-sm">
-          Tap below to open in your wallet's secure browser for signing
-        </p>
+
+        {/* Steps */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-start gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">1</span>
+            <p className="text-[var(--text-secondary)] text-sm">Copy the link below</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">2</span>
+            <p className="text-[var(--text-secondary)] text-sm">Open <strong className="text-white">Braavos</strong> or <strong className="text-white">Argent</strong> app</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">3</span>
+            <p className="text-[var(--text-secondary)] text-sm">Go to the <strong className="text-white">dApp Browser</strong> and paste the link</p>
+          </div>
+        </div>
+
+        {/* Copy Button */}
+        <button
+          onClick={handleCopy}
+          className="w-full px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-[var(--blue)] hover:bg-[var(--blue-hover)] text-white active:scale-[0.98] shadow-lg shadow-blue-500/20"
+        >
+          {copied ? (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Copied!</span>
+            </>
+          ) : (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+              <span>Copy Payment Link</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Wallet Buttons */}
-      <div className="space-y-2">
-        <button
-          onClick={() => handleOpenInWallet('braavos')}
-          className="w-full px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 bg-gradient-to-r from-[#F5841F] to-[#FFB84D] hover:from-[#E07419] hover:to-[#F0A83D] text-black active:scale-[0.98] shadow-lg"
-        >
-          {WALLET_BRANDS.braavos.icon}
-          <span>Open in Braavos</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="ml-auto">
-            <path d="M7 17l9.2-9.2M17 17V7H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        
-        <button
-          onClick={() => handleOpenInWallet('argent')}
-          className="w-full px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 bg-gradient-to-r from-[#FF875B] to-[#FF6B4A] hover:from-[#FF7849] hover:to-[#FF5B39] text-white active:scale-[0.98] shadow-lg"
-        >
-          {WALLET_BRANDS.argent.icon}
-          <span>Open in Argent</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="ml-auto">
-            <path d="M7 17l9.2-9.2M17 17V7H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      </div>
+      {/* Open in Browser (alternative) */}
+      <button
+        onClick={handleOpenExternal}
+        className="w-full px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-[var(--surface-elevated)] hover:bg-[var(--surface-glass)] text-[var(--text-secondary)] hover:text-white"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Open in Browser Instead
+      </button>
 
-      {/* Info Footer */}
-      <div className="pt-2 border-t border-[var(--border-subtle)]">
-        <p className="text-[var(--text-muted)] text-xs text-center flex items-center justify-center gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2"/>
-          </svg>
-          Secure signing in your wallet app
-        </p>
-      </div>
+      {/* Security note */}
+      <p className="text-[var(--text-muted)] text-xs text-center flex items-center justify-center gap-1.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2"/>
+        </svg>
+        Secure on-chain signing in your wallet app
+      </p>
     </div>
   );
 }

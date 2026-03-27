@@ -62,32 +62,33 @@ export const TOKEN_DECIMALS = {
 } as const;
 
 // Contract ABIs (simplified - full ABIs should be imported from JSON files)
+// NOTE: Using felt252 for addresses and Uint256 for u256 - starknet.js v5 compatible types
 export const SMAINER_TOKEN_ABI = [
   {
     type: 'function',
     name: 'balance_of',
-    inputs: [{ name: 'account', type: 'felt' }],
-    outputs: [{ name: 'balance', type: 'U256' }],
+    inputs: [{ name: 'account', type: 'felt252' }],
+    outputs: [{ name: 'balance', type: 'Uint256' }],
     state_mutability: 'view',
   },
   {
     type: 'function', 
     name: 'transfer',
     inputs: [
-      { name: 'recipient', type: 'felt' },
-      { name: 'amount', type: 'U256' },
+      { name: 'recipient', type: 'felt252' },
+      { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'bool' }],
+    outputs: [{ name: 'success', type: 'felt252' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'approve',
     inputs: [
-      { name: 'spender', type: 'felt' },
-      { name: 'amount', type: 'U256' },
+      { name: 'spender', type: 'felt252' },
+      { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'bool' }],
+    outputs: [{ name: 'success', type: 'felt252' }],
     state_mutability: 'external',
   },
 ] as const;
@@ -114,77 +115,77 @@ export const NFT_FACTORY_ABI = [
   },
 ] as const;
 
-// Smainer Compute Contract ABI  
+// Smainer Compute Contract ABI (starknet.js v5 compatible types)
 export const SMAINER_COMPUTE_ABI = [
   {
     type: 'function',
     name: 'create_task',
     inputs: [
-      { name: 'token_address', type: 'ContractAddress' },
-      { name: 'amount', type: 'u256' },
+      { name: 'token_address', type: 'felt252' },
+      { name: 'amount', type: 'Uint256' },
       { name: 'task_hash', type: 'felt252' },
     ],
-    outputs: [{ name: 'task_id', type: 'u256' }],
+    outputs: [{ name: 'task_id', type: 'Uint256' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'create_tiered_task',
     inputs: [
-      { name: 'token_address', type: 'ContractAddress' },
-      { name: 'base_amount', type: 'u256' },
-      { name: 'required_tier', type: 'u8' },
+      { name: 'token_address', type: 'felt252' },
+      { name: 'base_amount', type: 'Uint256' },
+      { name: 'required_tier', type: 'felt252' },
       { name: 'task_hash', type: 'felt252' },
     ],
-    outputs: [{ name: 'task_id', type: 'u256' }],
+    outputs: [{ name: 'task_id', type: 'Uint256' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'get_tier_multiplier',
-    inputs: [{ name: 'tier', type: 'u8' }],
-    outputs: [{ name: 'multiplier', type: 'u256' }],
+    inputs: [{ name: 'tier', type: 'felt252' }],
+    outputs: [{ name: 'multiplier', type: 'Uint256' }],
     state_mutability: 'view',
   },
 ] as const;
 
-// ERC20/STRK Token ABI
+// ERC20/STRK Token ABI (starknet.js v5 compatible types)
 export const ERC20_ABI = [
   {
     type: 'function',
     name: 'balance_of',
-    inputs: [{ name: 'account', type: 'ContractAddress' }],
-    outputs: [{ name: 'balance', type: 'u256' }],
+    inputs: [{ name: 'account', type: 'felt252' }],
+    outputs: [{ name: 'balance', type: 'Uint256' }],
     state_mutability: 'view',
   },
   {
     type: 'function', 
     name: 'transfer',
     inputs: [
-      { name: 'recipient', type: 'ContractAddress' },
-      { name: 'amount', type: 'u256' },
+      { name: 'recipient', type: 'felt252' },
+      { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'bool' }],
+    outputs: [{ name: 'success', type: 'felt252' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'approve',
     inputs: [
-      { name: 'spender', type: 'ContractAddress' },
-      { name: 'amount', type: 'u256' },
+      { name: 'spender', type: 'felt252' },
+      { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'bool' }],
+    outputs: [{ name: 'success', type: 'felt252' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'allowance',
     inputs: [
-      { name: 'owner', type: 'ContractAddress' },
-      { name: 'spender', type: 'ContractAddress' },
+      { name: 'owner', type: 'felt252' },
+      { name: 'spender', type: 'felt252' },
     ],
-    outputs: [{ name: 'remaining', type: 'u256' }],
+    outputs: [{ name: 'remaining', type: 'Uint256' }],
     state_mutability: 'view',
   },
 ] as const;
