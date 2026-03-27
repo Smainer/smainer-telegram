@@ -7,6 +7,8 @@
     { "src": "/api/webhook", "dest": "/api/webhook.py" },
     { "src": "/api/callback/complete", "dest": "/api/callback/complete.py" },
     { "src": "/api/health", "dest": "/api/health.py" },
-    { "src": "/api/setup-webhook", "dest": "/api/setup_webhook.py" }
+    { "src": "/api/setup-webhook", "dest": "/api/setup_webhook.py" },
+    { "src": "/api/wallet-check", "dest": "/api/wallet_check.py" },
+    { "src": "/api/wallet-unlink", "dest": "/api/wallet_unlink.py" }
   ]
 }
