@@ -8,19 +8,16 @@ Uses python-telegram-bot's Bot(token=...) direct methods for sending messages.
 """
 
 import asyncio
-import base64
 import functools
 import json
 import logging
 import time
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict
 
 from telegram import (
     Bot,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     WebAppInfo,
 )
@@ -28,7 +25,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import TelegramError
 
 from .config import settings
-from .models import InferenceRequest, ModelTier, MODEL_TIER_REQUIREMENTS
+from .models import InferenceRequest, ModelTier
 from .payment import PaymentManager
 from .relayer_client import RelayerClient
 from .wallet import BalanceUnavailableError, WalletManager
@@ -43,18 +40,6 @@ HANDLER_TIMEOUT = 25  # seconds — Vercel functions have 30s max
 # Helpers
 # ---------------------------------------------------------------------------
 
-
-def _connect_wallet_keyboard() -> ReplyKeyboardMarkup:
-    """Build a one-time keyboard with 'Connect Wallet' button for unlinked users."""
-    connect_button = KeyboardButton(
-        text="\U0001f517 Connect Wallet",
-        web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
-    )
-    return ReplyKeyboardMarkup(
-        keyboard=[[connect_button]],
-        resize_keyboard=True,
-        one_time_keyboard=True,  # Disappears after use to prevent stacking
-    )
 
 
 def escape_md(text: str) -> str:
@@ -105,87 +90,21 @@ def with_error_handling(handler_name: str):
 async def handle_start(
     update: Dict[str, Any],
     bot: Bot,
-    wallet_mgr: WalletManager,
 ) -> None:
-    """Handle /start command with deep link payload support."""
+    """Handle /start command."""
     message = update.get("message", {})
-    user_id = message.get("from", {}).get("id")
     chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "")
-    
-    # Parse deep link payload from /start <payload>
-    parts = text.split(maxsplit=1)
-    start_payload = parts[1].strip() if len(parts) > 1 else None
 
-    if start_payload:
-        address: Optional[str] = None
-
-        # Base64-encoded wallet address (newer format)
-        if start_payload.startswith("linkb_"):
-            encoded = start_payload[len("linkb_"):]
-            try:
-                padding = "=" * (-len(encoded) % 4)
-                raw = base64.urlsafe_b64decode(encoded + padding)
-                if not raw or len(raw) > 32:
-                    raise ValueError("invalid address payload")
-                address = "0x" + raw.hex()
-            except (ValueError, Exception):
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text="Invalid wallet payload received. Please connect again.",
-                    reply_markup=ReplyKeyboardRemove(),
-                )
-                return
-
-        # Direct hex address (older format)
-        elif start_payload.startswith("link_"):
-            address = start_payload[len("link_"):]
-
-        if address:
-            try:
-                await wallet_mgr.link_wallet(user_id, address)
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text=f"✅ Wallet connected: `{address}`\n\nYou're ready to use Smainer. Send any message to run AI inference.",
-                    parse_mode=ParseMode.MARKDOWN,
-                    reply_markup=ReplyKeyboardRemove(),
-                )
-                return
-            except ValueError:
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text="Invalid Starknet address received from wallet connect. Please try again.",
-                    reply_markup=ReplyKeyboardRemove(),
-                )
-                return
-
-    # No deep link — check wallet state and gate accordingly
-    linked_address = await wallet_mgr.get_linked_address(user_id)
-
-    if linked_address:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "*Welcome back to Smainer*\n\n"
-                f"Wallet: `{linked_address}`\n\n"
-                "Send any message to run AI inference.\n\n"
-                "/help for all commands"
-            ),
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=ReplyKeyboardRemove(),
-        )
-    else:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "*Welcome to Smainer*\n\n"
-                "Private compute on Starknet hardware. Pay per task in $STRK.\n\n"
-                "Connect your Starknet wallet below to get started.\n\n"
-                "/help for all commands"
-            ),
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=_connect_wallet_keyboard(),
-        )
+    await bot.send_message(
+        chat_id=chat_id,
+        text=(
+            "*Welcome to Smainer*\n\n"
+            "Private AI compute on Starknet hardware. Pay per task in $STRK.\n\n"
+            "Send any message to start. Connect your wallet via the MiniApp when you pay.\n\n"
+            "/help for all commands"
+        ),
+        parse_mode=ParseMode.MARKDOWN,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -206,14 +125,13 @@ async def handle_help(
         chat_id=chat_id,
         text=(
             "*Commands*\n"
-            "/link `<address>` — Link your Starknet wallet\n"
-            "/unlink — Remove wallet link\n"
             "/balance — Check $STRK balance\n"
             "/availNodes — Show network status\n"
             "/models — Show available AI models\n"
             "/model `<name>` — Set your preferred model\n"
             "/help — This message\n\n"
-            "Send any text to run compute tasks."
+            "Send any text to start a compute task. "
+            "Connect your wallet in the MiniApp when prompted."
         ),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -304,12 +222,12 @@ async def handle_webapp_data(
             )
             return
 
-        # Get linked wallet address
-        starknet_address = await wallet_mgr.get_linked_address(user_id)
+        # Get wallet address — prefer payload (set by MiniApp), fall back to KV
+        starknet_address = payload.get("starknet_address") or await wallet_mgr.get_linked_address(user_id)
         if not starknet_address:
             await bot.send_message(
                 chat_id=chat_id,
-                text="Wallet not linked. Use /link first.",
+                text="Wallet address not found. Connect your wallet via the MiniApp.",
             )
             return
 
@@ -369,70 +287,6 @@ async def handle_webapp_data(
         reply_markup=ReplyKeyboardRemove(),
     )
 
-
-# ---------------------------------------------------------------------------
-# /link <starknet_address> command
-# ---------------------------------------------------------------------------
-
-
-@with_error_handling("link")
-async def handle_link(
-    update: Dict[str, Any],
-    bot: Bot,
-    wallet_mgr: WalletManager,
-) -> None:
-    """Handle /link <starknet_address> — manual wallet linking."""
-    message = update.get("message", {})
-    user_id = message.get("from", {}).get("id")
-    chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "")
-    
-    # Parse address from command
-    parts = text.split(maxsplit=1)
-    if len(parts) < 2:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Usage: /link `0x04a3...`\nProvide your Starknet address.",
-            parse_mode=ParseMode.MARKDOWN,
-        )
-        return
-
-    address = parts[1].strip()
-    try:
-        await wallet_mgr.link_wallet(user_id, address)
-        await bot.send_message(
-            chat_id=chat_id,
-            text=f"Wallet linked: `{address}`\nUse /balance to check your $STRK.",
-            parse_mode=ParseMode.MARKDOWN,
-        )
-    except ValueError:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Invalid Starknet address. Please provide a valid hex address.",
-        )
-
-
-# ---------------------------------------------------------------------------
-# /unlink command
-# ---------------------------------------------------------------------------
-
-
-@with_error_handling("unlink")
-async def handle_unlink(
-    update: Dict[str, Any],
-    bot: Bot,
-    wallet_mgr: WalletManager,
-) -> None:
-    """Handle /unlink — remove wallet link."""
-    message = update.get("message", {})
-    user_id = message.get("from", {}).get("id")
-    chat_id = message.get("chat", {}).get("id")
-    
-    await wallet_mgr.unlink_wallet(user_id)
-    await bot.send_message(
-        chat_id=chat_id,
-        text="Wallet unlinked.",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -653,37 +507,7 @@ async def handle_inference(
     if not prompt_text.strip():
         return  # Ignore empty messages
 
-    # 1. Check wallet link
-    address = await wallet_mgr.get_linked_address(user_id)
-    if not address:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Connect wallet to submit tasks: /link `<address>`",
-            parse_mode=ParseMode.MARKDOWN,
-        )
-        return
-
-    # 2. Check balance
-    try:
-        has_funds = await wallet_mgr.has_sufficient_balance(address)
-    except BalanceUnavailableError:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Balance check failed. Wait 1 minute, then try again.",
-        )
-        return
-
-    if not has_funds:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "Insufficient $STRK balance. Top up your wallet and try again.\n"
-                f"Minimum required: {settings.min_strk_balance / 1e18:.2f} $STRK"
-            ),
-        )
-        return
-
-    # 3. Determine model and tier
+    # 1. Determine model and tier
     user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
     tier = infer_tier(user_model)
 

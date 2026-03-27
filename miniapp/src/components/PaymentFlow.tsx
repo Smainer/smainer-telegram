@@ -364,6 +364,7 @@ export function PaymentFlow({
             tier,
             chat_id: chatId,
             message_id: messageId,
+            starknet_address: effectiveAddress,
           });
           window.Telegram?.WebApp?.sendData?.(webAppData);
         } catch (e) {
