@@ -9,270 +9,251 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
-      background: #1a1b2e;
-      color: #e2e8f0;
+      background: #09090B;
+      color: #FAFAFA;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding: 32px 20px;
+      padding: 24px 20px 48px;
     }
-    .card {
+    .card { width: 100%; max-width: 420px; }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 32px; }
+    .logo-wrap {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, #1E3A5F, #1A1A2E);
+      border: 1px solid rgba(59,130,246,0.3);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; color: #FFFFFF; margin-bottom: 6px; }
+    .header p { font-size: 14px; color: #71717A; line-height: 1.5; }
+
+    /* Primary button */
+    .btn-braavos {
       width: 100%;
-      max-width: 480px;
-    }
-    .logo {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .logo-icon {
-      font-size: 40px;
-      line-height: 1;
-      margin-bottom: 10px;
-    }
-    .logo-title {
-      font-size: 24px;
+      padding: 16px 20px;
+      border-radius: 14px;
+      background: #3B82F6;
+      color: white;
+      border: none;
+      font-size: 16px;
       font-weight: 700;
-      color: #a78bfa;
-      letter-spacing: -0.5px;
-    }
-    .logo-sub {
-      font-size: 14px;
-      color: #94a3b8;
-      margin-top: 4px;
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #cbd5e1;
-      margin-bottom: 8px;
-    }
-    .connect-options {
-      margin-bottom: 32px;
-    }
-    .connect-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #cbd5e1;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-    .connect-buttons {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: 1fr;
-    }
-    .connect-btn {
-      background: transparent;
-      border: 1.5px solid #4c4f79;
-      color: #e2e8f0;
-      font-size: 14px;
-      font-weight: 500;
-      padding: 14px 14px;
-      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.2s;
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      gap: 12px;
-      min-height: 60px;
-      text-align: left;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: -0.2px;
     }
-    .connect-btn:hover {
-      border-color: #a78bfa;
-      background: rgba(167, 139, 250, 0.1);
-    }
-    .connect-btn:active {
-      border-color: #7c3aed;
-      background: rgba(124, 58, 237, 0.2);
-    }
-    .connect-btn-icon {
-      font-size: 18px;
-      line-height: 1;
-    }
-    .connect-btn-text {
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 1.2;
-    }
-    .connect-btn-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .connect-btn-sub {
-      font-size: 11px;
-      color: #94a3b8;
-      line-height: 1.3;
-    }
-    .manual-section {
-      position: relative;
-    }
-    .divider {
-      position:relative;
-      text-align: center;
-      margin: 24px 0;
-    }
-    .divider::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: #4c4f79;
-    }
-    .divider-text {
-      background: #1a1b2e;
-      color: #64748b;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 0 12px;
-      position: relative;
-      z-index: 1;
-    }
-    input[type="text"] {
+    .btn-braavos:hover { background: #2563EB; }
+    .btn-braavos:active { transform: scale(0.98); }
+
+    /* Secondary button */
+    .btn-browser {
       width: 100%;
-      background: #2d2f50;
-      border: 1.5px solid #4c4f79;
-      color: #f1f5f9;
+      padding: 14px 20px;
+      border-radius: 14px;
+      background: transparent;
+      color: #A1A1AA;
+      border: 1px solid #27272A;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-browser:hover { border-color: #52525B; color: #FFFFFF; }
+
+    /* Advanced toggle */
+    details { margin-top: 0; }
+    summary {
+      font-size: 13px;
+      color: #52525B;
+      text-align: center;
+      cursor: pointer;
+      padding: 8px 0;
+      list-style: none;
+      transition: color 0.15s;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary:hover { color: #A1A1AA; }
+
+    details[open] summary { color: #A1A1AA; margin-bottom: 16px; }
+
+    /* Manual form */
+    .manual-form {
+      background: #111111;
+      border: 1px solid #27272A;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .manual-form label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #71717A;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .manual-form input[type="text"] {
+      width: 100%;
+      background: #1A1A1A;
+      border: 1px solid #27272A;
+      color: #F1F5F9;
       font-size: 14px;
       padding: 12px 14px;
       border-radius: 10px;
       outline: none;
-      transition: border-color 0.2s;
       font-family: monospace;
+      transition: border-color 0.15s;
     }
-    input[type="text"]:focus { border-color: #a78bfa; }
-    input[type="text"]::placeholder { color: #64748b; }
-    .hint {
+    .manual-form input[type="text"]:focus { border-color: #3B82F6; }
+    .manual-form input::placeholder { color: #3F3F46; }
+    .manual-form .hint {
       font-size: 12px;
-      color: #64748b;
+      color: #52525B;
       margin-top: 6px;
+      line-height: 1.4;
     }
-    button[type="submit"] {
+    .manual-form button[type="submit"] {
       width: 100%;
-      background: #7c3aed;
-      color: #fff;
-      font-size: 16px;
+      background: #27272A;
+      color: #FAFAFA;
+      font-size: 15px;
       font-weight: 600;
-      padding: 14px;
+      padding: 13px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      margin-top: 16px;
-      transition: background 0.2s;
+      margin-top: 14px;
+      transition: background 0.15s;
     }
-    button[type="submit"]:hover { background: #6d28d9; }
-    button[type="submit"]:active { background: #5b21b6; }
+    .manual-form button[type="submit"]:hover { background: #3F3F46; }
+
+    /* Alerts */
     .alert {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-radius: 10px;
-      font-size: 14px;
-      margin-top: 16px;
-      line-height: 1.4;
+      font-size: 13px;
+      margin-top: 12px;
+      line-height: 1.5;
     }
-    .alert-error { background: #3b1111; color: #fca5a5; border: 1px solid #7f1d1d; }
-    .alert-success { background: #052e16; color: #86efac; border: 1px solid #14532d; }
+    .alert-error { background: rgba(239,68,68,0.1); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.2); }
+    .alert-success { background: rgba(34,197,94,0.1); color: #86EFAC; border: 1px solid rgba(34,197,94,0.2); }
+
+    /* Success screen */
+    #success-screen { display: none; text-align: center; padding-top: 48px; }
+    .success-icon {
+      width: 64px; height: 64px; border-radius: 20px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+    }
+    #success-title { font-size: 22px; font-weight: 700; color: #22C55E; margin-bottom: 10px; }
+    #success-msg { font-size: 14px; color: #71717A; line-height: 1.6; margin-bottom: 20px; }
+    #success-addr {
+      font-family: monospace; font-size: 12px; color: #60A5FA;
+      word-break: break-all; background: #111111; padding: 12px;
+      border-radius: 10px; border: 1px solid #27272A;
+    }
+
+    /* Loading screen */
+    #loading-screen { display: none; text-align: center; padding-top: 80px; }
+    .spinner {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid #27272A; border-top-color: #3B82F6;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-msg { font-size: 14px; color: #71717A; }
+
+    /* Diagnostics */
+    .diag-wrap { margin-top: 32px; }
+    .diag-wrap summary {
+      font-size: 11px; color: #3F3F46; text-align: center;
+      cursor: pointer; padding: 4px 0;
+    }
+    .diag-wrap summary:hover { color: #71717A; }
     .diag {
-      margin-top: 28px;
-      background: #252742;
-      border-radius: 10px;
-      padding: 14px;
-      font-size: 11px;
-      color: #64748b;
-    }
-    .diag-title {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #4c4f79;
-      margin-bottom: 8px;
+      margin-top: 12px; background: #111111; border-radius: 10px;
+      padding: 12px; font-size: 11px; color: #52525B;
+      border: 1px solid #27272A;
     }
     .diag-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
-    .diag-key { color: #6b7280; }
-    .diag-val { color: #94a3b8; word-break: break-all; text-align: right; max-width: 200px; }
-    .ok { color: #4ade80; }
-    .no { color: #fb7185; }
-    #success-screen { display: none; text-align: center; }
-    #success-icon { font-size: 64px; margin-bottom: 16px; }
-    #success-title { font-size: 22px; font-weight: 700; color: #4ade80; margin-bottom: 12px; }
-    #success-msg { font-size: 14px; color: #94a3b8; line-height: 1.6; }
-    #success-addr {
-      font-family: monospace;
-      font-size: 12px;
-      color: #a78bfa;
-      word-break: break-all;
-      margin-top: 16px;
-      background: #252742;
-      padding: 10px;
-      border-radius: 8px;
-    }
-    @media (min-width: 420px) {
-      .connect-buttons {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .connect-btn {
-        justify-content: center;
-      }
-      .connect-btn-copy {
-        align-items: center;
-        text-align: center;
-      }
-    }
+    .diag-val { color: #71717A; word-break: break-all; text-align: right; max-width: 200px; }
+    .ok { color: #4ADE80; }
+    .no { color: #FB7185; }
   </style>
 </head>
 <body>
   <div class="card">
-    <!-- Success screen (hidden until wallet connected) -->
+
+    <!-- Loading (auto-connect attempt) -->
+    <div id="loading-screen">
+      <div class="spinner"></div>
+      <p id="loading-msg">Connecting wallet…</p>
+    </div>
+
+    <!-- Success -->
     <div id="success-screen">
-      <div id="success-icon">✅</div>
-      <div id="success-title">Wallet Connected!</div>
-      <div id="success-msg">
-        Your Starknet wallet has been linked to your Smainer account.<br>
-        You can close this window and return to the chat.
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12l5 5L20 7" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
+      <div id="success-title">Wallet Connected</div>
+      <div id="success-msg">Your wallet is linked. Return to the chat to run compute tasks.</div>
       <div id="success-addr"></div>
     </div>
 
-    <!-- Connect form (shown initially) -->
+    <!-- Main connect screen -->
     <div id="connect-screen">
-      <div class="logo">
-        <div class="logo-icon">⚡</div>
-        <div class="logo-title">Smainer AI</div>
-        <div class="logo-sub">Connect your Starknet wallet</div>
+      <div class="header">
+        <div class="logo-wrap">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="5" width="18" height="14" rx="2" stroke="#3B82F6" stroke-width="1.5"/>
+            <path d="M3 10h18" stroke="#3B82F6" stroke-width="1.5"/>
+            <circle cx="17" cy="15" r="1.5" fill="#3B82F6"/>
+          </svg>
+        </div>
+        <h1>Connect Wallet</h1>
+        <p>Link your Starknet wallet to pay for AI compute tasks</p>
       </div>
 
-      <form id="connect-form">
-        <!-- Quick connect options -->
-        <div class="connect-options">
-          <div class="connect-label">Quick Connect</div>
-          <div class="connect-buttons">
-            <button type="button" id="braavos-btn" class="connect-btn">
-              <span class="connect-btn-icon">📱</span>
-              <span class="connect-btn-copy">
-                <span class="connect-btn-text">Open in Braavos</span>
-                <span class="connect-btn-sub">Continue in the wallet app</span>
-              </span>
-            </button>
-            <button type="button" id="browser-btn" class="connect-btn">
-              <span class="connect-btn-icon">🌐</span>
-              <span class="connect-btn-copy">
-                <span class="connect-btn-text">Open in Browser</span>
-                <span class="connect-btn-sub">Use Argent X or Braavos extension</span>
-              </span>
-            </button>
-          </div>
-        </div>
+      <!-- Primary: Braavos -->
+      <button id="braavos-btn" class="btn-braavos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 4c-2 0-4 2-4 5 0 4 2 7 4 8 2-1 4-4 4-8 0-3-2-5-4-5z" stroke="white" stroke-width="1.5"/>
+          <path d="M8 9c-1 1-2 3-2 5s1 4 3 6M16 9c1 1 2 3 2 5s-1 4-3 6" stroke="white" stroke-width="1.5"/>
+        </svg>
+        Connect with Braavos
+      </button>
 
-        <!-- Manual input fallback -->
-        <div class="manual-section">
-          <div class="divider">
-            <span class="divider-text">or enter manually</span>
-          </div>
+      <!-- Secondary: Browser (Argent X) -->
+      <button id="browser-btn" class="btn-browser">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 12h18M12 3c-2 2-3 5-3 9s1 7 3 9M12 3c2 2 3 5 3 9s-1 7-3 9" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        Open in Browser (Argent X)
+      </button>
+
+      <!-- Advanced: manual paste -->
+      <details id="manual-details">
+        <summary>▸ Paste address manually</summary>
+        <form id="connect-form" class="manual-form">
           <label for="addr-input">Starknet Wallet Address</label>
           <input
             id="addr-input"
@@ -282,65 +263,107 @@
             autocorrect="off"
             spellcheck="false"
           />
-          <p class="hint">Your address starts with 0x. Found in Argent X or Braavos wallet.</p>
+          <p class="hint">Your address starts with 0x — find it in Argent X or Braavos settings.</p>
           <div id="alert" style="display:none;"></div>
-          <button type="submit">Link Wallet →</button>
-        </div>
-      </form>
+          <button type="submit">Link Wallet</button>
+        </form>
+      </details>
 
-      <div class="diag">
-        <div class="diag-title">Diagnostics</div>
-        <div class="diag-row">
-          <span class="diag-key">Telegram detected</span>
-          <span class="diag-val" id="d-tg">checking…</span>
+      <!-- Diagnostics (collapsed) -->
+      <details class="diag-wrap">
+        <summary>Diagnostics</summary>
+        <div class="diag">
+          <div class="diag-row">
+            <span>Telegram</span>
+            <span class="diag-val" id="d-tg">checking…</span>
+          </div>
+          <div class="diag-row">
+            <span>sendData</span>
+            <span class="diag-val" id="d-send">checking…</span>
+          </div>
+          <div class="diag-row">
+            <span>Braavos injected</span>
+            <span class="diag-val" id="d-braavos">checking…</span>
+          </div>
+          <div class="diag-row">
+            <span>URL</span>
+            <span class="diag-val" id="d-url"></span>
+          </div>
         </div>
-        <div class="diag-row">
-          <span class="diag-key">sendData available</span>
-          <span class="diag-val" id="d-send">checking…</span>
-        </div>
-        <div class="diag-row">
-          <span class="diag-key">URL</span>
-          <span class="diag-val" id="d-url"></span>
-        </div>
-        <div class="diag-row">
-          <span class="diag-key">Browser</span>
-          <span class="diag-val" id="d-ua"></span>
-        </div>
-      </div>
+      </details>
     </div>
+
   </div>
 
   <script>
-    // ---- DOM refs ----
-    var form = document.getElementById('connect-form');
-    var input = document.getElementById('addr-input');
-    var alertBox = document.getElementById('alert');
+    var urlParams = new URLSearchParams(window.location.search);
+    var shouldReturnToTelegram = urlParams.get('return') === 'telegram';
+    var BOT_USERNAME = 'smainer_ai_bot';
+
     var connectScreen = document.getElementById('connect-screen');
     var successScreen = document.getElementById('success-screen');
-    var successAddr = document.getElementById('success-addr');
-    var braavosBtn = document.getElementById('braavos-btn');
-    var browserBtn = document.getElementById('browser-btn');
-    var browserConnectUrl = window.location.origin + '/?mode=connect&return=telegram';
-    var braavosConnectUrl = 'https://link.braavos.app/dapp/' + window.location.host + '/?mode=connect&return=telegram';
+    var loadingScreen = document.getElementById('loading-screen');
+    var successAddr   = document.getElementById('success-addr');
+    var form          = document.getElementById('connect-form');
+    var input         = document.getElementById('addr-input');
+    var alertBox      = document.getElementById('alert');
+    var braavosBtn    = document.getElementById('braavos-btn');
+    var browserBtn    = document.getElementById('browser-btn');
 
-    // ---- Diagnostics (run immediately) ----
-    document.getElementById('d-url').textContent = window.location.href.substring(0, 60);
-    document.getElementById('d-ua').textContent = navigator.userAgent.substring(0, 50);
+    var browserConnectUrl = window.location.origin + '/connect?return=telegram';
+    var braavosConnectUrl = 'https://link.braavos.app/dapp/' + window.location.host + '/connect?return=telegram';
 
-    // Check Telegram after a short delay to allow SDK to initialise
-    setTimeout(function() {
-      var tg = window.Telegram && window.Telegram.WebApp;
-      var hasSend = tg && typeof window.Telegram.WebApp.sendData === 'function';
-      document.getElementById('d-tg').innerHTML = tg
-        ? '<span class="ok">YES</span>' : '<span class="no">NO (not in Telegram)</span>';
-      document.getElementById('d-send').innerHTML = hasSend
-        ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
-      // Expand the viewport so the miniapp fills the Telegram WebApp
-      if (tg) { try { window.Telegram.WebApp.expand(); } catch(e) {} }
-    }, 400);
-
-    // ---- Validation ----
     var ADDRESS_RE = /^0x[0-9a-fA-F]{1,64}$/;
+
+    // ---- Encode address for /start deep-link ----
+    function encodeAddressForStartPayload(address) {
+      var normalized = address.trim().toLowerCase();
+      var hex = normalized.startsWith('0x') ? normalized.slice(2) : normalized;
+      var padded = hex.padStart(64, '0');
+      var bytes = [];
+      for (var i = 0; i < padded.length; i += 2) {
+        bytes.push(parseInt(padded.slice(i, i + 2), 16));
+      }
+      var binary = '';
+      for (var j = 0; j < bytes.length; j++) {
+        binary += String.fromCharCode(bytes[j]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // ---- Show success and either sendData or redirect ----
+    function finalizeWallet(address, walletType) {
+      var tg = window.Telegram && window.Telegram.WebApp;
+
+      // In Telegram WebView — use sendData
+      if (tg && typeof tg.sendData === 'function') {
+        try {
+          tg.sendData(JSON.stringify({ action: 'wallet_connect', address: address, wallet_type: walletType }));
+          showSuccess(address);
+          return;
+        } catch (err) {
+          showAlert('Failed to send to Telegram: ' + (err.message || String(err)), 'error');
+          return;
+        }
+      }
+
+      // In external browser with ?return=telegram — deep-link back to bot
+      if (shouldReturnToTelegram) {
+        var encoded = encodeAddressForStartPayload(address);
+        window.location.assign('https://t.me/' + BOT_USERNAME + '?start=linkb_' + encoded);
+        return;
+      }
+
+      // Standalone — just show success
+      showSuccess(address);
+    }
+
+    function showSuccess(address) {
+      connectScreen.style.display = 'none';
+      loadingScreen.style.display = 'none';
+      successAddr.textContent = address;
+      successScreen.style.display = 'block';
+    }
 
     function showAlert(msg, type) {
       alertBox.className = 'alert alert-' + type;
@@ -349,63 +372,87 @@
     }
 
     function openExternal(url) {
-      try {
-        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
-          window.Telegram.WebApp.openLink(url);
-          return;
-        }
-      } catch(e) {}
-
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg && typeof tg.openLink === 'function') {
+        tg.openLink(url);
+        return;
+      }
       window.open(url, '_blank', 'noopener,noreferrer');
     }
 
-    braavosBtn.addEventListener('click', function() {
-      openExternal(braavosConnectUrl);
-    });
+    // ---- Braavos auto-connect (runs when opened in Braavos dApp browser) ----
+    function tryBraavosAutoConnect() {
+      var braavos = window.starknet_braavos;
+      if (!braavos || !shouldReturnToTelegram) return false;
 
-    browserBtn.addEventListener('click', function() {
-      openExternal(browserConnectUrl);
-    });
+      connectScreen.style.display = 'none';
+      loadingScreen.style.display = 'block';
+      document.getElementById('loading-msg').textContent = 'Connecting Braavos wallet…';
 
-    // ---- Submit ----
+      braavos.enable({ starknetVersion: 'v5' }).then(function(accounts) {
+        var address = typeof accounts === 'string' ? accounts
+          : Array.isArray(accounts) && accounts.length ? accounts[0] : null;
+
+        if (!address || !ADDRESS_RE.test(address.trim())) {
+          loadingScreen.style.display = 'none';
+          connectScreen.style.display = 'block';
+          showAlert('Braavos returned an invalid address. Please paste manually.', 'error');
+          document.getElementById('manual-details').open = true;
+          return;
+        }
+        finalizeWallet(address.trim(), 'braavos');
+      }).catch(function(err) {
+        loadingScreen.style.display = 'none';
+        connectScreen.style.display = 'block';
+        showAlert('Braavos connection failed: ' + (err.message || String(err)), 'error');
+      });
+
+      return true;
+    }
+
+    // ---- Button handlers ----
+    braavosBtn.addEventListener('click', function() { openExternal(braavosConnectUrl); });
+    browserBtn.addEventListener('click', function() { openExternal(browserConnectUrl); });
+
+    // ---- Manual form submit ----
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       alertBox.style.display = 'none';
 
       var address = input.value.trim();
-      if (!address) {
-        showAlert('Please enter your wallet address.', 'error');
-        return;
-      }
+      if (!address) { showAlert('Please enter your wallet address.', 'error'); return; }
       if (!ADDRESS_RE.test(address)) {
-        showAlert('Invalid address format. Must start with 0x followed by up to 64 hex characters.', 'error');
+        showAlert('Invalid format — must start with 0x followed by up to 64 hex characters.', 'error');
         return;
       }
 
       var tg = window.Telegram && window.Telegram.WebApp;
       if (!tg || typeof tg.sendData !== 'function') {
-        showAlert(
-          'sendData not available. This page must be opened from inside Telegram via the bot. ' +
-          'Go to @smainer_ai_bot and tap Connect Wallet.',
-          'error'
-        );
+        showAlert('Open this page from inside Telegram (tap Connect Wallet in the bot chat).', 'error');
         return;
       }
 
-      try {
-        tg.sendData(JSON.stringify({
-          action: 'wallet_connect',
-          address: address,
-          wallet_type: 'manual'
-        }));
-        // Show success
-        connectScreen.style.display = 'none';
-        successAddr.textContent = address;
-        successScreen.style.display = 'block';
-      } catch(err) {
-        showAlert('Failed to send: ' + (err && err.message ? err.message : String(err)), 'error');
-      }
+      finalizeWallet(address, 'manual');
     });
+
+    // ---- Init ----
+    setTimeout(function() {
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg) { try { tg.expand(); } catch(e) {} }
+
+      var hasSend = tg && typeof tg.sendData === 'function';
+      var hasBraavos = !!window.starknet_braavos;
+
+      document.getElementById('d-tg').innerHTML = tg ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
+      document.getElementById('d-send').innerHTML = hasSend ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
+      document.getElementById('d-braavos').innerHTML = hasBraavos ? '<span class="ok">YES</span>' : '<span class="no">NO</span>';
+      document.getElementById('d-url').textContent = window.location.href.substring(0, 60);
+
+      // If Braavos is injected and we're returning from wallet app — auto-connect
+      if (hasBraavos && shouldReturnToTelegram) {
+        tryBraavosAutoConnect();
+      }
+    }, 500);
   </script>
 </body>
 </html>
