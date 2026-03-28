@@ -145,7 +145,8 @@ export function useSmainerContract() {
   const createTask = useCallback(async (
     prompt: string,
     tier: ComputeTier = 'BASIC',
-    _targetAddress?: string
+    _targetAddress?: string,
+    escrowAmount?: bigint
   ): Promise<CreateTaskResult> => {
     if (!account || !smainerContract || !strkContract) {
       throw new Error('Wallet not connected or contracts not available');
@@ -154,8 +155,8 @@ export function useSmainerContract() {
     setTxState({ loading: true, error: null });
 
     try {
-      // Calculate required amounts
-      const promptCost = getPromptCost(tier);
+      // Use caller-provided dynamic escrow amount, or fall back to flat tier cost
+      const promptCost = escrowAmount ?? getPromptCost(tier);
       const promptHash = await hashPrompt(prompt);
       
       // Check if we need to approve more tokens

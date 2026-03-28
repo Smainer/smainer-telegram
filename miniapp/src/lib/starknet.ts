@@ -250,6 +250,35 @@ export function getPromptCost(tier: ComputeTier): bigint {
   return BigInt(Math.floor(Number(BASE_PROMPT_COST) * multiplier));
 }
 
+// Model complexity factors for cost estimation
+export const MODEL_COMPLEXITY: Record<string, number> = {
+  'llama3.1:8b': 0.2, 'mistral:7b': 0.2, 'gemma2:9b': 0.2,
+  'llama3.1:13b': 0.4, 'codellama:13b': 0.4,
+  'codellama:34b': 0.6, 'yi:34b': 0.6,
+  'llama3.1:70b': 0.8, 'mixtral:8x7b': 0.8,
+  'llama3.1:405b': 1.0,
+};
+
+export function getModelComplexity(modelId: string): number {
+  if (MODEL_COMPLEXITY[modelId]) return MODEL_COMPLEXITY[modelId];
+  const match = modelId.match(/(\d+)b/i);
+  if (match) {
+    const params = parseInt(match[1]);
+    if (params >= 100) return 1.0;
+    if (params >= 34) return 0.6;
+    if (params >= 13) return 0.4;
+  }
+  return 0.2;
+}
+
+export function estimateTokenCount(text: string): number {
+  const CHARS_PER_TOKEN = 3.5;
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
+}
+
+export const MAX_EFFORT_MULTIPLIER = 7.5;
+export const SAFETY_MARGIN = 1.3;
+
 // Prompt hashing for on-chain verification
 export async function hashPrompt(prompt: string): Promise<string> {
   // Use Web Crypto API to hash the prompt

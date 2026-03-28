@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAccount, useConnect } from '@starknet-react/core';
 import { useSmainerContract } from '@/hooks/useSmainerContract';
+import { useCostEstimate } from '@/hooks/useCostEstimate';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
@@ -206,6 +207,7 @@ export function PaymentFlow({
   const searchParams = new URLSearchParams(window.location.search);
   const chatId = searchParams.get('chat_id');
   const messageId = searchParams.get('message_id');
+  const userModel = searchParams.get('model') || 'llama3.1:8b';
 
   // Wallet connection hooks
   const { address, account, isConnected } = useAccount();
@@ -288,7 +290,7 @@ export function PaymentFlow({
     }
   }, [isConnected, step]);
 
-  const promptCost = getPromptCostForTier(tier);
+  const costEstimate = useCostEstimate(prompt, tier, userModel);
   const tierInfo = COMPUTE_TIERS[tier];
 
   // Load balance when contract is ready
@@ -349,7 +351,7 @@ export function PaymentFlow({
     resetTxState();
 
     try {
-      const result = await createTask(prompt, tier, effectiveAddress ?? undefined);
+      const result = await createTask(prompt, tier, effectiveAddress ?? undefined, costEstimate.maxEscrowWei);
       
       if (result.success && result.taskId) {
         setTaskId(result.taskId);
@@ -408,7 +410,7 @@ export function PaymentFlow({
     resetTxState();
   };
 
-  const hasInsufficientBalance = parseFloat(balance) < parseFloat(promptCost);
+  const hasInsufficientBalance = parseFloat(balance) < parseFloat(costEstimate.maxEscrow);
 
   // Get wallet brand styling
   const getWalletBrand = (connectorId: string) => {
@@ -517,7 +519,7 @@ export function PaymentFlow({
                     </div>
                     <span className="text-[var(--text-secondary)] font-medium" style={{ color: '#D4D4D8', fontWeight: 500 }}>Total Cost</span>
                   </div>
-                  <span className="text-xl font-bold text-white" style={{ fontSize: '20px', fontWeight: 700, color: 'white' }}>{promptCost} STRK</span>
+                  <span className="text-xl font-bold text-white" style={{ fontSize: '20px', fontWeight: 700, color: 'white' }}>{costEstimate.maxEscrow} STRK</span>
                 </div>
               </div>
 
@@ -611,39 +613,50 @@ export function PaymentFlow({
 
               {/* Cost Breakdown Card */}
               <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] space-y-3" style={{ padding: '16px', borderRadius: '12px' }}>
-                <div 
-                  className="flex justify-between items-center"
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>Compute Tier</span>
-                  <span 
-                    className="text-white font-medium flex items-center gap-1.5"
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontWeight: 500 }}
-                  >
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-xs uppercase tracking-wide" style={{ color: '#A1A1AA', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cost Estimate</span>
+                  <span className="text-[var(--text-muted)] text-xs font-mono" style={{ color: '#71717A', fontSize: '11px', fontFamily: 'monospace' }}>{userModel}</span>
+                </div>
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Input tokens</span>
+                  <span className="text-[var(--text-secondary)] text-sm font-mono" style={{ color: '#D4D4D8', fontSize: '14px', fontFamily: 'monospace' }}>~{costEstimate.inputTokens.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Effort estimate</span>
+                  <span className="text-[var(--text-secondary)] text-sm font-mono" style={{ color: '#D4D4D8', fontSize: '14px', fontFamily: 'monospace' }}>{costEstimate.estimatedEffort.toFixed(2)}x</span>
+                </div>
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Compute tier</span>
+                  <span className="text-white text-sm font-medium flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontSize: '14px', fontWeight: 500 }}>
                     <span className="w-2 h-2 rounded-full bg-[var(--blue)]" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3B82F6' }}></span>
                     {tierInfo.name}
-                    <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>(×{tierInfo.multiplier})</span>
+                    <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>(×{tierInfo.multiplier})</span>
                   </span>
                 </div>
-                <div 
-                  className="flex justify-between items-center"
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>Cost</span>
-                  <span className="text-white font-bold text-lg" style={{ color: 'white', fontWeight: 700, fontSize: '18px' }}>{promptCost} STRK</span>
+                <div className="h-px bg-[var(--border-subtle)]" style={{ height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Estimated actual</span>
+                  <span className="text-[var(--text-secondary)] text-sm font-mono" style={{ color: '#D4D4D8', fontSize: '14px', fontFamily: 'monospace' }}>~{costEstimate.estimatedActual} STRK</span>
+                </div>
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-white text-sm font-semibold" style={{ color: 'white', fontSize: '14px', fontWeight: 600 }}>Max escrow</span>
+                  <span className="text-white font-bold text-lg" style={{ color: 'white', fontWeight: 700, fontSize: '18px' }}>{costEstimate.maxEscrow} STRK</span>
                 </div>
                 <div className="h-px bg-[var(--border-subtle)]" style={{ height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-                <div 
-                  className="flex justify-between items-center"
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <span className="text-[var(--text-muted)]" style={{ color: '#A1A1AA' }}>Your Balance</span>
-                  <span 
-                    className={`font-semibold ${hasInsufficientBalance ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}
-                    style={{ fontWeight: 600, color: hasInsufficientBalance ? '#EF4444' : '#22C55E' }}
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Your balance</span>
+                  <span
+                    className={`font-semibold text-sm ${hasInsufficientBalance ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}
+                    style={{ fontWeight: 600, fontSize: '14px', color: hasInsufficientBalance ? '#EF4444' : '#22C55E' }}
                   >
                     {balance} STRK
                   </span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1" style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '4px' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#22C55E" strokeWidth="2"/>
+                  </svg>
+                  <span className="text-[var(--success)] text-xs" style={{ color: '#22C55E', fontSize: '12px' }}>Excess refunded automatically after task completes.</span>
                 </div>
               </div>
 
@@ -677,7 +690,7 @@ export function PaymentFlow({
                     <span className="text-[var(--error)] font-semibold">Insufficient Balance</span>
                   </div>
                   <p className="text-[var(--error)] text-sm opacity-80 ml-6">
-                    You need {promptCost} STRK. Current balance: {balance} STRK
+                    You need {costEstimate.maxEscrow} STRK. Current balance: {balance} STRK
                   </p>
                 </div>
               )}
@@ -807,6 +820,28 @@ export function PaymentFlow({
                   <Spinner size={14} />
                   Starting compute...
                 </p>
+              </div>
+
+              {/* Escrow / refund summary */}
+              <div
+                className="w-full rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] p-4 space-y-2 text-left"
+                style={{ borderRadius: '12px', padding: '16px' }}
+              >
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Escrowed</span>
+                  <span className="text-white text-sm font-mono" style={{ color: 'white', fontSize: '14px', fontFamily: 'monospace' }}>{costEstimate.maxEscrow} STRK</span>
+                </div>
+                <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Estimated actual</span>
+                  <span className="text-[var(--text-secondary)] text-sm font-mono" style={{ color: '#D4D4D8', fontSize: '14px', fontFamily: 'monospace' }}>~{costEstimate.estimatedActual} STRK</span>
+                </div>
+                <div className="h-px bg-[var(--border-subtle)]" style={{ height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                <div className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#22C55E" strokeWidth="2"/>
+                  </svg>
+                  <span className="text-[var(--success)] text-xs" style={{ color: '#22C55E', fontSize: '12px' }}>Excess refunded automatically after task completes.</span>
+                </div>
               </div>
             </div>
           )}
