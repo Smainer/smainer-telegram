@@ -47,7 +47,7 @@ export function useWalletBalance(overrideAddress?: string): UseWalletBalanceResu
         contractAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
         entrypoint: 'balance_of',
         calldata: [normalizedAddress],
-      });
+      }, 'latest');
       
       // starknet.js v5 callContract returns { result: string[] }
       const rawResult = (result as any).result ?? result;

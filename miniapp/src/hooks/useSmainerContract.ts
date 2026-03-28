@@ -90,7 +90,7 @@ export function useSmainerContract() {
         contractAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
         entrypoint: 'balance_of',
         calldata: [normalizedAddress],
-      });
+      }, 'latest');
       
       console.log('[checkBalance] Raw RPC result:', result);
 
