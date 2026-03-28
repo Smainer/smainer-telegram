@@ -23,7 +23,6 @@ from src.handlers import (
     handle_balance,
     handle_help,
     handle_inference,
-    handle_link,
     handle_models,
     handle_set_model,
     handle_start,
@@ -115,8 +114,6 @@ async def _process_update(update: dict) -> None:
         await handle_set_model(update, bot, relayer)
     elif text.startswith("/availNodes") or text.startswith("/availnodes"):
         await handle_avail_nodes(update, bot, relayer)
-    elif text.startswith("/link"):
-        await handle_link(update, bot, wallet_mgr)
     elif not text.startswith("/"):
         # Any plain text that isn't a command → treat as inference request
         await handle_inference(

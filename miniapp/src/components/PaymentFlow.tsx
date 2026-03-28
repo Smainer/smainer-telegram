@@ -366,7 +366,25 @@ export function PaymentFlow({
             message_id: messageId,
             starknet_address: effectiveAddress,
           });
-          window.Telegram?.WebApp?.sendData?.(webAppData);
+          const tg = window.Telegram?.WebApp;
+          if (tg?.sendData) {
+            tg.sendData(webAppData);
+          } else {
+            // Standalone browser fallback — sendData() is only available inside Telegram WebView
+            const parsed = JSON.parse(webAppData);
+            try {
+              await fetch(`${botApiUrl}/api/payment-complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...parsed,
+                  init_data: initDataRaw,
+                }),
+              });
+            } catch (e) {
+              console.warn('[PaymentFlow] payment-complete POST failed:', e);
+            }
+          }
         } catch (e) {
           console.error('Failed to send data to Telegram:', e);
         }

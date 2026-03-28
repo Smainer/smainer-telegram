@@ -10,6 +10,7 @@
     { "src": "/api/setup-webhook", "dest": "/api/setup_webhook.py" },
     { "src": "/api/wallet-check", "dest": "/api/wallet_check.py" },
     { "src": "/api/wallet-unlink", "dest": "/api/wallet_unlink.py" },
-    { "src": "/api/wallet-link", "dest": "/api/wallet_link.py" }
+    { "src": "/api/wallet-link", "dest": "/api/wallet-link.py" },
+    { "src": "/api/payment-complete", "dest": "/api/payment_complete.py" }
   ]
 }
