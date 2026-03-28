@@ -49,8 +49,9 @@ export function useWalletBalance(overrideAddress?: string): UseWalletBalanceResu
         calldata: [normalizedAddress],
       });
       
-      // Result is array [low_felt, high_felt] for u256
-      const resultArray = result as unknown as string[];
+      // starknet.js v5 callContract returns { result: string[] }
+      const rawResult = (result as any).result ?? result;
+      const resultArray = rawResult as string[];
       const U128_MAX_PLUS_ONE = BigInt('340282366920938463463374607431768211456'); // 2^128
       const low = BigInt(resultArray[0]);
       const high = resultArray[1] ? BigInt(resultArray[1]) : BigInt(0);
