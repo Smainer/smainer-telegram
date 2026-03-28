@@ -43,23 +43,39 @@ export function useSmainerContract() {
     abi: ERC20_ABI,
   });
 
-  // Check current STRK allowance for the compute contract
+  // Check current STRK allowance for the compute contract (raw RPC to bypass ABI wrapper issues)
   const checkAllowance = useCallback(async (): Promise<bigint> => {
-    if (!address || !strkContract) {
-      throw new Error('Wallet not connected or contract not available');
+    if (!address) {
+      throw new Error('Wallet not connected');
     }
 
     try {
-      const result = await strkContract.call('allowance', [
-        address,
-        CONTRACT_ADDRESSES.SMAINER_COMPUTE
-      ]);
-      return result as bigint;
+      const hexPart = address.toLowerCase().replace(/^0x/, '');
+      const normalizedOwner = '0x' + hexPart.padStart(64, '0');
+      const spenderHex = CONTRACT_ADDRESSES.SMAINER_COMPUTE.toLowerCase().replace(/^0x/, '');
+      const normalizedSpender = '0x' + spenderHex.padStart(64, '0');
+
+      const provider = new RpcProvider({
+        nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet'
+      });
+
+      const result = await provider.callContract({
+        contractAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
+        entrypoint: 'allowance',
+        calldata: [normalizedOwner, normalizedSpender],
+      }, 'latest');
+
+      const rawResult = (result as any).result ?? result;
+      const resultArray = rawResult as string[];
+      const U128_MAX_PLUS_ONE = BigInt('340282366920938463463374607431768211456'); // 2^128
+      const low = BigInt(resultArray[0]);
+      const high = resultArray[1] ? BigInt(resultArray[1]) : BigInt(0);
+      return high * U128_MAX_PLUS_ONE + low;
     } catch (error) {
       console.error('Failed to check allowance:', error);
       throw new Error('Failed to check allowance');
     }
-  }, [address, strkContract]);
+  }, [address]);
 
   // Check STRK balance using raw RPC (bypasses starknet-react contract wrapper issues)
   const checkBalance = useCallback(async (targetAddress?: string): Promise<string> => {
