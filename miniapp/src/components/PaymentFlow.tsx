@@ -2,20 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAccount, useConnect } from '@starknet-react/core';
 import { useSmainerContract } from '@/hooks/useSmainerContract';
 import { useCostEstimate } from '@/hooks/useCostEstimate';
+import { usePayment } from '@/hooks/usePayment';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-29-v9';
-
-// Detect Telegram WebView — extensions are unavailable here
-function detectTelegramWebView(): boolean {
-  if (typeof window === 'undefined') return false;
-  return (
-    !!(window as any).Telegram?.WebApp ||
-    navigator.userAgent.includes('Telegram')
-  );
-}
+const BUILD_VERSION = '2026-03-29-v10';
 
 // Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
 function WalletDeepLinks() {
@@ -35,20 +27,20 @@ function WalletDeepLinks() {
   };
 
   return (
-    <div 
+    <div
       style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '24px 16px' }}
       className="flex flex-col gap-4 items-center p-6"
     >
       {/* Wallet Icon */}
-      <div 
-        style={{ 
-          width: '48px', 
-          height: '48px', 
-          borderRadius: '12px', 
-          background: 'rgba(59,130,246,0.15)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center' 
+      <div
+        style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '12px',
+          background: 'rgba(59,130,246,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
         className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center"
       >
@@ -57,15 +49,15 @@ function WalletDeepLinks() {
           <path d="M12 22V12M4 7l8 5 8-5" stroke="#3B82F6" strokeWidth="2"/>
         </svg>
       </div>
-      
+
       {/* Explanation */}
-      <p 
+      <p
         style={{ color: '#A1A1AA', fontSize: '14px', textAlign: 'center', margin: '0' }}
         className="text-zinc-400 text-sm text-center m-0"
       >
         Wallet extensions require a full browser
       </p>
-      
+
       {/* Single Action Button */}
       <button
         onClick={handleOpenInBrowser}
@@ -91,13 +83,13 @@ function WalletDeepLinks() {
         </svg>
         Open in Browser
       </button>
-      
+
       {/* Security note */}
-      <p 
-        style={{ 
-          color: '#71717A', 
-          fontSize: '12px', 
-          textAlign: 'center', 
+      <p
+        style={{
+          color: '#71717A',
+          fontSize: '12px',
+          textAlign: 'center',
           margin: '0',
           display: 'flex',
           alignItems: 'center',
@@ -189,14 +181,13 @@ function Spinner({ size = 24 }: { size?: number }) {
   );
 }
 
-export function PaymentFlow({ 
-  prompt, 
-  tier = 'BASIC', 
-  onSuccess, 
-  onCancel 
+export function PaymentFlow({
+  prompt,
+  tier = 'BASIC',
+  onSuccess,
+  onCancel
 }: PaymentFlowProps) {
   const [balance, setBalance] = useState<string>('0');
-  const [taskId, setTaskId] = useState<string>('');
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
@@ -208,12 +199,9 @@ export function PaymentFlow({
   });
   const [botLinkedWallet, setBotLinkedWallet] = useState<string | null>(null);
 
-  // True when running inside a Telegram WebView where browser extensions are unavailable
-  const isTelegramWebView = useMemo(() => detectTelegramWebView(), []);
-
-  // Get bot API and telegram data
+  // Telegram data
   const { initDataRaw, isInTelegram } = useTelegramData();
-  const botApiUrl = import.meta.env.VITE_BOT_API_URL || 'https://bot.smainer.io';
+  const botApiUrl = (import.meta.env as Record<string, string>).VITE_BOT_API_URL || 'https://bot.smainer.io';
 
   // Read URL parameters for Telegram integration
   const searchParams = new URLSearchParams(window.location.search);
@@ -252,13 +240,20 @@ export function PaymentFlow({
   }, [connectors]);
 
   const {
-    createTask,
     checkBalance,
-    getPromptCostForTier,
-    error,
     isContractReady,
-    resetTxState
   } = useSmainerContract();
+
+  // Payment strategy hook — wired up with bot-linked wallet for environment resolution
+  const {
+    phase,
+    taskId,
+    errorMessage,
+    isLoading,
+    capabilities,
+    pay,
+    reset: resetPayment,
+  } = usePayment(botLinkedWallet);
 
   // Fetch bot-linked wallet on mount
   useEffect(() => {
@@ -302,6 +297,24 @@ export function PaymentFlow({
     }
   }, [isConnected, step]);
 
+  // Mirror payment phase into local step
+  useEffect(() => {
+    if (phase === 'idle') return;
+    if (
+      phase === 'checking-allowance' ||
+      phase === 'awaiting-wallet-approval' ||
+      phase === 'broadcasting' ||
+      phase === 'confirming' ||
+      phase === 'notifying-bot'
+    ) {
+      setStep('processing');
+    } else if (phase === 'done') {
+      setStep('success');
+    } else if (phase === 'error') {
+      setStep('error');
+    }
+  }, [phase]);
+
   const costEstimate = useCostEstimate(prompt, tier, userModel);
   const tierInfo = COMPUTE_TIERS[tier];
 
@@ -328,13 +341,13 @@ export function PaymentFlow({
           }));
         })
         .catch((e) => {
-          const errorMsg = e instanceof Error ? e.message : String(e);
+          const errMsg = e instanceof Error ? e.message : String(e);
           console.error('[PaymentFlow] Failed to check balance:', e);
           setInitError('Failed to load wallet balance. Please refresh.');
           setDebugInfo(prev => ({
             ...prev,
             rawBalance: null,
-            balanceError: errorMsg,
+            balanceError: errMsg,
           }));
         });
     }
@@ -357,82 +370,28 @@ export function PaymentFlow({
     }
   };
 
-  // Handle payment process
+  // Handle payment — delegates entirely to the strategy layer
   const handlePayment = async () => {
-    // Guard: wallet extensions don't exist in Telegram WebView.
-    // If somehow handlePayment is reached without a real signing account, redirect
-    // to the external browser instead of letting account.execute() hang forever.
-    if (isTelegramWebView && !account) {
-      const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-      if ((window as any).Telegram?.WebApp?.openLink) {
-        (window as any).Telegram.WebApp.openLink(payUrl);
-      } else {
-        window.open(payUrl, '_blank');
-      }
-      return;
-    }
+    const result = await pay(
+      prompt,
+      tier,
+      costEstimate.maxEscrowWei,
+      chatId,
+      messageId,
+    );
 
-    setStep('processing');
-    resetTxState();
-
-    try {
-      const result = await createTask(prompt, tier, effectiveAddress ?? undefined, costEstimate.maxEscrowWei);
-      
-      if (result.success && result.taskId) {
-        setTaskId(result.taskId);
-        setStep('success');
-        
-        // Send data back to Telegram bot
-        try {
-          const webAppData = JSON.stringify({
-            action: 'payment_complete',
-            on_chain_task_id: result.taskId,
-            prompt,
-            tier,
-            chat_id: chatId,
-            message_id: messageId,
-            starknet_address: effectiveAddress,
-          });
-          const tg = window.Telegram?.WebApp;
-          if (tg?.sendData) {
-            tg.sendData(webAppData);
-          } else {
-            // Standalone browser fallback — sendData() is only available inside Telegram WebView
-            const parsed = JSON.parse(webAppData);
-            try {
-              await fetch(`${botApiUrl}/api/payment-complete`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  ...parsed,
-                  init_data: initDataRaw,
-                }),
-              });
-            } catch (e) {
-              console.warn('[PaymentFlow] payment-complete POST failed:', e);
-            }
-          }
-        } catch (e) {
-          console.error('Failed to send data to Telegram:', e);
-        }
-        
-        // Auto-complete after short delay to show success state
-        // Note: sendData() closes the MiniApp automatically, but keep as fallback
-        setTimeout(() => {
-          onSuccess(result.taskId!);
-        }, 1500);
-      } else {
-        setStep('error');
-      }
-    } catch (err) {
-      console.error('Payment failed:', err);
-      setStep('error');
+    if (result.success && result.taskId) {
+      // Auto-complete after short delay to show success state
+      setTimeout(() => {
+        onSuccess(result.taskId!);
+      }, 1500);
     }
+    // Phase-to-step mirroring handled by the useEffect above
   };
 
   const handleRetry = () => {
     setStep('confirm');
-    resetTxState();
+    resetPayment();
   };
 
   const hasInsufficientBalance = parseFloat(balance) < parseFloat(costEstimate.maxEscrow);
@@ -456,21 +415,21 @@ export function PaymentFlow({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)' }}
     >
-      <div 
+      <div
         className="w-full max-w-md bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden"
         style={{ width: '100%', maxWidth: '28rem', borderRadius: '1rem', overflow: 'hidden', animation: 'fadeInScale 0.2s ease-out' }}
       >
         {/* Branded Header */}
-        <div 
+        <div
           className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--void)]/50"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}
         >
           <SmainerLogo />
-          
+
           {(step === 'connect' || step === 'confirm' || step === 'error') && (
             <button
               onClick={onCancel}
@@ -509,12 +468,12 @@ export function PaymentFlow({
             <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Prompt Preview Card */}
               <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)]" style={{ padding: '16px', borderRadius: '12px' }}>
-                <div 
+                <div
                   className="flex items-center justify-between mb-2"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}
                 >
                   <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide" style={{ fontSize: '12px', fontWeight: 500, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prompt</span>
-                  <span 
+                  <span
                     className="px-2 py-0.5 rounded-full bg-[var(--surface-elevated)] text-xs text-[var(--blue)] font-medium"
                     style={{ padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', color: '#3B82F6', fontWeight: 500 }}
                   >
@@ -526,15 +485,15 @@ export function PaymentFlow({
 
               {/* Cost Display Card */}
               <div className="p-4 rounded-xl bg-gradient-to-r from-[var(--blue)]/10 to-transparent border border-[var(--blue)]/20" style={{ padding: '16px', borderRadius: '12px' }}>
-                <div 
+                <div
                   className="flex items-center justify-between"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                 >
-                  <div 
+                  <div
                     className="flex items-center gap-2"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
-                    <div 
+                    <div
                       className="w-8 h-8 rounded-full bg-[var(--blue)]/20 flex items-center justify-center"
                       style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
@@ -563,13 +522,13 @@ export function PaymentFlow({
               {!botLinkedWallet && (
               <div className="space-y-2">
                 <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Select Wallet</span>
-                
+
                 {availableConnectors.length > 0 ? (
                   <div className="space-y-2">
                     {availableConnectors.map((connector) => {
                       const brand = getWalletBrand(connector.id);
                       const isConnecting = connectingId === connector.id;
-                      
+
                       return (
                         <button
                           key={connector.id}
@@ -585,8 +544,8 @@ export function PaymentFlow({
                         >
                           {isConnecting ? <Spinner size={20} /> : brand.icon}
                           <span>
-                            {isConnecting 
-                              ? 'Connecting...' 
+                            {isConnecting
+                              ? 'Connecting...'
                               : `Connect ${connector.id.charAt(0).toUpperCase() + connector.id.slice(1)}`
                             }
                           </span>
@@ -721,7 +680,7 @@ export function PaymentFlow({
               )}
 
               {/* Action Buttons */}
-              <div 
+              <div
                 className="flex gap-3 pt-2"
                 style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}
               >
@@ -732,42 +691,32 @@ export function PaymentFlow({
                 >
                   Cancel
                 </button>
-                {(!account && botLinkedWallet) || (isTelegramWebView && !account) ? (
+                {capabilities.requiresRedirect ? (
                   <button
-                    onClick={() => {
-                      const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-                      try {
-                        (window as any).Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
-                      } catch {}
-                      if ((window as any).Telegram?.WebApp?.openLink) {
-                        (window as any).Telegram.WebApp.openLink(payUrl);
-                      } else {
-                        window.open(payUrl, '_blank');
-                      }
-                    }}
+                    onClick={handlePayment}
                     className="flex-1 px-4 py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg"
                     style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Open in Browser to Pay
+                    {capabilities.ctaLabel}
                   </button>
                 ) : (
                   <button
                     onClick={handlePayment}
-                    disabled={hasInsufficientBalance || !isContractReady || !account}
+                    disabled={hasInsufficientBalance || !isContractReady || !account || isLoading}
                     className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--blue)] text-white font-semibold hover:bg-[var(--blue-hover)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady || !account) ? 0.4 : 1 }}
+                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady || !account || isLoading) ? 0.4 : 1 }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Approve & Pay
+                    {capabilities.ctaLabel}
                   </button>
                 )}
               </div>
-              
+
               {/* Debug Panel - tap version to toggle */}
               <div className="mt-4">
                 <button
@@ -776,7 +725,7 @@ export function PaymentFlow({
                 >
                   v{BUILD_VERSION} {showDebug ? '▲' : '▼'}
                 </button>
-                
+
                 {showDebug && (
                   <div className="mt-2 p-3 rounded-lg bg-black/40 border border-[var(--border-subtle)] text-xs font-mono space-y-1">
                     <div className="flex justify-between">
@@ -839,7 +788,7 @@ export function PaymentFlow({
                   Payment Confirmed!
                 </h4>
                 <p className="text-[var(--text-muted)] text-sm">
-                  Task ID: <span className="font-mono text-white">{taskId.slice(0, 8)}...</span>
+                  Task ID: <span className="font-mono text-white">{taskId ? taskId.slice(0, 8) + '...' : '...'}</span>
                 </p>
                 <p className="text-[var(--success)] text-sm mt-2 flex items-center justify-center gap-2">
                   <Spinner size={14} />
@@ -885,7 +834,7 @@ export function PaymentFlow({
                   Payment Failed
                 </h4>
                 <p className="text-[var(--error)] text-sm max-w-xs mx-auto">
-                  {error || 'Transaction was rejected or failed. Please try again.'}
+                  {errorMessage || 'Transaction was rejected or failed. Please try again.'}
                 </p>
               </div>
 
