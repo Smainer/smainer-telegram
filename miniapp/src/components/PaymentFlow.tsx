@@ -7,13 +7,23 @@ import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-29-v12';
+const BUILD_VERSION = '2026-03-29-v14';
+
+// Detect injected wallet directly (bypasses starknet-react race condition)
+function hasInjectedWallet(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!(window as any).starknet_braavos || !!(window as any).starknet_argentX;
+}
+
+// Detect mobile vs desktop
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
 
 // Shared wallet deep link buttons — used in both connect step (no connectors) and
 // confirm step (when capabilities.requiresRedirect is true).
 function WalletPayButtons() {
-  const dappUrl = `${window.location.host}${window.location.pathname}${window.location.search}`;
-
   const fireHaptic = () => {
     try {
       (window.Telegram?.WebApp as any)?.HapticFeedback?.notificationOccurred('success');
@@ -41,13 +51,25 @@ function WalletPayButtons() {
 
   const handleBraavos = () => {
     fireHaptic();
-    openLink(`https://link.braavos.app/dapp/${dappUrl}`);
+    if (isMobileDevice()) {
+      // Mobile: intermediate redirect page — user taps <a> to trigger universal link → Braavos app
+      const redirectParams = new URLSearchParams(window.location.search);
+      redirectParams.set('action', 'wallet-redirect');
+      redirectParams.set('wallet', 'braavos');
+      const redirectUrl = `${window.location.origin}/?${redirectParams.toString()}`;
+      openLink(redirectUrl);
+    } else {
+      // Desktop: open pay URL directly in browser — wallet extension works there
+      const payUrl = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
+      openLink(payUrl);
+    }
   };
 
   const handleArgent = () => {
     fireHaptic();
-    // Argent has no in-app dApp browser deep link — open in external browser as fallback
-    openLink(`https://${dappUrl}`);
+    // Argent has no in-app dApp browser — always open in browser (extension works on desktop)
+    const payUrl = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
+    openLink(payUrl);
   };
 
   return (
@@ -574,6 +596,13 @@ export function PaymentFlow({
                       );
                     })}
                   </div>
+                ) : hasInjectedWallet() ? (
+                  /* Wallet IS injected (e.g. Braavos in-app browser) but starknet-react
+                     hasn't detected it yet — show spinner, auto-connect will fire shortly */
+                  <div className="flex items-center justify-center gap-3 py-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px 0' }}>
+                    <Spinner size={20} />
+                    <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Connecting to wallet...</span>
+                  </div>
                 ) : (
                   <WalletDeepLinks />
                 )}
@@ -701,14 +730,29 @@ export function PaymentFlow({
               )}
 
               {/* Action Buttons */}
-              {capabilities.requiresRedirect ? (
+              {capabilities.requiresRedirect && !hasInjectedWallet() ? (
                 <div
                   className="flex flex-col gap-3 pt-2"
                   style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}
                 >
-                  {/* Wallet deep link buttons replace the generic redirect CTA */}
+                  {/* Wallet deep link buttons — only when NOT in a wallet's browser */}
                   <WalletPayButtons />
 
+                  <button
+                    onClick={onCancel}
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : capabilities.requiresRedirect && hasInjectedWallet() ? (
+                /* Wallet IS injected (Braavos/Argent in-app browser) — go back to connect step */
+                <div className="flex flex-col gap-3 pt-2" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}>
+                  <div className="flex items-center justify-center gap-3 py-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px 0' }}>
+                    <Spinner size={20} />
+                    <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Connecting to wallet...</span>
+                  </div>
                   <button
                     onClick={onCancel}
                     className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
