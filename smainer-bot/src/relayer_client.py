@@ -69,6 +69,7 @@ class RelayerClient:
                 "cpu_threads": 4,
                 "ram_gb": tier_reqs["ram_gb"],
                 "gpu_required": tier_reqs["gpu_required"],
+                "min_vram_gb": tier_reqs.get("gpu_vram_gb"),
                 "max_execution_time": 300,
             },
             token_amount=req.cost_strk,
