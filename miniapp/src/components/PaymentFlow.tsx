@@ -7,7 +7,7 @@ import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-29-v11';
+const BUILD_VERSION = '2026-03-29-v12';
 
 // Shared wallet deep link buttons — used in both connect step (no connectors) and
 // confirm step (when capabilities.requiresRedirect is true).
@@ -25,6 +25,15 @@ function WalletPayButtons() {
   const openLink = (url: string) => {
     if (window.Telegram?.WebApp?.openLink) {
       window.Telegram.WebApp.openLink(url);
+      // Close the MiniApp after a short delay so user isn't left staring
+      // at a stale "Pay with Braavos" screen when they return to Telegram.
+      setTimeout(() => {
+        try {
+          (window.Telegram?.WebApp as any)?.close?.();
+        } catch {
+          // close() not available — ignore
+        }
+      }, 1500);
     } else {
       window.open(url, '_blank');
     }

@@ -2,7 +2,9 @@
 
 Handles payment completion notifications from the MiniApp when running
 in a standalone browser (where Telegram sendData() is unavailable).
-Authenticates via Telegram initData HMAC-SHA256.
+Authenticates via Telegram initData HMAC-SHA256 when available.
+Falls back to chat_id + on_chain_task_id for standalone browsers
+(e.g., Braavos in-app browser) where Telegram WebApp SDK is absent.
 """
 
 import asyncio
@@ -74,20 +76,33 @@ class handler(BaseHTTPRequestHandler):
             self._json(400, {"error": "invalid_json"})
             return
 
+        # Authentication: Telegram initData (preferred) or standalone browser fallback
         init_data = (body.get("init_data") or "").strip()
-        if not init_data:
-            self._json(400, {"error": "missing_init_data"})
-            return
+        user_id = None
 
-        user = _verify_init_data(init_data)
-        if user is None:
-            self._json(401, {"error": "invalid_signature"})
-            return
-
-        user_id = user.get("id")
-        if not user_id:
-            self._json(400, {"error": "missing_user_id"})
-            return
+        if init_data:
+            # Telegram WebView path — verify HMAC signature
+            user = _verify_init_data(init_data)
+            if user is None:
+                self._json(401, {"error": "invalid_signature"})
+                return
+            user_id = user.get("id")
+            if not user_id:
+                self._json(400, {"error": "missing_user_id"})
+                return
+        else:
+            # Standalone browser path (e.g., Braavos in-app browser)
+            # No Telegram initData available — use chat_id as user identifier.
+            # Security: on-chain task creation requires real STRK escrow,
+            # and the relayer validates on-chain state before processing.
+            chat_id = body.get("chat_id")
+            on_chain_task_id = body.get("on_chain_task_id")
+            if not chat_id or not on_chain_task_id:
+                self._json(400, {"error": "missing_auth_context"})
+                return
+            # In Telegram private chats, chat_id == user_id
+            user_id = str(chat_id)
+            logger.info("Standalone browser payment-complete: chat_id=%s, task=%s", chat_id, on_chain_task_id)
 
         on_chain_task_id = body.get("on_chain_task_id")
         prompt = body.get("prompt", "")
