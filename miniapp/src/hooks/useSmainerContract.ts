@@ -171,7 +171,7 @@ export function useSmainerContract() {
       const needsApproval = currentAllowance < promptCost;
 
       // Prepare multicall transactions
-      const calls = [];
+      const calls: { contractAddress: string; entrypoint: string; calldata: string[] }[] = [];
 
       // Add approval if needed
       if (needsApproval) {
@@ -196,19 +196,47 @@ export function useSmainerContract() {
         ],
       });
 
-      // Execute multicall
-      const result = await account.execute(calls);
-      
+      // Execute multicall.
+      // IMPORTANT: account.execute() is the wallet extension's own method.
+      // Some wallet versions hang indefinitely if the internal fee-estimation
+      // simulation reverts (e.g. stale allowance state, bad calldata, RPC
+      // error on the wallet's own node).  Wrap the call in a hard timeout so
+      // the spinner never freezes permanently.
+      const EXECUTE_TIMEOUT_MS = 90_000;  // 90 s – wallet should respond well within this
+      const POLL_INTERVAL_MS   = 4_000;
+      const MAX_WAIT_MS        = 120_000; // 2 min receipt poll
+
+      const executeWithTimeout = () =>
+        new Promise<{ transaction_hash: string }>((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error(
+              'Wallet did not respond after 90 seconds. ' +
+              'The wallet popup may have been blocked, or the transaction simulation failed silently. ' +
+              'Please try again.'
+            )),
+            EXECUTE_TIMEOUT_MS
+          );
+          account.execute(calls)
+            .then((r) => { clearTimeout(timer); resolve(r as { transaction_hash: string }); })
+            .catch((e) => { clearTimeout(timer); reject(e); });
+        });
+
+      const result = await executeWithTimeout();
+
       if (!result.transaction_hash) {
         throw new Error('Transaction failed - no hash returned');
       }
 
-      // Wait for transaction confirmation with a 2-minute timeout to prevent
-      // an infinite poll when the wallet rejects silently or the tx is dropped.
-      const POLL_INTERVAL_MS = 4_000;
-      const MAX_WAIT_MS = 120_000;
+      // Wait for transaction confirmation using a standalone RpcProvider instead
+      // of account.waitForTransaction.  The wallet extension account object may
+      // not implement waitForTransaction, and even when it does it uses the
+      // wallet's own RPC node which can differ from ours.  Using our own
+      // provider gives us full control over the polling loop and timeout.
+      const rpcProvider = new RpcProvider({
+        nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet',
+      });
 
-      const receiptPromise = account.waitForTransaction(result.transaction_hash, {
+      const receiptPromise = rpcProvider.waitForTransaction(result.transaction_hash, {
         retryInterval: POLL_INTERVAL_MS,
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
