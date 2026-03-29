@@ -12,6 +12,13 @@ import {
   TOKEN_DECIMALS
 } from '@/lib/starknet';
 
+function toU256Calldata(value: bigint): [string, string] {
+  const mask = (BigInt(1) << BigInt(128)) - BigInt(1);
+  const low = (value & mask).toString();
+  const high = (value >> BigInt(128)).toString();
+  return [low, high];
+}
+
 interface ContractTxState {
   loading: boolean;
   error: string | null;
@@ -173,7 +180,7 @@ export function useSmainerContract() {
         calls.push({
           contractAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
           entrypoint: 'approve',
-          calldata: [CONTRACT_ADDRESSES.SMAINER_COMPUTE, approveAmount.toString()],
+          calldata: [CONTRACT_ADDRESSES.SMAINER_COMPUTE, ...toU256Calldata(approveAmount)],
         });
       }
 
@@ -182,10 +189,10 @@ export function useSmainerContract() {
         contractAddress: CONTRACT_ADDRESSES.SMAINER_COMPUTE,
         entrypoint: 'create_tiered_task',
         calldata: [
-          CONTRACT_ADDRESSES.STRK_TOKEN, // token_address
-          promptCost.toString(),          // base_amount  
+          CONTRACT_ADDRESSES.STRK_TOKEN,                         // token_address
+          ...toU256Calldata(promptCost),                         // base_amount (u256: low, high)
           tier === 'BASIC' ? '1' : tier === 'PRO' ? '2' : '3', // required_tier
-          promptHash                      // task_hash
+          promptHash                                             // task_hash
         ],
       });
 
@@ -196,8 +203,21 @@ export function useSmainerContract() {
         throw new Error('Transaction failed - no hash returned');
       }
 
-      // Wait for transaction confirmation
-      const receipt = await account.waitForTransaction(result.transaction_hash);
+      // Wait for transaction confirmation with a 2-minute timeout to prevent
+      // an infinite poll when the wallet rejects silently or the tx is dropped.
+      const POLL_INTERVAL_MS = 4_000;
+      const MAX_WAIT_MS = 120_000;
+
+      const receiptPromise = account.waitForTransaction(result.transaction_hash, {
+        retryInterval: POLL_INTERVAL_MS,
+      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Transaction confirmation timed out after 2 minutes')),
+          MAX_WAIT_MS
+        )
+      );
+      const receipt = await Promise.race([receiptPromise, timeoutPromise]);
 
       // Extract task_id from transaction receipt
       let taskId: string;
