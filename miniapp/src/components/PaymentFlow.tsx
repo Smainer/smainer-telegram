@@ -7,18 +7,22 @@ import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-29-v10';
+const BUILD_VERSION = '2026-03-29-v11';
 
-// Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
-function WalletDeepLinks() {
-  const handleOpenInBrowser = () => {
-    const url = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
-    // Haptic feedback
+// Shared wallet deep link buttons — used in both connect step (no connectors) and
+// confirm step (when capabilities.requiresRedirect is true).
+function WalletPayButtons() {
+  const dappUrl = `${window.location.host}${window.location.pathname}${window.location.search}`;
+
+  const fireHaptic = () => {
     try {
       (window.Telegram?.WebApp as any)?.HapticFeedback?.notificationOccurred('success');
-    } catch (e) {
-      // Haptic feedback not available
+    } catch {
+      // HapticFeedback not available — ignore
     }
+  };
+
+  const openLink = (url: string) => {
     if (window.Telegram?.WebApp?.openLink) {
       window.Telegram.WebApp.openLink(url);
     } else {
@@ -26,47 +30,31 @@ function WalletDeepLinks() {
     }
   };
 
+  const handleBraavos = () => {
+    fireHaptic();
+    openLink(`https://link.braavos.app/dapp/${dappUrl}`);
+  };
+
+  const handleArgent = () => {
+    fireHaptic();
+    // Argent has no in-app dApp browser deep link — open in external browser as fallback
+    openLink(`https://${dappUrl}`);
+  };
+
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '24px 16px' }}
-      className="flex flex-col gap-4 items-center p-6"
+      style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+      className="flex flex-col gap-3"
     >
-      {/* Wallet Icon */}
-      <div
-        style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: '12px',
-          background: 'rgba(59,130,246,0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-        className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" stroke="#3B82F6" strokeWidth="2" fill="none"/>
-          <path d="M12 22V12M4 7l8 5 8-5" stroke="#3B82F6" strokeWidth="2"/>
-        </svg>
-      </div>
-
-      {/* Explanation */}
-      <p
-        style={{ color: '#A1A1AA', fontSize: '14px', textAlign: 'center', margin: '0' }}
-        className="text-zinc-400 text-sm text-center m-0"
-      >
-        Wallet extensions require a full browser
-      </p>
-
-      {/* Single Action Button */}
+      {/* Braavos — primary, orange gradient */}
       <button
-        onClick={handleOpenInBrowser}
+        onClick={handleBraavos}
         style={{
           width: '100%',
-          padding: '14px 24px',
+          padding: '14px 20px',
           borderRadius: '12px',
-          background: '#3B82F6',
-          color: 'white',
+          background: 'linear-gradient(135deg, #F5841F, #FFB84D)',
+          color: '#000',
           border: 'none',
           fontSize: '16px',
           fontWeight: 600,
@@ -74,37 +62,52 @@ function WalletDeepLinks() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
+          gap: '10px',
         }}
-        className="w-full px-6 py-3.5 rounded-xl bg-blue-500 text-white font-semibold flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors"
+        className="w-full px-5 py-3.5 rounded-xl font-semibold text-black flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#F5841F] to-[#FFB84D] hover:from-[#E07419] hover:to-[#F0A83D] transition-all duration-200 active:scale-[0.98] shadow-lg"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Open in Browser
+        {WALLET_BRANDS.braavos.icon}
+        Pay with Braavos
       </button>
 
-      {/* Security note */}
-      <p
+      {/* Argent — secondary, subtler styling */}
+      <button
+        onClick={handleArgent}
         style={{
-          color: '#71717A',
-          fontSize: '12px',
-          textAlign: 'center',
-          margin: '0',
+          width: '100%',
+          padding: '12px 20px',
+          borderRadius: '12px',
+          background: 'rgba(255,135,91,0.15)',
+          color: '#FF875B',
+          border: '1px solid rgba(255,135,91,0.3)',
+          fontSize: '14px',
+          fontWeight: 500,
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px'
+          gap: '10px',
         }}
-        className="text-zinc-500 text-xs text-center m-0 flex items-center justify-center gap-1.5"
+        className="w-full px-5 py-3 rounded-xl font-medium text-[#FF875B] flex items-center justify-center gap-2.5 bg-[#FF875B]/15 border border-[#FF875B]/30 hover:bg-[#FF875B]/25 transition-all duration-200 active:scale-[0.98] text-sm"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2"/>
-        </svg>
-        Then connect Argent or Braavos
+        {WALLET_BRANDS.argent.icon}
+        Pay with Argent (Browser)
+      </button>
+
+      {/* Helper text */}
+      <p
+        style={{ color: '#71717A', fontSize: '12px', textAlign: 'center', margin: '0' }}
+        className="text-zinc-500 text-xs text-center m-0"
+      >
+        Opens Smainer in your wallet app to sign
       </p>
     </div>
   );
+}
+
+// Kept for backwards-compat call-site in connect step (no connectors available)
+function WalletDeepLinks() {
+  return <WalletPayButtons />;
 }
 
 interface PaymentFlowProps {
@@ -296,6 +299,15 @@ export function PaymentFlow({
       setStep('confirm');
     }
   }, [isConnected, step]);
+
+  // Auto-connect when in wallet's in-app browser (e.g. Braavos injects exactly one provider)
+  useEffect(() => {
+    if (isConnected || connectingId) return;
+    if (availableConnectors.length === 1) {
+      console.log('[PaymentFlow] Single connector detected, auto-connecting:', availableConnectors[0].id);
+      connect({ connector: availableConnectors[0] });
+    }
+  }, [isConnected, connectingId, availableConnectors, connect]);
 
   // Mirror payment phase into local step
   useEffect(() => {
@@ -680,29 +692,34 @@ export function PaymentFlow({
               )}
 
               {/* Action Buttons */}
-              <div
-                className="flex gap-3 pt-2"
-                style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}
-              >
-                <button
-                  onClick={onCancel}
-                  className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
-                  style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
+              {capabilities.requiresRedirect ? (
+                <div
+                  className="flex flex-col gap-3 pt-2"
+                  style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}
                 >
-                  Cancel
-                </button>
-                {capabilities.requiresRedirect ? (
+                  {/* Wallet deep link buttons replace the generic redirect CTA */}
+                  <WalletPayButtons />
+
                   <button
-                    onClick={handlePayment}
-                    className="flex-1 px-4 py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg"
-                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    onClick={onCancel}
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    {capabilities.ctaLabel}
+                    Cancel
                   </button>
-                ) : (
+                </div>
+              ) : (
+                <div
+                  className="flex gap-3 pt-2"
+                  style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}
+                >
+                  <button
+                    onClick={onCancel}
+                    className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
+                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
                   <button
                     onClick={handlePayment}
                     disabled={hasInsufficientBalance || !isContractReady || !account || isLoading}
@@ -714,8 +731,8 @@ export function PaymentFlow({
                     </svg>
                     {capabilities.ctaLabel}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Debug Panel - tap version to toggle */}
               <div className="mt-4">
@@ -817,6 +834,34 @@ export function PaymentFlow({
                   <span className="text-[var(--success)] text-xs" style={{ color: '#22C55E', fontSize: '12px' }}>Excess refunded automatically after task completes.</span>
                 </div>
               </div>
+
+              {/* Return to Telegram — shown when in wallet's browser, not in Telegram WebView */}
+              {!isInTelegram && (
+                <button
+                  onClick={() => window.location.assign('https://t.me/smainer_ai_bot')}
+                  className="w-full py-3.5 px-5 rounded-xl font-semibold text-sm"
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #B5A082, #D4C4A8)',
+                    color: '#000',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Return to Telegram
+                </button>
+              )}
             </div>
           )}
 

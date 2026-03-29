@@ -25,7 +25,7 @@ export class TelegramWebViewStrategy extends AbstractPaymentStrategy {
     return {
       canSign: false,
       requiresRedirect: true,
-      ctaLabel: 'Open in Browser to Pay',
+      ctaLabel: 'Open Wallet to Pay',
     };
   }
 
