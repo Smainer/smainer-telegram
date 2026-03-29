@@ -24,12 +24,13 @@ export interface ResolveEnvironmentInput {
  * context. Pure function — no side effects.
  */
 export function resolveEnvironment(input: ResolveEnvironmentInput): PaymentEnvironment {
-  // A connected signing account always wins regardless of WebView status —
-  // the user opened a real browser and connected a wallet.
-  if (input.account) return 'starknet-wallet';
-
-  // Inside Telegram WebView without a signing account → redirect to browser.
+  // Telegram WebView CANNOT use browser extension wallets — period.
+  // Even if starknet-react has a cached account from localStorage, the
+  // extension's execute() hangs because window.starknet_* is undefined.
   if (input.isTelegramWebView) return 'telegram-webview';
+
+  // Real browser with a connected signing wallet → full on-chain flow.
+  if (input.account) return 'starknet-wallet';
 
   // Bot-linked wallet in a standalone browser (no extension connected yet).
   if (input.botLinkedWallet) return 'bot-linked-readonly';
