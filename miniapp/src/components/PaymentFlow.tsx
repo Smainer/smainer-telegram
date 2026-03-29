@@ -6,7 +6,16 @@ import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-27-v8';
+const BUILD_VERSION = '2026-03-29-v9';
+
+// Detect Telegram WebView — extensions are unavailable here
+function detectTelegramWebView(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    !!(window as any).Telegram?.WebApp ||
+    navigator.userAgent.includes('Telegram')
+  );
+}
 
 // Single-tap "Open in Browser" for Telegram WebView (replaces copy-link mess)
 function WalletDeepLinks() {
@@ -198,7 +207,10 @@ export function PaymentFlow({
     address: null,
   });
   const [botLinkedWallet, setBotLinkedWallet] = useState<string | null>(null);
-  
+
+  // True when running inside a Telegram WebView where browser extensions are unavailable
+  const isTelegramWebView = useMemo(() => detectTelegramWebView(), []);
+
   // Get bot API and telegram data
   const { initDataRaw, isInTelegram } = useTelegramData();
   const botApiUrl = import.meta.env.VITE_BOT_API_URL || 'https://bot.smainer.io';
@@ -347,6 +359,19 @@ export function PaymentFlow({
 
   // Handle payment process
   const handlePayment = async () => {
+    // Guard: wallet extensions don't exist in Telegram WebView.
+    // If somehow handlePayment is reached without a real signing account, redirect
+    // to the external browser instead of letting account.execute() hang forever.
+    if (isTelegramWebView && !account) {
+      const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+      if ((window as any).Telegram?.WebApp?.openLink) {
+        (window as any).Telegram.WebApp.openLink(payUrl);
+      } else {
+        window.open(payUrl, '_blank');
+      }
+      return;
+    }
+
     setStep('processing');
     resetTxState();
 
@@ -707,7 +732,7 @@ export function PaymentFlow({
                 >
                   Cancel
                 </button>
-                {!account && botLinkedWallet && !hasInsufficientBalance ? (
+                {(!account && botLinkedWallet) || (isTelegramWebView && !account) ? (
                   <button
                     onClick={() => {
                       const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
