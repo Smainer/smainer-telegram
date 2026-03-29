@@ -4,8 +4,14 @@ All values are loaded from environment variables (set via Vercel dashboard
 in production, or a local .env file during development).
 """
 
-from pydantic import Field
+import re
+from typing import Optional
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+
+# Starknet address: 0x followed by 1-64 hex digits
+_STARKNET_ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{1,64}$")
 
 
 class Settings(BaseSettings):
@@ -89,6 +95,27 @@ class Settings(BaseSettings):
         default="https://bot.smainer.io",
         description="Base URL for relayer callbacks (stream/complete endpoints)",
     )
+
+    # ------------------------------------------------------------------
+    # Affiliate Program
+    # ------------------------------------------------------------------
+    affiliate_address: Optional[str] = Field(
+        default=None,
+        description=(
+            "Starknet wallet address for affiliate fee collection. "
+            "Earns 5% of task fees routed through this bot instance. "
+            "Must match 0x[0-9a-fA-F]{1,64}."
+        ),
+    )
+
+    @field_validator("affiliate_address", mode="before")
+    @classmethod
+    def _validate_affiliate_address(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        if not _STARKNET_ADDRESS_RE.match(v):
+            return None
+        return v
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

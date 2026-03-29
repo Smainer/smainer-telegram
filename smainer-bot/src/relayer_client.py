@@ -75,6 +75,7 @@ class RelayerClient:
             token_amount=req.cost_strk,
             description=f"AI inference ({req.model}) via Telegram",
             on_chain_task_id=on_chain_task_id,  # TOP LEVEL for Relayer's TaskSubmission model
+            affiliate_address=settings.affiliate_address,
         )
 
         try:

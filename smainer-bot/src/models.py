@@ -56,6 +56,7 @@ class TaskSubmissionPayload(BaseModel):
     token_amount: int
     description: Optional[str] = None
     on_chain_task_id: Optional[int] = None  # Must be TOP LEVEL for Relayer's TaskSubmission
+    affiliate_address: Optional[str] = None  # Earns 5% of task fee when set
 
 
 class TaskStatusResponse(BaseModel):
