@@ -10,6 +10,7 @@ import { useRelayerAPI } from './hooks/useRelayerAPI';
 import { useTelegramData } from './hooks/useTelegramData';
 import { useWalletBalance } from './hooks/useWalletBalance';
 import { ComputeTier } from './lib/starknet';
+import { loadPaymentContext } from '@/lib/paymentContext';
 import type { ConnectedWallet, InferenceRequest } from './types';
 
 // Map bot tier names (small/medium/large) to MiniApp ComputeTier (BASIC/PRO/PREMIUM)
@@ -181,6 +182,95 @@ function SmainerLogo({ size = 40 }: { size?: number }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   WALLET REDIRECT PAGE
+   Intermediate page that renders a tappable <a> element so iOS/Android
+   universal link handling fires and opens the wallet app.
+   openLink() alone does NOT trigger universal links — only user taps on <a>.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function WalletRedirectPage({ wallet, deepLink }: { wallet: string; deepLink: string }) {
+  const walletName = wallet === 'braavos' ? 'Braavos' : 'Argent';
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      background: '#0A0A0F',
+      color: 'white',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    }}>
+      {/* Wallet icon */}
+      <div style={{
+        width: '80px',
+        height: '80px',
+        borderRadius: '20px',
+        background: wallet === 'braavos'
+          ? 'linear-gradient(135deg, #F5841F, #FFB84D)'
+          : 'linear-gradient(135deg, #FF875B, #FF6B4A)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: '24px',
+        boxShadow: '0 8px 32px rgba(245, 132, 31, 0.3)',
+      }}>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" fill="white" opacity="0.3"/>
+          <path d="M12 2L4 7l8 5 8-5-8-5z" fill="white"/>
+          <path d="M4 17l8 5 8-5M4 12l8 5 8-5" stroke="white" strokeWidth="1.5" fill="none"/>
+        </svg>
+      </div>
+
+      <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px 0' }}>
+        Open {walletName}
+      </h1>
+
+      <p style={{
+        fontSize: '14px', color: '#A1A1AA', textAlign: 'center',
+        margin: '0 0 32px 0', maxWidth: '280px', lineHeight: '1.5',
+      }}>
+        Tap below to sign the payment in your {walletName} wallet app
+      </p>
+
+      {/* THIS IS THE KEY: an actual <a> tag that the user taps — triggers universal link */}
+      <a
+        href={deepLink}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          width: '100%',
+          maxWidth: '320px',
+          padding: '16px 24px',
+          borderRadius: '14px',
+          background: wallet === 'braavos'
+            ? 'linear-gradient(135deg, #F5841F, #FFB84D)'
+            : 'linear-gradient(135deg, #FF875B, #FF6B4A)',
+          color: wallet === 'braavos' ? '#000' : '#fff',
+          fontSize: '17px',
+          fontWeight: 600,
+          textDecoration: 'none',
+          boxShadow: '0 4px 20px rgba(245, 132, 31, 0.4)',
+        }}
+      >
+        Open {walletName}
+      </a>
+
+      <p style={{
+        fontSize: '12px', color: '#52525B', textAlign: 'center',
+        margin: '16px 0 0 0',
+      }}>
+        You'll approve the transaction in {walletName} and return here
+      </p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PAYMENT FLOW WRAPPER (for bot-initiated payment)
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -248,6 +338,22 @@ export default function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const action = searchParams.get('action');
 
+  if (action === 'wallet-redirect') {
+    const wallet = searchParams.get('wallet') || 'braavos';
+
+    let walletDeepLink: string;
+    if (wallet === 'braavos') {
+      // Use clean path — payment context is in localStorage (storePaymentContext).
+      // No query params to avoid the ?-encoding issue with link.braavos.app.
+      walletDeepLink = `https://link.braavos.app/dapp/smainer-miniapp.vercel.app/pay-resume`;
+    } else {
+      // Argent fallback — open pay-resume directly in browser
+      walletDeepLink = `https://smainer-miniapp.vercel.app/pay-resume`;
+    }
+
+    return <WalletRedirectPage wallet={wallet} deepLink={walletDeepLink} />;
+  }
+
   if (action === 'pay') {
     const prompt = searchParams.get('prompt') || '';
     const tierParam = searchParams.get('tier') || 'small';
@@ -266,6 +372,27 @@ export default function App() {
         params={{ prompt, tier, chatId, messageId }} 
       />
     );
+  }
+
+  // Resume payment after wallet-app redirect (Braavos / Argent).
+  // The wallet's in-app browser opens /pay-resume — we read payment params
+  // from localStorage (stored before the redirect) and render PaymentFlow.
+  if (window.location.pathname === '/pay-resume') {
+    const pending = loadPaymentContext();
+    if (pending) {
+      const tier = mapBotTierToComputeTier(pending.tier);
+      return (
+        <PaymentFlowWrapper
+          params={{
+            prompt: pending.prompt,
+            tier,
+            chatId: pending.chatId,
+            messageId: pending.messageId,
+          }}
+        />
+      );
+    }
+    // No stored context or expired — fall through to normal app
   }
 
   // Normal app routing

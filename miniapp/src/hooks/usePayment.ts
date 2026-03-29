@@ -74,8 +74,24 @@ export function usePayment(
   botLinkedWallet: string | null = null,
 ): UsePaymentReturn {
   const { account } = useAccount();
-  const { initDataRaw } = useTelegramData();
+  const { initDataRaw: tgInitData } = useTelegramData();
   const { checkAllowance } = useSmainerContract();
+
+  // When running outside Telegram WebView (e.g. Braavos in-app browser after
+  // redirect), fall back to the initData stored before the redirect.
+  const initDataRaw = useMemo(() => {
+    if (tgInitData) return tgInitData;
+    try {
+      const raw = window.localStorage.getItem('smainer_pending_payment');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return parsed.initDataRaw || undefined;
+      }
+    } catch {
+      // Ignore — best-effort fallback.
+    }
+    return undefined;
+  }, [tgInitData]);
 
   const botApiUrl =
     (import.meta.env as Record<string, string>).VITE_BOT_API_URL ||

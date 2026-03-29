@@ -5,6 +5,7 @@ import { useCostEstimate } from '@/hooks/useCostEstimate';
 import { usePayment } from '@/hooks/usePayment';
 import { ComputeTier, COMPUTE_TIERS } from '@/lib/starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
+import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
 const BUILD_VERSION = '2026-03-29-v14';
@@ -51,6 +52,17 @@ function WalletPayButtons() {
 
   const handleBraavos = () => {
     fireHaptic();
+    // Persist payment context before leaving Telegram — wallet redirect
+    // chain may lose URL query params.
+    const sp = new URLSearchParams(window.location.search);
+    storePaymentContext({
+      prompt: sp.get('prompt') || '',
+      tier: sp.get('tier') || 'small',
+      chatId: sp.get('chat_id') || '',
+      messageId: sp.get('message_id') || '',
+      model: sp.get('model') || undefined,
+      initDataRaw: (window as any).Telegram?.WebApp?.initData || undefined,
+    });
     if (isMobileDevice()) {
       // Mobile: intermediate redirect page — user taps <a> to trigger universal link → Braavos app
       const redirectParams = new URLSearchParams(window.location.search);
@@ -67,6 +79,16 @@ function WalletPayButtons() {
 
   const handleArgent = () => {
     fireHaptic();
+    // Persist payment context before leaving Telegram
+    const sp = new URLSearchParams(window.location.search);
+    storePaymentContext({
+      prompt: sp.get('prompt') || '',
+      tier: sp.get('tier') || 'small',
+      chatId: sp.get('chat_id') || '',
+      messageId: sp.get('message_id') || '',
+      model: sp.get('model') || undefined,
+      initDataRaw: (window as any).Telegram?.WebApp?.initData || undefined,
+    });
     // Argent has no in-app dApp browser — always open in browser (extension works on desktop)
     const payUrl = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
     openLink(payUrl);
@@ -232,6 +254,7 @@ export function PaymentFlow({
     address: null,
   });
   const [botLinkedWallet, setBotLinkedWallet] = useState<string | null>(null);
+  const [injectedWalletTimedOut, setInjectedWalletTimedOut] = useState(false);
 
   // Telegram data
   const { initDataRaw, isInTelegram } = useTelegramData();
@@ -340,6 +363,18 @@ export function PaymentFlow({
     }
   }, [isConnected, connectingId, availableConnectors, connect]);
 
+  // Timeout: if injected wallet is detected but connection doesn't succeed
+  // within 8 seconds (e.g. Telegram Desktop WebView where extension popups
+  // can't open), fall back to redirect buttons.
+  useEffect(() => {
+    if (isConnected || !hasInjectedWallet()) return;
+    const timer = setTimeout(() => {
+      console.log('[PaymentFlow] Injected wallet connection timed out — showing redirect buttons');
+      setInjectedWalletTimedOut(true);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [isConnected]);
+
   // Mirror payment phase into local step
   useEffect(() => {
     if (phase === 'idle') return;
@@ -424,6 +459,7 @@ export function PaymentFlow({
     );
 
     if (result.success && result.taskId) {
+      clearPaymentContext(); // Clean up stored redirect context
       // Auto-complete after short delay to show success state
       setTimeout(() => {
         onSuccess(result.taskId!);
@@ -596,7 +632,7 @@ export function PaymentFlow({
                       );
                     })}
                   </div>
-                ) : hasInjectedWallet() ? (
+                ) : hasInjectedWallet() && !injectedWalletTimedOut ? (
                   /* Wallet IS injected (e.g. Braavos in-app browser) but starknet-react
                      hasn't detected it yet — show spinner, auto-connect will fire shortly */
                   <div className="flex items-center justify-center gap-3 py-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px 0' }}>
@@ -746,7 +782,7 @@ export function PaymentFlow({
                     Cancel
                   </button>
                 </div>
-              ) : capabilities.requiresRedirect && hasInjectedWallet() ? (
+              ) : capabilities.requiresRedirect && hasInjectedWallet() && !injectedWalletTimedOut ? (
                 /* Wallet IS injected (Braavos/Argent in-app browser) — go back to connect step */
                 <div className="flex flex-col gap-3 pt-2" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}>
                   <div className="flex items-center justify-center gap-3 py-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px 0' }}>
