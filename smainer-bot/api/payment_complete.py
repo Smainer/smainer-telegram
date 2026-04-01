@@ -3,8 +3,14 @@
 Handles payment completion notifications from the MiniApp when running
 in a standalone browser (where Telegram sendData() is unavailable).
 Authenticates via Telegram initData HMAC-SHA256 when available.
-Falls back to chat_id + on_chain_task_id for standalone browsers
+Falls back to bot-issued nonce verification for standalone browsers
 (e.g., Braavos in-app browser) where Telegram WebApp SDK is absent.
+
+Security:
+    - Telegram initData HMAC-SHA256 signature verification (preferred)
+    - auth_date max-age enforcement (300s)
+    - Bot-issued nonce verification for standalone browser path
+    - Per-user rate limiting via Relayer KV
 """
 
 import asyncio
@@ -12,6 +18,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
@@ -19,20 +26,41 @@ from telegram import Bot
 
 from src.config import settings
 from src.models import InferenceRequest, ModelTier
+from src.nonce import verify_and_consume_nonce
 from src.payment import PaymentManager
+from src.rate_limit import check_rate_limit, check_rate_limit_by_ip
 from src.relayer_client import RelayerClient
 from src.wallet import WalletManager
 
 logger = logging.getLogger(__name__)
 
+# Maximum age of initData auth_date (seconds)
+INIT_DATA_MAX_AGE = 300
+
 
 def _verify_init_data(init_data: str) -> dict | None:
-    """Verify Telegram WebApp initData HMAC-SHA256 signature. Returns parsed user or None."""
+    """Verify Telegram WebApp initData HMAC-SHA256 signature and enforce max-age.
+    
+    Returns parsed user or None.
+    """
     try:
         parsed = urllib.parse.parse_qs(init_data, keep_blank_values=True)
         received_hash = parsed.get("hash", [""])[0]
         if not received_hash:
             return None
+
+        # Enforce auth_date max-age
+        auth_date_str = parsed.get("auth_date", [""])[0]
+        if auth_date_str:
+            try:
+                auth_date = int(auth_date_str)
+                age = abs(int(time.time()) - auth_date)
+                if age > INIT_DATA_MAX_AGE:
+                    logger.warning("initData expired: age=%ds max=%ds", age, INIT_DATA_MAX_AGE)
+                    return None
+            except ValueError:
+                return None
+
         data_pairs = []
         for key, values in parsed.items():
             if key != "hash":
@@ -76,12 +104,12 @@ class handler(BaseHTTPRequestHandler):
             self._json(400, {"error": "invalid_json"})
             return
 
-        # Authentication: Telegram initData (preferred) or standalone browser fallback
+        # Authentication: Telegram initData (preferred) or bot-issued nonce (standalone)
         init_data = (body.get("init_data") or "").strip()
         user_id = None
 
         if init_data:
-            # Telegram WebView path — verify HMAC signature
+            # Telegram WebView path — verify HMAC signature + max-age
             user = _verify_init_data(init_data)
             if user is None:
                 self._json(401, {"error": "invalid_signature"})
@@ -91,18 +119,26 @@ class handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "missing_user_id"})
                 return
         else:
-            # Standalone browser path (e.g., Braavos in-app browser)
-            # No Telegram initData available — use chat_id as user identifier.
-            # Security: on-chain task creation requires real STRK escrow,
-            # and the relayer validates on-chain state before processing.
+            # Standalone browser path — require bot-issued nonce
+            nonce = (body.get("nonce") or "").strip()
             chat_id = body.get("chat_id")
-            on_chain_task_id = body.get("on_chain_task_id")
-            if not chat_id or not on_chain_task_id:
-                self._json(400, {"error": "missing_auth_context"})
+
+            if not nonce:
+                self._json(400, {"error": "missing_nonce", "detail": "Standalone browser path requires a bot-issued nonce"})
                 return
-            # In Telegram private chats, chat_id == user_id
-            user_id = str(chat_id)
-            logger.info("Standalone browser payment-complete: chat_id=%s, task=%s", chat_id, on_chain_task_id)
+
+            is_valid, nonce_user_id = verify_and_consume_nonce(nonce, expected_chat_id=str(chat_id) if chat_id else None)
+            if not is_valid:
+                self._json(401, {"error": "invalid_nonce", "detail": "Nonce expired, already used, or invalid"})
+                return
+
+            user_id = nonce_user_id
+            logger.info("Standalone browser payment-complete verified via nonce: user=%s", user_id)
+
+        # Rate limit: 10 payment completions per minute per user
+        if not check_rate_limit("payment-complete", str(user_id), max_requests=10, window_seconds=60):
+            self._json(429, {"error": "rate_limited"})
+            return
 
         on_chain_task_id = body.get("on_chain_task_id")
         prompt = body.get("prompt", "")

@@ -8,7 +8,24 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-03-29-v14';
+const BUILD_VERSION = '2026-04-01-v15';
+
+// Approved redirect origins — excludes bot domain to prevent self-referential attacks
+const ALLOWED_REDIRECT_ORIGINS = [
+  'https://smainer-miniapp.vercel.app',
+  'https://app.smainer.io',
+] as const;
+
+function isAllowedRedirectOrigin(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_REDIRECT_ORIGINS.some(
+      (origin) => parsed.origin === origin || parsed.hostname.endsWith('.smainer.io'),
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Detect injected wallet directly (bypasses starknet-react race condition)
 function hasInjectedWallet(): boolean {
@@ -61,6 +78,7 @@ function WalletPayButtons() {
       chatId: sp.get('chat_id') || '',
       messageId: sp.get('message_id') || '',
       model: sp.get('model') || undefined,
+      nonce: sp.get('nonce') || undefined,
       initDataRaw: (window as any).Telegram?.WebApp?.initData || undefined,
     });
     if (isMobileDevice()) {
@@ -69,10 +87,19 @@ function WalletPayButtons() {
       redirectParams.set('action', 'wallet-redirect');
       redirectParams.set('wallet', 'braavos');
       const redirectUrl = `${window.location.origin}/?${redirectParams.toString()}`;
+      // Validate redirect URL against allowlist
+      if (!isAllowedRedirectOrigin(redirectUrl)) {
+        console.error('[PaymentFlow] Redirect URL blocked by allowlist:', redirectUrl);
+        return;
+      }
       openLink(redirectUrl);
     } else {
       // Desktop: open pay URL directly in browser — wallet extension works there
       const payUrl = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
+      if (!isAllowedRedirectOrigin(payUrl)) {
+        console.error('[PaymentFlow] Pay URL blocked by allowlist:', payUrl);
+        return;
+      }
       openLink(payUrl);
     }
   };
@@ -87,10 +114,15 @@ function WalletPayButtons() {
       chatId: sp.get('chat_id') || '',
       messageId: sp.get('message_id') || '',
       model: sp.get('model') || undefined,
+      nonce: sp.get('nonce') || undefined,
       initDataRaw: (window as any).Telegram?.WebApp?.initData || undefined,
     });
     // Argent has no in-app dApp browser — always open in browser (extension works on desktop)
     const payUrl = `https://smainer-miniapp.vercel.app${window.location.pathname}${window.location.search}`;
+    if (!isAllowedRedirectOrigin(payUrl)) {
+      console.error('[PaymentFlow] Pay URL blocked by allowlist:', payUrl);
+      return;
+    }
     openLink(payUrl);
   };
 
@@ -265,6 +297,7 @@ export function PaymentFlow({
   const chatId = searchParams.get('chat_id');
   const messageId = searchParams.get('message_id');
   const userModel = searchParams.get('model') || 'llama3.1:8b';
+  const paymentNonce = searchParams.get('nonce') || '';
 
   // Wallet connection hooks
   const { address, account, isConnected } = useAccount();
@@ -456,6 +489,7 @@ export function PaymentFlow({
       costEstimate.maxEscrowWei,
       chatId,
       messageId,
+      paymentNonce,
     );
 
     if (result.success && result.taskId) {

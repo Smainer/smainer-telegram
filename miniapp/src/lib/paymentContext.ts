@@ -16,6 +16,7 @@ export interface PendingPayment {
   chatId: string;
   messageId: string;
   model?: string;
+  nonce?: string;       // Bot-issued payment nonce for standalone browser auth
   initDataRaw?: string; // Telegram WebApp initData — needed for HTTP POST fallback auth
   storedAt: number;     // Date.now() at time of storage
 }

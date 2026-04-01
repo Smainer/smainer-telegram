@@ -60,6 +60,12 @@
 5. **Submit to relayer** → Includes `on_chain_task_id` in API call
 6. **Relayer processes** → Verifies payment before assignment
 
+## Current Entry Points
+
+- Production entry: bot MiniApp button → `/?action=pay`
+- Wallet resume entry: `/pay-resume`
+- Removed from production: `/connect`, `?mode=connect`, and static `connect.html`
+
 ## Cost Structure
 
 - **Base cost**: 0.1 STRK per prompt
@@ -78,7 +84,7 @@
 ## Testing
 
 The implementation follows existing patterns and should integrate seamlessly with:
-- Existing wallet connection (Argent X/Braavos)
+- Existing wallet connection inside `PaymentFlow` (Argent X/Braavos)
 - Current relayer API integration  
 - Telegram WebApp environment
 - Mobile-responsive design requirements

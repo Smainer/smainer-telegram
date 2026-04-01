@@ -120,8 +120,12 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     def get_miniapp_connect_url(self) -> str:
-        """Return the MiniApp URL for wallet connection flow."""
-        return f"{self.miniapp_url}/connect"
+        """Return the MiniApp URL for wallet connection flow.
+
+        Points to the base MiniApp URL — the app handles wallet
+        connection in its onboarding screen.
+        """
+        return self.miniapp_url
 
     def get_miniapp_open_url(self) -> str:
         """Return the MiniApp URL for general app access."""
@@ -133,19 +137,22 @@ class Settings(BaseSettings):
         tier: str,
         chat_id: int,
         message_id: int,
+        nonce: str = "",
     ) -> str:
         """Return the MiniApp URL for the payment flow with encoded parameters."""
         from urllib.parse import urlencode
 
         base = self.miniapp_url.rstrip("/")
-        params = urlencode({
+        params: dict = {
             "action": "pay",
             "prompt": prompt,
             "tier": tier,
             "chat_id": str(chat_id),
             "message_id": str(message_id),
-        })
-        return f"{base}/?{params}"
+        }
+        if nonce:
+            params["nonce"] = nonce
+        return f"{base}/?{urlencode(params)}"
 
 
 settings = Settings()

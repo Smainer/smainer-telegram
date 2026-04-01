@@ -11,12 +11,12 @@ Starknet AI tasks through Telegram. Connect wallet, run compute tasks, pay with 
 - **💳 STRK Payment**: Pay for tasks with STRK tokens
 - **📱 Mobile Optimized**: Works within Telegram mobile app
 
-## Wallet Connect Flows (Current)
+## Payment And Wallet Flow (Current)
 
-- Telegram WebApp connect: in Telegram, wallet data is returned with `WebApp.sendData`.
-- External wallet connect: from `/?mode=connect`, users can open `Open in Braavos App` or `Open in Browser Wallet`.
-- Return to bot: external connect runs with `?return=telegram` and redirects to `https://t.me/<bot>?start=linkb_<encoded_address>` after successful connection.
-- Desktop/browser support: injected wallets (Braavos, Argent X) are available in connect mode, with manual address entry as fallback.
+- Production Telegram flow: the bot opens the MiniApp base URL, then `PaymentFlow` handles wallet connection and payment from `/?action=pay`.
+- Wallet return path: wallet-app redirects resume only through `/pay-resume`, which reloads the stored payment context and returns to `PaymentFlow`.
+- Stale connect-only entry points such as `/connect` and `?mode=connect` are normalized back into the SPA and no longer expose a separate wallet surface.
+- Standalone browser wallet connection remains available only as a non-production fallback on the main app screen.
 
 ## Required Environment Variables (Wallet Return)
 
@@ -166,12 +166,12 @@ Vite + React 18 SPA, deployed as static files on Vercel.
 
 ```
 src/
-├── main.tsx               # Vite entry, route-based code splitting
-├── App.tsx                # Routes: /, /chat, /nft, /dashboard
+├── main.tsx               # Vite entry, legacy route normalization
+├── App.tsx                # Routes: /, /chat, /dashboard, /pay-resume
 ├── index.css              # Global styles + CSS variables
-├── ConnectLite.tsx        # Standalone wallet connect page
 ├── components/
-│   ├── WalletConnect.tsx  # Wallet connection interface
+│   ├── WalletConnect.tsx  # Standalone browser fallback wallet interface
+│   ├── PaymentFlow.tsx    # Unified Telegram wallet + payment flow
 │   ├── ChatInterface.tsx  # AI chat interface
 │   ├── ModelSelector.tsx  # Model selection dropdown
 │   ├── CostEstimator.tsx  # Cost calculation display
@@ -246,6 +246,11 @@ npm run preview
 - **Request Signing**: Cryptographic verification of API calls
 - **Rate Limiting**: Protection against abuse
 - **CORS Configuration**: Restricted origins
+
+## Flow Notes
+
+- Production Telegram wallet linking is intentionally single-path: bot prompt → `Pay & Compute` → `PaymentFlow`.
+- `telegram/telegram-bot` is the legacy polling bot and is not part of the live production payment flow.
 
 ## 🚀 Deployment
 

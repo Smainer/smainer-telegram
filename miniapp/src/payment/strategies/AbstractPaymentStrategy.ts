@@ -68,6 +68,7 @@ export abstract class AbstractPaymentStrategy {
           body: JSON.stringify({
             ...payload,
             init_data: ctx.initDataRaw,
+            nonce: ctx.nonce || undefined,
           }),
         });
       } catch (err) {

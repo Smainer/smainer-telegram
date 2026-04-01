@@ -145,14 +145,11 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
 
       <div className="wallet-list">
         {isTelegram && availableConnectors.length === 0 ? (
-          <>
-            <div className="wallet-telegram-notice">
-              <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 12, textAlign: 'center' }}>
-                Tap a wallet below to connect via the mobile app.
-              </p>
-            </div>
-            <TelegramWalletDeepLinks />
-          </>
+          <div className="wallet-telegram-notice">
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 12, textAlign: 'center', lineHeight: 1.6 }}>
+              Wallet linking in Telegram happens during Pay &amp; Compute. Return to the bot chat and send a prompt to start the unified payment flow.
+            </p>
+          </div>
         ) : availableConnectors.length === 0 ? (
           <>
             <p className="wallet-warning">No wallet detected. Install one below:</p>
@@ -302,91 +299,6 @@ function WalletLink({ name, href }: { name: string; href: string }) {
         <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
       </svg>
     </a>
-  );
-}
-
-function TelegramWalletDeepLinks() {
-  const tg = (window as any).Telegram?.WebApp;
-
-  const handleBraavosDeepLink = () => {
-    // Braavos dApp deep link format
-    // Format: https://link.braavos.app/dapp/<host>/<path>
-    const braavosUrl = `https://link.braavos.app/dapp/${window.location.host}/connect?return=telegram`;
-    
-    if (tg?.openLink) {
-      tg.openLink(braavosUrl, { try_instant_view: false });
-    } else {
-      window.open(braavosUrl, '_blank');
-    }
-  };
-
-  const handleArgentBrowserConnect = () => {
-    // Argent X doesn't have mobile deep links like Braavos.
-    // Open the connect page in the user's external browser where
-    // the Argent X extension is available.
-    const browserConnectUrl = `${window.location.origin}/connect?return=telegram`;
-    
-    if (tg?.openLink) {
-      tg.openLink(browserConnectUrl, { try_instant_view: false });
-    } else {
-      window.open(browserConnectUrl, '_blank');
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <button
-        onClick={handleBraavosDeepLink}
-        style={{
-          width: '100%',
-          padding: '14px 20px',
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 12,
-          color: 'white',
-          fontSize: 15,
-          fontWeight: 600,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-        }}
-      >
-        <WalletIcon walletId="braavos" />
-        Connect with Braavos
-      </button>
-      <button
-        onClick={handleArgentBrowserConnect}
-        style={{
-          width: '100%',
-          padding: '14px 20px',
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 12,
-          color: 'white',
-          fontSize: 15,
-          fontWeight: 600,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-        }}
-      >
-        <WalletIcon walletId="argentx" />
-        Connect with Argent X (Browser)
-      </button>
-      <p style={{ 
-        color: 'var(--text-muted)', 
-        fontSize: 12, 
-        textAlign: 'center',
-        marginTop: 8,
-        lineHeight: 1.5,
-      }}>
-        Braavos opens your wallet app. Argent X opens a browser where the extension can connect.
-      </p>
-    </div>
   );
 }
 

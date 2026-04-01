@@ -26,6 +26,7 @@ from telegram.error import TelegramError
 
 from .config import settings
 from .models import InferenceRequest, ModelTier
+from .nonce import generate_nonce
 from .payment import PaymentManager
 from .relayer_client import RelayerClient
 from .wallet import BalanceUnavailableError, WalletManager
@@ -564,9 +565,6 @@ async def handle_inference(
     # and update with actual message_id after sending
     cost_strk = settings.prompt_cost_strk / 1e18
 
-    # Check wallet link (for second button only — does NOT block Pay & Compute)
-    starknet_address = await wallet_mgr.get_linked_address(user_id)
-
     # First, send message with a temporary "preparing" button
     # This ensures user always sees a button even if the follow-up edit fails
     temp_keyboard = InlineKeyboardMarkup(
@@ -593,12 +591,14 @@ async def handle_inference(
         reply_markup=temp_keyboard,
     )
 
-    # 6. Build MiniApp pay URL with actual message_id
+    # 6. Build MiniApp pay URL with actual message_id and bot-issued nonce
+    nonce = generate_nonce(user_id, chat_id)
     pay_url = settings.get_miniapp_pay_url(
         prompt=prompt_text,
         tier=tier.value,
         chat_id=chat_id,
         message_id=placeholder.message_id,
+        nonce=nonce,
     )
 
     # Telegram has URL length limits for WebApp buttons (typically ~512 chars max).
@@ -615,18 +615,12 @@ async def handle_inference(
         )
 
     # 7. Update button with actual MiniApp payment URL.
-    # If no wallet linked yet, also show Connect Wallet as second row.
-    inline_rows = [
-        [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
-    ]
-    if not starknet_address:
-        inline_rows.append([
-            InlineKeyboardButton(
-                text="Connect Wallet",
-                web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
-            )
-        ])
-    keyboard = InlineKeyboardMarkup(inline_keyboard=inline_rows)
+    # Single path: PaymentFlow handles wallet connection if needed.
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
+        ]
+    )
 
     try:
         await bot.edit_message_reply_markup(
