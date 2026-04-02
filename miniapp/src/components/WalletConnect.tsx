@@ -101,6 +101,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
 
   const handleDisconnect = () => {
     disconnect();
+    // TM-005: Clear persisted wallet session on disconnect
+    try { window.localStorage.removeItem('smainer_connected_wallet'); } catch { /* ignore */ }
     onDisconnect();
   };
 

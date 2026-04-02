@@ -49,6 +49,29 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # Wallet privacy (TM-001)
+    # ------------------------------------------------------------------
+    wallet_hmac_key: str = Field(
+        default="",
+        description="HMAC-SHA256 key for deriving privacy-preserving wallet KV keys. "
+        "When unset, plain wallet:{user_id} keys are used (dev mode).",
+    )
+    wallet_encryption_key: str = Field(
+        default="",
+        description="Fernet key (32-byte URL-safe base64) for encrypting wallet addresses at rest. "
+        "Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'",
+    )
+
+    # ------------------------------------------------------------------
+    # Telemetry opt-in (Constraint 5)
+    # ------------------------------------------------------------------
+    telemetry_sensitive_fields: bool = Field(
+        default=False,
+        description="When True, sensitive telemetry (amounts, addresses, error details) is logged. "
+        "Must be explicitly set to True — defaults to off for privacy.",
+    )
+
+    # ------------------------------------------------------------------
     # Starknet
     # ------------------------------------------------------------------
     starknet_rpc_url: str = Field(
@@ -138,8 +161,13 @@ class Settings(BaseSettings):
         chat_id: int,
         message_id: int,
         nonce: str = "",
+        wallet_linked: bool = False,
     ) -> str:
-        """Return the MiniApp URL for the payment flow with encoded parameters."""
+        """Return the MiniApp URL for the payment flow with encoded parameters.
+
+        When *wallet_linked* is True the URL includes ``wallet_linked=1`` so the
+        MiniApp can skip the Connect screen and go straight to Confirm.
+        """
         from urllib.parse import urlencode
 
         base = self.miniapp_url.rstrip("/")
@@ -152,6 +180,8 @@ class Settings(BaseSettings):
         }
         if nonce:
             params["nonce"] = nonce
+        if wallet_linked:
+            params["wallet_linked"] = "1"
         return f"{base}/?{urlencode(params)}"
 
 

@@ -8,7 +8,10 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-01-v15';
+const BUILD_VERSION = '2026-04-02-v16';
+
+// LocalStorage key for persisted wallet session (TM-005)
+const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
 
 // Approved redirect origins — excludes bot domain to prevent self-referential attacks
 const ALLOWED_REDIRECT_ORIGINS = [
@@ -37,6 +40,54 @@ function hasInjectedWallet(): boolean {
 function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+// ---------------------------------------------------------------------------
+// TM-005: Persistent wallet session helpers
+// ---------------------------------------------------------------------------
+
+/** Persist the connected wallet address to localStorage for returning users. */
+function persistWallet(address: string): void {
+  try {
+    if (!address || !/^0x[0-9a-fA-F]{1,64}$/.test(address)) return;
+    // Store in ConnectedWallet-compatible format (shared with App.tsx)
+    window.localStorage.setItem(
+      WALLET_PERSIST_KEY,
+      JSON.stringify({
+        address,
+        type: 'manual',
+        balance_strk: '0',
+        balance_smainer: '0',
+      }),
+    );
+  } catch {
+    // localStorage unavailable — best-effort
+  }
+}
+
+/** Load persisted wallet address. Returns null when missing or invalid.
+ *  Compatible with both App.tsx ConnectedWallet format and legacy format.
+ */
+function loadPersistedWalletAddress(): string | null {
+  try {
+    const raw = window.localStorage.getItem(WALLET_PERSIST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const address = parsed.address;
+    if (!address || !/^0x[0-9a-fA-F]{1,64}$/.test(address)) {
+      window.localStorage.removeItem(WALLET_PERSIST_KEY);
+      return null;
+    }
+    return address;
+  } catch {
+    window.localStorage.removeItem(WALLET_PERSIST_KEY);
+    return null;
+  }
+}
+
+/** Clear persisted wallet (on disconnect). */
+function clearPersistedWallet(): void {
+  try { window.localStorage.removeItem(WALLET_PERSIST_KEY); } catch { /* ignore */ }
 }
 
 // Shared wallet deep link buttons — used in both connect step (no connectors) and
@@ -288,6 +339,15 @@ export function PaymentFlow({
   const [botLinkedWallet, setBotLinkedWallet] = useState<string | null>(null);
   const [injectedWalletTimedOut, setInjectedWalletTimedOut] = useState(false);
 
+  // TM-005: Check for persisted wallet from localStorage on mount
+  const persistedWallet = useMemo(() => loadPersistedWalletAddress(), []);
+
+  // TM-008: Bot signals wallet_linked=1 when user has linked wallet
+  const walletLinkedHint = useMemo(
+    () => new URLSearchParams(window.location.search).get('wallet_linked') === '1',
+    [],
+  );
+
   // Telegram data
   const { initDataRaw, isInTelegram } = useTelegramData();
   const botApiUrl = (import.meta.env as Record<string, string>).VITE_BOT_API_URL || 'https://bot.smainer.io';
@@ -303,8 +363,11 @@ export function PaymentFlow({
   const { address, account, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
 
-  // Prioritize MiniApp-connected wallet; fall back to bot-linked wallet for read-only ops
-  const effectiveAddress = useMemo(() => address || botLinkedWallet, [address, botLinkedWallet]);
+  // Prioritize MiniApp-connected wallet; fall back to bot-linked or persisted wallet
+  const effectiveAddress = useMemo(
+    () => address || botLinkedWallet || persistedWallet,
+    [address, botLinkedWallet, persistedWallet],
+  );
 
   // Debug: Log connected address
   useEffect(() => {
@@ -367,6 +430,7 @@ export function PaymentFlow({
         if (data.linked && data.address) {
           console.log('[PaymentFlow] Bot-linked wallet found:', data.address);
           setBotLinkedWallet(data.address);
+          persistWallet(data.address); // TM-005: persist for future sessions
           setStep('confirm'); // Skip to confirm if wallet already linked
         }
       } catch (error) {
@@ -375,17 +439,23 @@ export function PaymentFlow({
     })();
   }, [isInTelegram, initDataRaw, botApiUrl]);
 
-  // Determine initial step based on wallet connection
+  // TM-006: Determine initial step.
+  // Returning user (persisted wallet OR wallet_linked hint) → confirm directly.
+  // First-time user → connect screen.
   const [step, setStep] = useState<PaymentStep>(() => {
-    return isConnected ? 'confirm' : 'connect';
+    if (isConnected) return 'confirm';
+    if (persistedWallet) return 'confirm';
+    if (walletLinkedHint) return 'confirm';
+    return 'connect';
   });
 
   // Update step when wallet connects
   useEffect(() => {
     if (isConnected && step === 'connect') {
+      if (address) persistWallet(address); // TM-005: persist for returning-user flow
       setStep('confirm');
     }
-  }, [isConnected, step]);
+  }, [isConnected, step, address]);
 
   // Auto-connect when in wallet's in-app browser (e.g. Braavos injects exactly one provider)
   useEffect(() => {

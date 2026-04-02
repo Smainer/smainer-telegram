@@ -2,12 +2,27 @@
 
 Serverless edition: wallet links are stored via the Relayer KV API
 (backed by the relayer's own Redis). No direct Redis dependency.
+
+TM-001: Uses HMAC-keyed KV keys and optional Fernet encryption for
+privacy-hardened wallet address persistence.
+
+Migration: when WALLET_HMAC_KEY / WALLET_ENCRYPTION_KEY are first
+enabled, reads fall back to legacy ``wallet:{user_id}`` + plaintext
+values.  On a successful legacy read the value is transparently
+re-written to the new format and the old key is deleted.
 """
 
 import logging
 from typing import Optional
 
 from .config import settings
+from .wallet_crypto import (
+    decrypt_address,
+    derive_wallet_key,
+    encrypt_address,
+    is_hmac_key_active,
+    plain_wallet_key,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +46,71 @@ class WalletManager:
     # ------------------------------------------------------------------
 
     async def link_wallet(self, user_id: int, starknet_address: str) -> None:
-        """Store the user ↔ Starknet address mapping via Relayer KV."""
+        """Store the user ↔ Starknet address mapping via Relayer KV.
+
+        Uses HMAC-keyed KV key and optional Fernet encryption (TM-001).
+        """
         normalized = self._normalize_address(starknet_address)
-        await self._kv.kv_set(f"wallet:{user_id}", normalized)
-        logger.info("Wallet linked", extra={"user_id": user_id})
+        kv_key = derive_wallet_key(user_id)
+        encrypted = encrypt_address(normalized)
+        await self._kv.kv_set(kv_key, encrypted)
+        if settings.telemetry_sensitive_fields:
+            logger.info("Wallet linked", extra={"user_id": user_id})
+        else:
+            logger.info("Wallet linked for user")
 
     async def unlink_wallet(self, user_id: int) -> None:
-        """Remove the user's wallet link."""
-        await self._kv.kv_delete(f"wallet:{user_id}")
+        """Remove the user's wallet link (both new and legacy keys)."""
+        kv_key = derive_wallet_key(user_id)
+        await self._kv.kv_delete(kv_key)
+        # Also clean up a possible legacy key so no stale data remains.
+        legacy_key = plain_wallet_key(user_id)
+        if legacy_key != kv_key:
+            await self._kv.kv_delete(legacy_key)
 
     async def get_linked_address(self, user_id: int) -> Optional[str]:
-        """Return the linked Starknet address, or None if not linked."""
-        return await self._kv.kv_get(f"wallet:{user_id}")
+        """Return the linked Starknet address, or None if not linked.
+
+        Migration path:
+        1. Try the current (possibly HMAC-keyed) KV key.
+        2. If not found **and** HMAC keys are active, fall back to the
+           legacy ``wallet:{user_id}`` key.
+        3. On a successful legacy read, re-write to the new key/value
+           format and delete the old key (transparent migration).
+        """
+        kv_key = derive_wallet_key(user_id)
+        stored = await self._kv.kv_get(kv_key)
+
+        if stored is not None:
+            return decrypt_address(stored)
+
+        # -- Legacy fallback (only when key format has actually changed) --
+        legacy_key = plain_wallet_key(user_id)
+        if legacy_key == kv_key:
+            # Key format hasn't changed → nothing to fall back to.
+            return None
+
+        legacy_stored = await self._kv.kv_get(legacy_key)
+        if legacy_stored is None:
+            return None
+
+        address = decrypt_address(legacy_stored)
+        if address is None:
+            # Truly corrupted — can't migrate.
+            return None
+
+        # Transparently migrate: write new format, remove legacy key.
+        try:
+            encrypted = encrypt_address(address)
+            await self._kv.kv_set(kv_key, encrypted)
+            await self._kv.kv_delete(legacy_key)
+            logger.info("Wallet migrated to new key format")
+        except Exception:
+            # Migration write failed — still return the address so the
+            # user isn't blocked.  Next read will retry the migration.
+            logger.warning("Wallet migration write failed; will retry on next read")
+
+        return address
 
     # ------------------------------------------------------------------
     # Balance

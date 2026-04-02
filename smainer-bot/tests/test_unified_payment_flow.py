@@ -182,11 +182,12 @@ class TestNonceFlow:
 
     @patch("src.nonce.httpx")
     def test_verify_and_consume_nonce_valid(self, mock_httpx):
-        """Valid nonce should be verified and consumed."""
+        """Valid nonce in Phase 2 (already activated) should be consumed."""
         from src.nonce import verify_and_consume_nonce
 
-        ts = str(int(time.time()))
-        nonce_value = f"12345:67890:{ts}"
+        created_ts = str(int(time.time()) - 60)
+        activated_ts = str(int(time.time()) - 30)
+        nonce_value = f"12345:67890:{created_ts}:{activated_ts}"
 
         mock_get_resp = MagicMock()
         mock_get_resp.status_code = 200
@@ -202,7 +203,7 @@ class TestNonceFlow:
         assert is_valid is True
         assert user_id == "12345"
 
-        # Verify the nonce was consumed (deleted)
+        # Verify the nonce was consumed (deleted) in Phase 2
         mock_httpx.delete.assert_called_once()
 
     @patch("src.nonce.httpx")
