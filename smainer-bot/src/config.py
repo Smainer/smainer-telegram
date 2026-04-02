@@ -125,6 +125,19 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # Feature flags
+    # ------------------------------------------------------------------
+    wallet_flow_direct: bool = Field(
+        default=True,
+        description=(
+            "When True, 'Pay & Compute' button opens direct wallet approval "
+            "flow (URL button → Braavos/Argent) instead of MiniApp WebApp screen. "
+            "Scoped to flow selection only — payment verification and on-chain "
+            "validation remain mandatory regardless of flow path."
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # Affiliate Program
     # ------------------------------------------------------------------
     affiliate_address: Optional[str] = Field(
@@ -187,6 +200,35 @@ class Settings(BaseSettings):
             params["nonce"] = nonce
         if wallet_linked:
             params["wallet_linked"] = "1"
+        return f"{base}/?{urlencode(params)}"
+
+    def get_direct_pay_url(
+        self,
+        prompt: str,
+        tier: str,
+        chat_id: int,
+        message_id: int,
+        nonce: str = "",
+    ) -> str:
+        """Return the MiniApp URL for direct wallet flow.
+
+        Adds ``flow=direct`` so the MiniApp auto-redirects to wallet
+        approval without showing connect/approve UI screens.
+        Opens in external browser (URL button, not WebApp button).
+        """
+        from urllib.parse import urlencode
+
+        base = self.miniapp_url.rstrip("/")
+        params: dict = {
+            "action": "pay",
+            "flow": "direct",
+            "prompt": prompt,
+            "tier": tier,
+            "chat_id": str(chat_id),
+            "message_id": str(message_id),
+        }
+        if nonce:
+            params["nonce"] = nonce
         return f"{base}/?{urlencode(params)}"
 
 

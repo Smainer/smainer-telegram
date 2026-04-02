@@ -8,7 +8,7 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-02-v16';
+const BUILD_VERSION = '2026-04-02-v17-wave0';
 
 // LocalStorage key for persisted wallet session (TM-005)
 const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
@@ -348,6 +348,14 @@ export function PaymentFlow({
     [],
   );
 
+  // Wave 0 Option D: Direct wallet flow — bot sent flow=direct,
+  // skip all connect/approve UI and auto-redirect to wallet
+  const isDirectFlow = useMemo(
+    () => new URLSearchParams(window.location.search).get('flow') === 'direct',
+    [],
+  );
+  const [directFlowTriggered, setDirectFlowTriggered] = useState(false);
+
   // Telegram data
   const { initDataRaw, isInTelegram } = useTelegramData();
   const botApiUrl = (import.meta.env as Record<string, string>).VITE_BOT_API_URL || 'https://bot.smainer.io';
@@ -477,6 +485,48 @@ export function PaymentFlow({
     }, 8000);
     return () => clearTimeout(timer);
   }, [isConnected]);
+
+  // Wave 0 Option D: Direct flow auto-redirect to Braavos.
+  // When flow=direct, immediately trigger wallet redirect without
+  // showing any connect/approve UI. This runs once on mount.
+  useEffect(() => {
+    if (!isDirectFlow || directFlowTriggered) return;
+    setDirectFlowTriggered(true);
+
+    console.log('[PaymentFlow] Direct flow detected — auto-redirecting to wallet');
+
+    // Persist payment context before leaving
+    const sp = new URLSearchParams(window.location.search);
+    storePaymentContext({
+      prompt: sp.get('prompt') || '',
+      tier: sp.get('tier') || 'small',
+      chatId: sp.get('chat_id') || '',
+      messageId: sp.get('message_id') || '',
+      model: sp.get('model') || undefined,
+      nonce: sp.get('nonce') || undefined,
+      initDataRaw: (window as any).Telegram?.WebApp?.initData || undefined,
+    });
+
+    // If a wallet is already injected (in-app dApp browser), auto-connect will
+    // handle it via the existing auto-connect effect. Otherwise redirect.
+    if (hasInjectedWallet()) {
+      console.log('[PaymentFlow] Injected wallet detected in direct flow — auto-connect will fire');
+      return;
+    }
+
+    // Redirect to MiniApp in external browser (where wallet extension works)
+    const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+    const openLink = window.Telegram?.WebApp?.openLink;
+    if (openLink) {
+      openLink(payUrl);
+      // Close MiniApp WebView after redirect
+      setTimeout(() => {
+        try { (window.Telegram?.WebApp as any)?.close?.(); } catch { /* ignore */ }
+      }, 1500);
+    } else {
+      window.open(payUrl, '_blank');
+    }
+  }, [isDirectFlow, directFlowTriggered]);
 
   // Mirror payment phase into local step
   useEffect(() => {
@@ -649,6 +699,22 @@ export function PaymentFlow({
         {/* Connect Wallet Step */}
           {step === 'connect' && (
             <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Direct flow: show redirect-in-progress, not wallet buttons */}
+              {isDirectFlow ? (
+                <div className="py-8 text-center space-y-4" style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <Spinner size={28} />
+                  <p className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>
+                    Opening wallet for approval...
+                  </p>
+                  <button
+                    onClick={onCancel}
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150 mt-4"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+              <>
               {/* Prompt Preview Card */}
               <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)]" style={{ padding: '16px', borderRadius: '12px' }}>
                 <div
@@ -755,6 +821,8 @@ export function PaymentFlow({
               >
                 Cancel
               </button>
+              </>
+              )}
             </div>
           )}
 

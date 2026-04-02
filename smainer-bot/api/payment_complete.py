@@ -28,6 +28,7 @@ from src.config import settings
 from src.models import InferenceRequest, ModelTier
 from src.nonce import verify_and_consume_nonce
 from src.payment import PaymentManager
+from src.payment_verifier import PaymentVerifier
 from src.rate_limit import check_rate_limit, check_rate_limit_by_ip
 from src.relayer_client import RelayerClient
 from src.wallet import WalletManager
@@ -159,6 +160,29 @@ class handler(BaseHTTPRequestHandler):
             addr = starknet_address or await wallet_mgr.get_linked_address(user_id)
             if not addr:
                 return {"error": "no_wallet"}
+
+            # MTG-301 constraint #5: Verify on-chain escrow before scheduling
+            verifier = PaymentVerifier()
+            escrow_ok, escrow_err = await verifier.verify_escrow(
+                on_chain_task_id=int(on_chain_task_id),
+                expected_address=addr,
+            )
+            if not escrow_ok:
+                logger.warning(
+                    "Escrow verification failed: task=%s err=%s",
+                    on_chain_task_id,
+                    escrow_err,
+                )
+                return {"error": "escrow_verification_failed", "detail": escrow_err}
+
+            # MTG-301 constraint #7: Log wallet flow type for audit trail
+            flow_indicator = "direct" if body.get("flow") == "direct" else "legacy"
+            logger.info(
+                "payment-complete: wallet_flow=%s user=%s task=%s",
+                flow_indicator,
+                user_id,
+                on_chain_task_id,
+            )
 
             user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
             model_tier = _infer_tier(user_model)

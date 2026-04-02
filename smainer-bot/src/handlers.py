@@ -34,6 +34,7 @@ from .config import settings
 from .models import InferenceRequest, ModelTier
 from .nonce import generate_nonce
 from .payment import PaymentManager
+from .payment_verifier import PaymentVerifier
 from .relayer_client import RelayerClient
 from .session import check_session_active, invalidate_session, touch_session
 from .wallet import BalanceUnavailableError, WalletManager
@@ -463,6 +464,19 @@ async def handle_webapp_data(
             )
             return
 
+        # MTG-301 constraint #5: Verify on-chain escrow before scheduling
+        verifier = PaymentVerifier()
+        escrow_ok, escrow_err = await verifier.verify_escrow(
+            on_chain_task_id=int(on_chain_task_id),
+            expected_address=starknet_address,
+        )
+        if not escrow_ok:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"Payment verification failed: {escrow_err}",
+            )
+            return
+
         # Determine model from user prefs
         user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
         model_tier = infer_tier(user_model)
@@ -834,9 +848,13 @@ async def handle_inference(
             )
             return
 
-    # 5. Build MiniApp pay URL - we'll use a placeholder message_id initially
+    # 5. Build pay URL - we'll use a placeholder message_id initially
     # and update with actual message_id after sending
     cost_strk = settings.prompt_cost_strk / 1e18
+
+    # MTG-301 constraint #7: Log wallet flow type for security audit trail
+    flow_type = "direct" if settings.wallet_flow_direct else "legacy"
+    logger.info("wallet_flow=%s user=%s", flow_type, user_id)
 
     # First, send message with a temporary "preparing" button
     # This ensures user always sees a button even if the follow-up edit fails
@@ -859,49 +877,62 @@ async def handle_inference(
             f"🤖 Model: `{user_model}` ({tier.value})\n"
             f"💰 Cost: {cost_strk:.4f} $STRK\n\n"
             + (
-                "Tap below to pay via on-chain escrow and start compute."
+                "Tap below to approve payment in your wallet and start compute."
                 if address
-                else "Tap below to connect your wallet and pay via on-chain escrow to start compute."
+                else "Tap below to connect your wallet, approve payment, and start compute."
             )
         ),
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=temp_keyboard,
     )
 
-    # 6. Build MiniApp pay URL with actual message_id and bot-issued nonce.
-    #    If the user already has a linked wallet, include wallet_linked=1 so
-    #    the MiniApp can skip the Connect screen (TM-005/TM-008).
+    # 6. Generate nonce for payment authentication
     nonce = generate_nonce(user_id, chat_id)
-    linked_address = await wallet_mgr.get_linked_address(user_id)
-    pay_url = settings.get_miniapp_pay_url(
-        prompt=prompt_text,
-        tier=tier.value,
-        chat_id=chat_id,
-        message_id=placeholder.message_id,
-        nonce=nonce,
-        wallet_linked=linked_address is not None,
-    )
 
-    # Telegram has URL length limits for WebApp buttons (typically ~512 chars max).
-    # Log the URL for debugging and warn if it's suspiciously long.
+    # 7. Build pay button — direct flow (URL button) or legacy (WebApp button)
+    if settings.wallet_flow_direct:
+        # Direct flow: URL button opens in external browser → auto-redirects to wallet
+        pay_url = settings.get_direct_pay_url(
+            prompt=prompt_text,
+            tier=tier.value,
+            chat_id=chat_id,
+            message_id=placeholder.message_id,
+            nonce=nonce,
+        )
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="💎 Pay & Compute", url=pay_url)]
+            ]
+        )
+    else:
+        # Legacy flow: WebApp button opens MiniApp inside Telegram
+        linked_address = await wallet_mgr.get_linked_address(user_id)
+        pay_url = settings.get_miniapp_pay_url(
+            prompt=prompt_text,
+            tier=tier.value,
+            chat_id=chat_id,
+            message_id=placeholder.message_id,
+            nonce=nonce,
+            wallet_linked=linked_address is not None,
+        )
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
+            ]
+        )
+
+    # Telegram has URL length limits (~512 chars for WebApp buttons, longer OK for URL buttons).
     logger.info(
-        "MiniApp pay URL: len=%d url=%s",
+        "Pay URL (flow=%s): len=%d url=%s",
+        flow_type,
         len(pay_url),
         pay_url[:200] + ("..." if len(pay_url) > 200 else ""),
     )
-    if len(pay_url) > 512:
+    if len(pay_url) > 512 and not settings.wallet_flow_direct:
         logger.warning(
             "MiniApp URL exceeds 512 chars (%d) — may fail on Telegram",
             len(pay_url),
         )
-
-    # 7. Update button with actual MiniApp payment URL.
-    # Single path: PaymentFlow handles wallet connection if needed.
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
-        ]
-    )
 
     try:
         await bot.edit_message_reply_markup(
@@ -909,9 +940,12 @@ async def handle_inference(
             message_id=placeholder.message_id,
             reply_markup=keyboard,
         )
-        logger.info("Successfully updated button to WebAppInfo (message=%s)", placeholder.message_id)
+        logger.info(
+            "Payment button set (flow=%s message=%s)",
+            flow_type,
+            placeholder.message_id,
+        )
     except Exception as e:
-        # Log the full exception type and message for debugging
         logger.error(
             "Failed to update payment button: type=%s msg=%s (chat=%s message=%s url_len=%d)",
             type(e).__name__,

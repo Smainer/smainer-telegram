@@ -53,6 +53,9 @@ export abstract class AbstractPaymentStrategy {
       starknet_address: ctx.effectiveAddress,
     };
 
+    // Wave 0: Include flow indicator for audit trail (MTG-301 constraint #7)
+    const flowParam = new URLSearchParams(window.location.search).get('flow');
+
     const tg = (window as any).Telegram?.WebApp;
 
     if (tg?.sendData) {
@@ -69,6 +72,7 @@ export abstract class AbstractPaymentStrategy {
             ...payload,
             init_data: ctx.initDataRaw,
             nonce: ctx.nonce || undefined,
+            flow: flowParam || undefined,
           }),
         });
       } catch (err) {
