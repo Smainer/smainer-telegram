@@ -5,12 +5,18 @@ invocations. Each function receives a parsed Telegram Update and dependencies
 injected from the calling Vercel function (relayer_client, wallet_mgr, etc.).
 
 Uses python-telegram-bot's Bot(token=...) direct methods for sending messages.
+
+TM-003: Strict allowlist validation for webapp callbacks.
+TM-004: 15-minute idle session timeout on wallet operations.
 """
 
 import asyncio
+import base64
 import functools
+import hmac as hmac_mod
 import json
 import logging
+import re
 import time
 from typing import Any, Awaitable, Callable, Dict, Optional
 
@@ -26,14 +32,25 @@ from telegram.error import TelegramError
 
 from .config import settings
 from .models import InferenceRequest, ModelTier
+from .nonce import generate_nonce
 from .payment import PaymentManager
 from .relayer_client import RelayerClient
+from .session import check_session_active, invalidate_session, touch_session
 from .wallet import BalanceUnavailableError, WalletManager
 
 logger = logging.getLogger(__name__)
 
 # Timeout constants
 HANDLER_TIMEOUT = 25  # seconds — Vercel functions have 30s max
+
+# ---------------------------------------------------------------------------
+# TM-003: Strict allowlist for MiniApp webapp_data action values
+# ---------------------------------------------------------------------------
+ALLOWED_WEBAPP_ACTIONS = frozenset({
+    "wallet_connect",
+    "wallet_disconnect",
+    "payment_complete",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -92,9 +109,55 @@ async def handle_start(
     bot: Bot,
     wallet_mgr: Optional["WalletManager"] = None,
 ) -> None:
-    """Handle /start command — simple welcome message."""
+    """Handle /start command — welcome message + optional deep-link wallet connect."""
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
+    user_id = message.get("from", {}).get("id")
+    text = message.get("text", "")
+
+    # TM-004: Create/refresh session on /start
+    if user_id:
+        touch_session(user_id)
+
+    # Deep-link payload: /start link_0xABC... or /start linkb_<base64>
+    parts = text.split(maxsplit=1)
+    payload = parts[1] if len(parts) > 1 else ""
+
+    if payload.startswith("link_") and wallet_mgr:
+        addr = payload[len("link_"):]
+        try:
+            await wallet_mgr.link_wallet(user_id, addr)
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"Wallet connected: `{addr}`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except ValueError:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Invalid wallet address. Please check and try again.",
+            )
+        return
+
+    if payload.startswith("linkb_") and wallet_mgr:
+        encoded = payload[len("linkb_"):]
+        # Restore base64 padding
+        padded = encoded + "=" * (-len(encoded) % 4)
+        try:
+            addr_bytes = base64.urlsafe_b64decode(padded)
+            addr = "0x" + addr_bytes.hex()
+            await wallet_mgr.link_wallet(user_id, addr)
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"Wallet connected: `{addr}`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except (ValueError, Exception) as e:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Invalid wallet address. Please check and try again.",
+            )
+        return
 
     await bot.send_message(
         chat_id=chat_id,
@@ -105,6 +168,71 @@ async def handle_start(
             "/help for all commands"
         ),
         parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# ---------------------------------------------------------------------------
+# /link command
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("link")
+async def handle_link(
+    update: Dict[str, Any],
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle /link <address> — link a Starknet wallet."""
+    message = update.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+    user_id = message.get("from", {}).get("id")
+    text = message.get("text", "")
+
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Usage: `/link 0xYourStarknetAddress`",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
+    address = parts[1].strip()
+    try:
+        await wallet_mgr.link_wallet(user_id, address)
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"Wallet linked: `{address}`",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    except ValueError:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Invalid Starknet address. Please check and try again.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# /unlink command
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("unlink")
+async def handle_unlink(
+    update: Dict[str, Any],
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle /unlink — remove linked wallet."""
+    message = update.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+    user_id = message.get("from", {}).get("id")
+
+    await wallet_mgr.unlink_wallet(user_id)
+    invalidate_session(user_id)
+    await bot.send_message(
+        chat_id=chat_id,
+        text="Wallet unlinked.",
     )
 
 
@@ -126,6 +254,8 @@ async def handle_help(
         chat_id=chat_id,
         text=(
             "*Commands*\n"
+            "/link `<address>` — Link your Starknet wallet\n"
+            "/unlink — Remove wallet link\n"
             "/balance — Check $STRK balance\n"
             "/availNodes — Show network status\n"
             "/models — Show available AI models\n"
@@ -151,7 +281,11 @@ async def handle_webapp_data(
     payment_mgr: PaymentManager,
     relayer: RelayerClient,
 ) -> None:
-    """Handle wallet connection and payment data sent from the Telegram MiniApp via sendData()."""
+    """Handle wallet connection and payment data sent from the Telegram MiniApp via sendData().
+
+    TM-003: Strict allowlist validation — only ALLOWED_WEBAPP_ACTIONS are processed.
+    TM-004: Touch session on valid activity.
+    """
     message = update.get("message", {})
     user_id = message.get("from", {}).get("id")
     chat_id = message.get("chat", {}).get("id")
@@ -171,6 +305,23 @@ async def handle_webapp_data(
         return
 
     action = payload.get("action")
+
+    # TM-003 Constraint 1: Strict allowlist validation before processing
+    if action not in ALLOWED_WEBAPP_ACTIONS:
+        logger.warning(
+            "Blocked webapp action not in allowlist: action=%s user=%s",
+            action,
+            user_id,
+        )
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Unrecognized action. Please update your MiniApp and try again.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    # TM-004: Touch session on valid activity
+    touch_session(user_id)
 
     # Handle wallet connection from MiniApp
     if action == "wallet_connect":
@@ -210,6 +361,14 @@ async def handle_webapp_data(
 
     # Handle payment completion from MiniApp
     if action == "payment_complete":
+        # TM-004: Verify session is still active (15-min idle timeout)
+        if not check_session_active(user_id):
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Session expired (idle too long). Please send a new prompt to restart.",
+            )
+            return
+
         on_chain_task_id = payload.get("on_chain_task_id")
         prompt = payload.get("prompt", "")
         tier = payload.get("tier", "small")
@@ -281,7 +440,18 @@ async def handle_webapp_data(
         )
         return
 
-    # Unknown action
+    # Handle wallet disconnect from MiniApp
+    if action == "wallet_disconnect":
+        await wallet_mgr.unlink_wallet(user_id)
+        invalidate_session(user_id)
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Wallet disconnected.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    # Unreachable: allowlist guarantees only known actions reach here
     await bot.send_message(
         chat_id=chat_id,
         text="Unexpected data from miniapp. Please try /start again.",
@@ -305,6 +475,9 @@ async def handle_balance(
     message = update.get("message", {})
     user_id = message.get("from", {}).get("id")
     chat_id = message.get("chat", {}).get("id")
+
+    # TM-004: Touch session
+    touch_session(user_id)
     
     address = await wallet_mgr.get_linked_address(user_id)
     if not address:
@@ -508,6 +681,8 @@ async def handle_inference(
     Validates wallet link and balance, submits task to relayer,
     reserves payment, and sends placeholder message that will be
     updated via callback.
+
+    TM-004: Touches session and creates one if none exists.
     """
     message = update.get("message", {})
     user_id = message.get("from", {}).get("id")
@@ -516,6 +691,9 @@ async def handle_inference(
     
     if not prompt_text.strip():
         return  # Ignore empty messages
+
+    # TM-004: Touch/create session on inference requests
+    touch_session(user_id)
 
     # 1. Determine model and tier
     user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
@@ -564,9 +742,6 @@ async def handle_inference(
     # and update with actual message_id after sending
     cost_strk = settings.prompt_cost_strk / 1e18
 
-    # Check wallet link (for second button only — does NOT block Pay & Compute)
-    starknet_address = await wallet_mgr.get_linked_address(user_id)
-
     # First, send message with a temporary "preparing" button
     # This ensures user always sees a button even if the follow-up edit fails
     temp_keyboard = InlineKeyboardMarkup(
@@ -593,12 +768,18 @@ async def handle_inference(
         reply_markup=temp_keyboard,
     )
 
-    # 6. Build MiniApp pay URL with actual message_id
+    # 6. Build MiniApp pay URL with actual message_id and bot-issued nonce.
+    #    If the user already has a linked wallet, include wallet_linked=1 so
+    #    the MiniApp can skip the Connect screen (TM-005/TM-008).
+    nonce = generate_nonce(user_id, chat_id)
+    linked_address = await wallet_mgr.get_linked_address(user_id)
     pay_url = settings.get_miniapp_pay_url(
         prompt=prompt_text,
         tier=tier.value,
         chat_id=chat_id,
         message_id=placeholder.message_id,
+        nonce=nonce,
+        wallet_linked=linked_address is not None,
     )
 
     # Telegram has URL length limits for WebApp buttons (typically ~512 chars max).
@@ -615,18 +796,12 @@ async def handle_inference(
         )
 
     # 7. Update button with actual MiniApp payment URL.
-    # If no wallet linked yet, also show Connect Wallet as second row.
-    inline_rows = [
-        [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
-    ]
-    if not starknet_address:
-        inline_rows.append([
-            InlineKeyboardButton(
-                text="Connect Wallet",
-                web_app=WebAppInfo(url=settings.get_miniapp_connect_url()),
-            )
-        ])
-    keyboard = InlineKeyboardMarkup(inline_keyboard=inline_rows)
+    # Single path: PaymentFlow handles wallet connection if needed.
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="💎 Pay & Compute", web_app=WebAppInfo(url=pay_url))]
+        ]
+    )
 
     try:
         await bot.edit_message_reply_markup(

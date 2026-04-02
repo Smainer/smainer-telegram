@@ -6,29 +6,40 @@ Telegram initData signature for security.
 This endpoint is called by the MiniApp to check if the user already has
 a linked wallet (via /link command or previous MiniApp connection).
 
+Security:
+    - Telegram initData HMAC-SHA256 signature verification
+    - auth_date max-age enforcement (300s)
+    - Per-user rate limiting via Relayer KV
+
 Response:
     200: {"linked": true, "address": "0x..."}
     200: {"linked": false}
     400: Invalid initData
     401: Signature verification failed
+    429: Rate limited
 """
 
 import hashlib
 import hmac
 import json
 import logging
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 import httpx
 
 from src.config import settings
+from src.rate_limit import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
+# Maximum age of initData auth_date (seconds)
+INIT_DATA_MAX_AGE = 300
+
 
 def verify_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
-    """Verify Telegram WebApp initData signature.
+    """Verify Telegram WebApp initData signature and enforce max-age.
     
     See: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
     
@@ -43,6 +54,22 @@ def verify_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
         received_hash = parsed.get("hash", [""])[0]
         if not received_hash:
             return None
+        
+        # Enforce auth_date max-age
+        auth_date_str = parsed.get("auth_date", [""])[0]
+        if auth_date_str:
+            try:
+                auth_date = int(auth_date_str)
+                age = abs(int(time.time()) - auth_date)
+                if age > INIT_DATA_MAX_AGE:
+                    logger.warning(
+                        "initData expired: auth_date=%d age=%ds max=%ds",
+                        auth_date, age, INIT_DATA_MAX_AGE,
+                    )
+                    return None
+            except ValueError:
+                logger.warning("Invalid auth_date format")
+                return None
         
         # Remove hash from data for verification
         data_pairs = []
@@ -112,7 +139,7 @@ class handler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "missing_init_data"})
             return
         
-        # Verify signature
+        # Verify signature and max-age
         verified = verify_telegram_init_data(init_data, settings.telegram_bot_token)
         if not verified:
             self._send_json_response(401, {"error": "invalid_signature"})
@@ -124,6 +151,11 @@ class handler(BaseHTTPRequestHandler):
         
         if not user_id:
             self._send_json_response(400, {"error": "missing_user_id"})
+            return
+
+        # Rate limit: 20 requests per minute per user
+        if not check_rate_limit("wallet-check", str(user_id), max_requests=20, window_seconds=60):
+            self._send_json_response(429, {"error": "rate_limited"})
             return
         
         # Check wallet link via Relayer KV

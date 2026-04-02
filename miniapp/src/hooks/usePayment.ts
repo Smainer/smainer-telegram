@@ -52,6 +52,7 @@ export interface UsePaymentReturn {
    * @param escrowWei  Max escrow amount in wei (bigint)
    * @param chatId     Telegram chat ID
    * @param messageId  Telegram message ID
+   * @param nonce      Bot-issued payment nonce (standalone browser auth)
    */
   pay: (
     prompt: string,
@@ -61,6 +62,7 @@ export interface UsePaymentReturn {
     escrowWei: bigint,
     chatId: string | null,
     messageId: string | null,
+    nonce?: string,
   ) => Promise<PaymentResult>;
   /** Reset phase back to idle (e.g. after error → retry) */
   reset: () => void;
@@ -142,6 +144,7 @@ export function usePayment(
       escrowWei: bigint,
       chatId: string | null,
       messageId: string | null,
+      nonce?: string,
     ): Promise<PaymentResult> => {
       // Reset state before starting
       setPhase('idle');
@@ -158,6 +161,7 @@ export function usePayment(
         messageId,
         initDataRaw,
         botApiUrl,
+        nonce: nonce || '',
       };
 
       const strategy = createPaymentStrategy({

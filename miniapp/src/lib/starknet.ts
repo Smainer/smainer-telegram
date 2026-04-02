@@ -23,7 +23,6 @@ function parseContractAddress(envKey: string, required: boolean): string | undef
 // Contract addresses (update with actual deployments)
 export const CONTRACT_ADDRESSES = {
   SMAINER_TOKEN: parseContractAddress('VITE_SMAINER_TOKEN_ADDRESS', false),
-  NFT_FACTORY: parseContractAddress('VITE_NFT_FACTORY_ADDRESS', false),  
   USER_PROFILE: parseContractAddress('VITE_USER_PROFILE_ADDRESS', false),
   DATA_STORAGE: parseContractAddress('VITE_DATA_STORAGE_ADDRESS', false),
   ESCROW: parseContractAddress('VITE_SMAINER_CONTRACT_ADDRESS', false),
@@ -90,28 +89,6 @@ export const SMAINER_TOKEN_ABI = [
     ],
     outputs: [{ name: 'success', type: 'felt252' }],
     state_mutability: 'external',
-  },
-] as const;
-
-export const NFT_FACTORY_ABI = [
-  {
-    type: 'function',
-    name: 'mint_nft',
-    inputs: [
-      { name: 'to', type: 'felt' },
-      { name: 'metadata_uri', type: 'felt' },
-      { name: 'royalty_recipient', type: 'felt' },
-      { name: 'royalty_percentage', type: 'felt' },
-    ],
-    outputs: [{ name: 'token_id', type: 'U256' }],
-    state_mutability: 'external',
-  },
-  {
-    type: 'function',
-    name: 'get_user_nfts',
-    inputs: [{ name: 'user', type: 'felt' }],
-    outputs: [{ name: 'token_ids', type: 'felt*' }],
-    state_mutability: 'view',
   },
 ] as const;
 

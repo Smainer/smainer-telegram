@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 
 import './index.css'
 
@@ -35,7 +35,7 @@ class AppErrorBoundary extends React.Component<
               {this.state.message || 'The app failed while rendering.'}
             </p>
             <p style={{ margin: 0, lineHeight: 1.4, fontSize: '13px', color: '#b8bfd6' }}>
-              Reopen the miniapp, or use the wallet connect page if this keeps happening.
+              Reopen the miniapp from Telegram and retry the payment flow if this keeps happening.
             </p>
             {this.state.stackHint ? (
               <pre style={{ marginTop: '12px', whiteSpace: 'pre-wrap', background: '#101426', padding: '10px', borderRadius: '8px', fontSize: '12px', color: '#b8bfd6' }}>
@@ -79,63 +79,44 @@ async function bootstrap() {
   }
 
   try {
-    // Check if we're in connect mode from URL parameters (backward compatibility)
     const urlParams = new URLSearchParams(window.location.search)
     const isLegacyConnectMode = urlParams.get('mode') === 'connect'
+    const isLegacyConnectRoute = window.location.pathname === '/connect'
 
     const rootElement = document.getElementById('root')
     if (!rootElement) {
       throw new Error('Missing #root element')
     }
 
-    // Redirect legacy ?mode=connect to new /connect route
-    if (isLegacyConnectMode && window.location.pathname === '/') {
-      window.location.replace('/connect')
+    // Normalize stale connect-only entry points into the single SPA flow.
+    if (isLegacyConnectMode || isLegacyConnectRoute) {
+      urlParams.delete('mode')
+      const nextSearch = urlParams.toString()
+      const nextUrl = nextSearch ? `/?${nextSearch}` : '/'
+      window.location.replace(nextUrl)
       return
     }
 
-    // Load components based on current route
-    const isConnectRoute = window.location.pathname === '/connect'
+    const [{ default: App }, { TelegramProvider }, { StarknetConfig }, { starknetConfig }] = await Promise.all([
+      import('./App'),
+      import('./components/providers/TelegramProvider'),
+      import('@starknet-react/core'),
+      import('./lib/starknet'),
+    ])
 
-    if (isConnectRoute) {
-      // Connect route: Load only ConnectLite component (no Starknet imports)
-      const { default: ConnectLite } = await import('./ConnectLite')
-      
-      ReactDOM.createRoot(rootElement).render(
-        <React.StrictMode>
-          <AppErrorBoundary>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/connect" element={<ConnectLite />} />
-                <Route path="*" element={<Navigate to="/connect" replace />} />
-              </Routes>
-            </BrowserRouter>
-          </AppErrorBoundary>
-        </React.StrictMode>,
-      )
-    } else {
-      // Normal routes: Load full app with Starknet and all providers
-      const [{ default: App }, { TelegramProvider }, { StarknetConfig }, { starknetConfig }] = await Promise.all([
-        import('./App'),
-        import('./components/providers/TelegramProvider'),
-        import('@starknet-react/core'),
-        import('./lib/starknet'),
-      ])
-
-      ReactDOM.createRoot(rootElement).render(
-        <React.StrictMode>
-          <AppErrorBoundary>
-            <TelegramProvider>
-              <StarknetConfig {...starknetConfig}>
-                <BrowserRouter>
-                  <App />
-                </BrowserRouter>
-              </StarknetConfig>
-            </TelegramProvider>
-          </AppErrorBoundary>
-        </React.StrictMode>,
-      )
-    }
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <AppErrorBoundary>
+          <TelegramProvider>
+            <StarknetConfig {...starknetConfig}>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </StarknetConfig>
+          </TelegramProvider>
+        </AppErrorBoundary>
+      </React.StrictMode>,
+    )
   } catch (error) {
     console.error('Miniapp bootstrap failed:', error)
     const message = error instanceof Error ? error.message : String(error)

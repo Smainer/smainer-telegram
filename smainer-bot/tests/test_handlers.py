@@ -389,6 +389,8 @@ class TestHandleInference:
 
     @pytest.mark.asyncio
     async def test_inference_no_wallet(self, deps):
+        """Unified flow: even without a linked wallet, the payment gate is shown
+        (wallet connection happens inside the MiniApp)."""
         deps["wallet_mgr"].get_linked_address.return_value = None
         update = _make_update("Hello AI")
 
@@ -402,10 +404,12 @@ class TestHandleInference:
 
         deps["relayer"].submit_inference.assert_not_called()
         text = deps["bot"].send_message.call_args[1]["text"]
-        assert "wallet" in text.lower()
+        assert "Ready to compute" in text
 
     @pytest.mark.asyncio
     async def test_inference_insufficient_balance(self, deps):
+        """Unified flow: balance checks are deferred to on-chain escrow in the
+        MiniApp. The bot always shows the payment gate."""
         deps["wallet_mgr"].has_sufficient_balance.return_value = False
         update = _make_update("Hello AI")
 
@@ -419,7 +423,7 @@ class TestHandleInference:
 
         deps["relayer"].submit_inference.assert_not_called()
         text = deps["bot"].send_message.call_args[1]["text"]
-        assert "Insufficient" in text
+        assert "Ready to compute" in text
 
     @pytest.mark.asyncio
     async def test_inference_empty_message_ignored(self, deps):
@@ -457,6 +461,8 @@ class TestHandleInference:
 
     @pytest.mark.asyncio
     async def test_inference_balance_check_fails(self, deps):
+        """Unified flow: balance checks are deferred to MiniApp/on-chain.
+        Handler shows payment gate regardless of RPC availability."""
         deps["wallet_mgr"].has_sufficient_balance.side_effect = BalanceUnavailableError("down")
         update = _make_update("Hello AI")
 
@@ -469,7 +475,7 @@ class TestHandleInference:
         )
 
         text = deps["bot"].send_message.call_args[1]["text"]
-        assert "Balance check failed" in text
+        assert "Ready to compute" in text
 
 
 # ---------------------------------------------------------------------------
@@ -521,7 +527,7 @@ class TestHandleWebappData:
 
         wallet_mgr.link_wallet.assert_not_called()
         text = mock_bot.send_message.call_args[1]["text"]
-        assert "Unexpected" in text
+        assert "Unrecognized" in text
 
     @pytest.mark.asyncio
     async def test_webapp_invalid_address(self, mock_bot):

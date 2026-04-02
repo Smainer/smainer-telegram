@@ -21,6 +21,8 @@ export interface PaymentContext {
   messageId: string | null;
   initDataRaw: string | undefined;
   botApiUrl: string;
+  /** Bot-issued nonce for standalone browser payment verification */
+  nonce: string;
 }
 
 export interface PaymentProgress {

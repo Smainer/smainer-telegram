@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { AIModel, InferenceRequest, InferenceTaskStatus } from '@/types';
 import { ModelSelector } from './ModelSelector';
-import { NFTPreview } from './NFTPreview';
 import { PaymentFlow } from './PaymentFlow';
 import { ComputeTier } from '@/lib/starknet';
 
@@ -18,7 +17,6 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   taskId?: string;
-  nftMintable?: boolean;
   imageUrl?: string;
   isLoading?: boolean;
 }
@@ -34,9 +32,7 @@ export function ChatInterface({
     availableModels.length > 0 ? availableModels[0] : null
   );
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showNFTPreview, setShowNFTPreview] = useState(false);
-  const [selectedImageForNFT, setSelectedImageForNFT] = useState<string | null>(null);
-  
+
   // Payment flow state
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string>('');
@@ -131,7 +127,7 @@ export function ChatInterface({
           clearInterval(typeInterval);
           setMessages(prev => prev.map(m => 
             m.id === loadingId 
-              ? { ...m, content: responseContent, isLoading: false, taskId, nftMintable: isImageGeneration }
+              ? { ...m, content: responseContent, isLoading: false, taskId }
               : m
           ));
           setIsGenerating(false);
@@ -227,10 +223,6 @@ export function ChatInterface({
           <MessageBubble
             key={message.id}
             message={message}
-            onMintNFT={(url) => {
-              setSelectedImageForNFT(url);
-              setShowNFTPreview(true);
-            }}
           />
         ))}
         <div ref={messagesEndRef} />
@@ -280,22 +272,6 @@ export function ChatInterface({
         )}
       </div>
 
-      {/* NFT Preview Modal */}
-      {showNFTPreview && selectedImageForNFT && (
-        <NFTPreview
-          imageUrl={selectedImageForNFT}
-          onClose={() => {
-            setShowNFTPreview(false);
-            setSelectedImageForNFT(null);
-          }}
-          onMint={(metadata) => {
-            console.log('Minting NFT:', metadata);
-            setShowNFTPreview(false);
-            setSelectedImageForNFT(null);
-          }}
-        />
-      )}
-
       {/* Payment Flow Modal */}
       {showPaymentFlow && pendingPrompt && (
         <PaymentFlow
@@ -315,10 +291,9 @@ export function ChatInterface({
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  onMintNFT: (imageUrl: string) => void;
 }
 
-function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
+function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.type === 'user';
   const isSystem = message.type === 'system';
   const isLoading = message.isLoading;
@@ -354,19 +329,11 @@ function MessageBubble({ message, onMintNFT }: MessageBubbleProps) {
             
             {message.imageUrl && (
               <div className="mt-3">
-                <img 
-                  src={message.imageUrl} 
-                  alt="Generated content" 
+                <img
+                  src={message.imageUrl}
+                  alt="Generated content"
                   className="rounded-xl max-w-full h-auto"
                 />
-                {message.nftMintable && (
-                  <button
-                    onClick={() => onMintNFT(message.imageUrl!)}
-                    className="mt-3 btn btn-primary w-full text-sm"
-                  >
-                    Mint as NFT
-                  </button>
-                )}
               </div>
             )}
           </>

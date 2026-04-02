@@ -105,6 +105,12 @@ See [.env.example](.env.example) for the full list with descriptions.
 | `PROMPT_COST_STRK` | — | Cost per prompt in wei (default: 0.1 STRK) |
 | `MINIAPP_URL` | — | Telegram MiniApp URL |
 
+## Production Payment Entry
+
+The production bot always opens the MiniApp base URL and passes payment context through the `Pay & Compute` button. Wallet linking for Telegram users is expected to happen inside the MiniApp payment flow, not through a separate `/connect` page.
+
+The legacy polling bot under `telegram/telegram-bot/` remains isolated and is not part of this production webhook flow.
+
 ## Deployment
 
 This repo auto-deploys to Vercel on every push to `main`.

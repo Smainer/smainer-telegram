@@ -20,6 +20,7 @@ from src.config import settings
 from src.handlers import escape_md
 from src.models import TaskCallback
 from src.payment import PaymentManager
+from src.rate_limit import check_rate_limit_by_ip
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,20 @@ class handler(BaseHTTPRequestHandler):
     """Vercel Python function handler for POST /api/callback/complete."""
 
     def do_POST(self) -> None:  # noqa: N802
+        # Rate limit by IP: 60 callbacks per minute (defense in depth)
+        client_ip = self.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        if not client_ip:
+            try:
+                client_ip = self.client_address[0]
+            except (AttributeError, IndexError):
+                client_ip = ""
+        if not check_rate_limit_by_ip("callback-complete", client_ip, max_requests=60, window_seconds=60):
+            self.send_response(429)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error":"rate_limited"}')
+            return
+
         content_length = int(self.headers.get("Content-Length", 0))
         raw_body = self.rfile.read(content_length)
 

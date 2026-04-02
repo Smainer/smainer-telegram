@@ -44,25 +44,6 @@ export interface Message {
   timestamp: string;
   inference_time?: number;
   cost?: string;
-  nft_id?: string; // if minted as NFT
-}
-
-export interface NFTMetadata {
-  id: string;
-  name: string;
-  description: string;
-  image_url: string;
-  prompt: string;
-  model_used: string;
-  generation_time: number;
-  creator: string;
-  minted_at: string;
-  price?: string;
-  royalties: {
-    creator: number;
-    ai_model_operator: number;
-    platform: number;
-  };
 }
 
 export interface UserProfile {
@@ -70,7 +51,6 @@ export interface UserProfile {
   wallet_address: string;
   preferred_model: string;
   conversation_count: number;
-  nfts_created: number;
   total_spent: string;
   privacy_settings: {
     store_conversations: boolean;
@@ -126,12 +106,6 @@ export interface SMAINERTokenState {
   compute_credits: string;
 }
 
-export interface NFTFactoryState {
-  user_nfts: NFTMetadata[];
-  marketplace_listings: NFTMetadata[];
-  royalty_earnings: string;
-}
-
 // Telegram Mini App specific
 export interface WebAppInitData {
   user?: User;
@@ -145,7 +119,7 @@ export interface WebAppInitData {
 }
 
 export interface WebAppAction {
-  type: 'generate_text' | 'generate_image' | 'mint_nft' | 'update_profile' | 'purchase_credits';
+  type: 'generate_text' | 'generate_image' | 'update_profile' | 'purchase_credits';
   payload: any;
 }
 
@@ -194,79 +168,9 @@ export interface ModelSelectorProps {
   onModelSelect: (model_id: string) => void;
 }
 
-export interface NFTGalleryProps {
-  nfts: NFTMetadata[];
-  onMintNFT: (message_id: string) => void;
-  onListNFT: (nft_id: string, price: string) => void;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
-//  NFT MARKETPLACE TYPES
+//  WALLET CONNECT TYPES
 // ═══════════════════════════════════════════════════════════════════════════
-
-export type NFTCategory = 'AiArt' | 'ComputeCredit' | 'ProviderBadge' | 'ComputeCertificate';
-
-export const NFT_CATEGORY_MAP: Record<NFTCategory, number> = {
-  AiArt: 0,
-  ComputeCredit: 1,
-  ProviderBadge: 2,
-  ComputeCertificate: 3,
-};
-
-export const NFT_CATEGORY_FROM_NUMBER: Record<number, NFTCategory> = {
-  0: 'AiArt',
-  1: 'ComputeCredit',
-  2: 'ProviderBadge',
-  3: 'ComputeCertificate',
-};
-
-export interface NFTListing {
-  id: string;
-  token_id: string;
-  category: NFTCategory;
-  price: string; // in STRK
-  seller_address: string;
-  created_at: string;
-  metadata: {
-    name: string;
-    description: string;
-    image_url?: string;
-    attributes?: Record<string, string>;
-  };
-}
-
-export interface UserNFT {
-  token_id: string;
-  category: NFTCategory;
-  owner_address: string;
-  metadata: {
-    name: string;
-    description: string;
-    image_url?: string;
-    attributes?: Record<string, string>;
-  };
-  is_listed: boolean;
-  listing_id?: string;
-  listing_price?: string;
-}
-
-export interface MarketplaceStats {
-  total_listed: number;
-  total_volume: string;
-  floor_price: string;
-  total_sales: number;
-}
-
-export interface MarketplaceActivity {
-  id: string;
-  type: 'sale' | 'listing' | 'delisting';
-  token_id: string;
-  category: NFTCategory;
-  price?: string;
-  from_address?: string;
-  to_address?: string;
-  timestamp: string;
-}
 
 export interface WalletConnectProps {
   onConnect: (wallet: ConnectedWallet) => void;
@@ -284,5 +188,4 @@ export interface ApiResponse<T> {
 export type ConversationResponse = ApiResponse<Conversation>;
 export type ModelsResponse = ApiResponse<AIModel[]>;
 export type TaskResponse = ApiResponse<TaskResult>;
-export type NFTResponse = ApiResponse<NFTMetadata>;
 export type ProfileResponse = ApiResponse<UserProfile>;
