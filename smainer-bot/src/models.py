@@ -59,6 +59,20 @@ class TaskSubmissionPayload(BaseModel):
     affiliate_address: Optional[str] = None  # Earns 5% of task fee when set
 
 
+class SubmitResult(BaseModel):
+    """Structured result from RelayerClient.submit_inference().
+
+    Replaces bare Optional[str] to carry HTTP status codes and error
+    detail back to the handler for user-friendly messaging.
+    """
+
+    task_id: Optional[str] = None
+    ok: bool = False
+    http_status: Optional[int] = None
+    error_code: Optional[str] = None  # "payment_required" | "bad_gateway" | "rejected" | "network_error"
+    error_detail: Optional[str] = None
+
+
 class TaskStatusResponse(BaseModel):
     """Subset of the Relayer TaskResponse we care about."""
 

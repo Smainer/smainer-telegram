@@ -31,7 +31,7 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import TelegramError
 
 from .config import settings
-from .models import InferenceRequest, ModelTier
+from .models import InferenceRequest, ModelTier, SubmitResult
 from .nonce import generate_nonce
 from .payment import PaymentManager
 from .payment_verifier import PaymentVerifier
@@ -434,6 +434,9 @@ async def handle_webapp_data(
 
     # Handle payment completion from MiniApp
     if action == "payment_complete":
+        # METRIC: approval-complete — user returned from wallet approval
+        logger.info("metric.approval-complete user=%s", user_id)
+
         # TM-004: Verify session is still active (15-min idle timeout)
         if not check_session_active(user_id):
             await bot.send_message(
@@ -465,15 +468,42 @@ async def handle_webapp_data(
             return
 
         # MTG-301 constraint #5: Verify on-chain escrow before scheduling
+        # Delayed verification: the tx may not be indexed yet. Retry up to 2 extra
+        # times with short backoff before failing closed.
         verifier = PaymentVerifier()
         escrow_ok, escrow_err = await verifier.verify_escrow(
             on_chain_task_id=int(on_chain_task_id),
             expected_address=starknet_address,
         )
+
+        if not escrow_ok and escrow_err and "not found" in escrow_err.lower():
+            # Delayed verification — tx may still be propagating
+            for delay in (2, 4):
+                logger.info(
+                    "metric.verification-retry task=%s delay=%ds",
+                    on_chain_task_id, delay,
+                )
+                await asyncio.sleep(delay)
+                escrow_ok, escrow_err = await verifier.verify_escrow(
+                    on_chain_task_id=int(on_chain_task_id),
+                    expected_address=starknet_address,
+                )
+                if escrow_ok:
+                    break
+
         if not escrow_ok:
+            # METRIC: verification-failed — on-chain check rejected the payment
+            logger.warning(
+                "metric.verification-failed user=%s task=%s reason=%s",
+                user_id, on_chain_task_id, escrow_err,
+            )
             await bot.send_message(
                 chat_id=chat_id,
-                text=f"Payment verification failed: {escrow_err}",
+                text=(
+                    "Payment verification failed. "
+                    "If you just approved, wait 30 seconds and re-send your prompt — "
+                    "the transaction may still be confirming on-chain."
+                ),
             )
             return
 
@@ -485,7 +515,7 @@ async def handle_webapp_data(
         await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
         placeholder = await bot.send_message(
             chat_id=chat_id,
-            text=f"💎 Payment confirmed! (Task #{on_chain_task_id})\nRunning compute task...",
+            text=f"Payment confirmed (Task #{on_chain_task_id}). Running compute task...",
         )
 
         # Build request and submit to relayer with on_chain_task_id
@@ -500,14 +530,29 @@ async def handle_webapp_data(
             cost_strk=settings.prompt_cost_strk,
         )
 
-        task_id = await relayer.submit_inference(req, on_chain_task_id=int(on_chain_task_id))
-        if not task_id:
+        result = await relayer.submit_inference(req, on_chain_task_id=int(on_chain_task_id))
+        if not result.ok:
+            # User-friendly errors for specific relayer failures
+            if result.error_code == "payment_required":
+                msg = "Relayer requires payment for this task. Please verify your on-chain approval and try again."
+            elif result.error_code == "bad_gateway":
+                msg = "Compute nodes temporarily unreachable. Please try again in a minute."
+            else:
+                msg = "Failed to submit task. Please try again."
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=placeholder.message_id,
-                text="Failed to submit task. Please try again.",
+                text=msg,
             )
             return
+
+        task_id = result.task_id
+
+        # METRIC: compute-submitted — task accepted by relayer
+        logger.info(
+            "metric.compute-submitted user=%s task_id=%s on_chain=%s",
+            user_id, task_id, on_chain_task_id,
+        )
 
         # Log payment reservation with on_chain_task_id
         await payment_mgr.reserve_payment(
@@ -521,7 +566,7 @@ async def handle_webapp_data(
         await bot.edit_message_text(
             chat_id=chat_id,
             message_id=placeholder.message_id,
-            text=f"💎 Task #{on_chain_task_id} submitted (`{task_id[:8]}...`). Computing results...",
+            text=f"Task #{on_chain_task_id} submitted (`{task_id[:8]}...`). Computing results...",
             parse_mode=ParseMode.MARKDOWN,
         )
         return
@@ -852,9 +897,12 @@ async def handle_inference(
     # and update with actual message_id after sending
     cost_strk = settings.prompt_cost_strk / 1e18
 
-    # MTG-301 constraint #7: Log wallet flow type for security audit trail
+    # METRIC: flow-selected — audit which payment flow is being used
     flow_type = "direct" if settings.wallet_flow_direct else "legacy"
-    logger.info("wallet_flow=%s user=%s", flow_type, user_id)
+    logger.info(
+        "metric.flow-selected wallet_flow=%s user=%s tier=%s model=%s",
+        flow_type, user_id, tier.value, user_model,
+    )
 
     # First, send message with a temporary "preparing" button
     # This ensures user always sees a button even if the follow-up edit fails

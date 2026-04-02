@@ -108,9 +108,10 @@ async def _handle_task_complete(
         except Exception as e:
             logger.warning(f"NFT badge mint skipped: {e}")
 
+        # METRIC: compute-result-delivered — result shown to user
         logger.info(
-            "Task completed",
-            extra={"task_id": callback.task_id, "exec_time": exec_time},
+            "metric.compute-result-delivered task_id=%s exec_time=%.1f model=%s",
+            callback.task_id, exec_time, model_name,
         )
     else:
         error = callback.error or "Unknown error occurred"

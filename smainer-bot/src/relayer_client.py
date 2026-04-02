@@ -14,6 +14,7 @@ from .models import (
     MODEL_TIER_REQUIREMENTS,
     InferenceRequest,
     ModelTier,
+    SubmitResult,
     TaskStatusResponse,
     TaskSubmissionPayload,
 )
@@ -44,9 +45,9 @@ class RelayerClient:
         self,
         req: InferenceRequest,
         on_chain_task_id: Optional[int] = None,
-    ) -> Optional[str]:
-        """Submit an AI inference task; returns the task_id or None on error.
-        
+    ) -> SubmitResult:
+        """Submit an AI inference task; returns a SubmitResult with status detail.
+
         Args:
             req: The inference request details
             on_chain_task_id: Optional on-chain task ID from escrow contract
@@ -90,16 +91,52 @@ class RelayerClient:
                     data: Dict[str, Any] = resp.json()
                     task_id = data.get("task_id")
                     logger.info("Task submitted", extra={"task_id": task_id})
-                    return task_id
-                else:
-                    logger.error(
-                        "Relayer rejected task",
-                        extra={"status": resp.status_code, "body": resp.text[:200]},
+                    return SubmitResult(task_id=task_id, ok=True, http_status=201)
+
+                # Explicit handling for known error codes
+                if resp.status_code == 402:
+                    detail = resp.text[:200]
+                    logger.warning(
+                        "Relayer 402 Payment Required",
+                        extra={"body": detail},
                     )
-                    return None
+                    return SubmitResult(
+                        ok=False,
+                        http_status=402,
+                        error_code="payment_required",
+                        error_detail=detail,
+                    )
+
+                if resp.status_code == 502:
+                    logger.error(
+                        "Relayer 502 Bad Gateway — upstream provider unreachable",
+                        extra={"body": resp.text[:200]},
+                    )
+                    return SubmitResult(
+                        ok=False,
+                        http_status=502,
+                        error_code="bad_gateway",
+                        error_detail="Compute provider temporarily unreachable",
+                    )
+
+                # Generic rejection
+                logger.error(
+                    "Relayer rejected task",
+                    extra={"status": resp.status_code, "body": resp.text[:200]},
+                )
+                return SubmitResult(
+                    ok=False,
+                    http_status=resp.status_code,
+                    error_code="rejected",
+                    error_detail=resp.text[:200],
+                )
         except httpx.RequestError as e:
             logger.error(f"Network error submitting task: {e}")
-            return None
+            return SubmitResult(
+                ok=False,
+                error_code="network_error",
+                error_detail=str(e),
+            )
 
     async def get_task_status(self, task_id: str) -> Optional[TaskStatusResponse]:
         """Poll task status from the Relayer."""
