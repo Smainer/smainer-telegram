@@ -8,7 +8,7 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-02-v17-wave0';
+const BUILD_VERSION = '2026-04-02-v18-wave2';
 
 // LocalStorage key for persisted wallet session (TM-005)
 const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
@@ -514,18 +514,30 @@ export function PaymentFlow({
       return;
     }
 
-    // Redirect to MiniApp in external browser (where wallet extension works)
-    const payUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+    // Wave 2: Redirect to wallet app automatically.
+    // In Telegram WebView → open wallet-redirect page via openLink (closes WebView).
+    // In standalone browser (mobile) → navigate to wallet-redirect page which
+    // auto-redirects to Braavos deep link.
+    // On desktop → wallet extensions handle connection via auto-connect effect.
     const openLink = window.Telegram?.WebApp?.openLink;
     if (openLink) {
-      openLink(payUrl);
-      // Close MiniApp WebView after redirect
+      // Telegram WebView: open wallet-redirect page which triggers universal link
+      const redirectParams = new URLSearchParams(window.location.search);
+      redirectParams.set('action', 'wallet-redirect');
+      redirectParams.set('wallet', 'braavos');
+      const redirectUrl = `${window.location.origin}/?${redirectParams.toString()}`;
+      openLink(redirectUrl);
       setTimeout(() => {
         try { (window.Telegram?.WebApp as any)?.close?.(); } catch { /* ignore */ }
       }, 1500);
-    } else {
-      window.open(payUrl, '_blank');
+    } else if (isMobileDevice()) {
+      // Mobile browser (not in Telegram): navigate to wallet-redirect page
+      const redirectParams = new URLSearchParams(window.location.search);
+      redirectParams.set('action', 'wallet-redirect');
+      redirectParams.set('wallet', 'braavos');
+      window.location.href = `${window.location.origin}/?${redirectParams.toString()}`;
     }
+    // Desktop browser: no redirect needed — wallet extension auto-connect fires
   }, [isDirectFlow, directFlowTriggered]);
 
   // Mirror payment phase into local step
@@ -545,6 +557,22 @@ export function PaymentFlow({
       setStep('error');
     }
   }, [phase]);
+
+  // Wave 2: Auto-execute payment in direct flow when wallet is connected.
+  // Removes the visible "Approve & Pay" confirm step — transaction goes
+  // straight to the wallet for signing without an intermediate MiniApp screen.
+  const [directPayTriggered, setDirectPayTriggered] = useState(false);
+  useEffect(() => {
+    if (!isDirectFlow) return;
+    if (step !== 'confirm') return;
+    if (directPayTriggered) return;
+    if (!account || !isContractReady || isLoading) return;
+    if (hasInsufficientBalance) return;
+
+    setDirectPayTriggered(true);
+    console.log('[PaymentFlow] Wave 2: Direct flow auto-executing payment');
+    handlePayment();
+  }, [isDirectFlow, step, directPayTriggered, account, isContractReady, isLoading, hasInsufficientBalance]);
 
   const costEstimate = useCostEstimate(prompt, tier, userModel);
   const tierInfo = COMPUTE_TIERS[tier];
@@ -827,7 +855,29 @@ export function PaymentFlow({
           )}
 
         {/* Confirmation Step */}
-          {step === 'confirm' && (
+          {step === 'confirm' && isDirectFlow ? (
+            /* Wave 2: Direct flow — auto-payment triggered by useEffect above.
+               Show only a minimal processing indicator, no "Approve & Pay" button. */
+            <div className="py-8 text-center space-y-4" style={{ padding: '32px 0', textAlign: 'center' }}>
+              <Spinner size={28} />
+              <p className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>
+                Preparing wallet transaction...
+              </p>
+              {hasInsufficientBalance && (
+                <div className="p-3 rounded-xl bg-[var(--error)]/10 border border-[var(--error)]/20 mt-4" style={{ padding: '12px', borderRadius: '12px', marginTop: '16px' }}>
+                  <span className="text-[var(--error)] text-sm">
+                    Insufficient balance: need {costEstimate.maxEscrow} STRK, have {balance} STRK
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={onCancel}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150 mt-4"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : step === 'confirm' && (
             <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Connected Wallet Display */}
               {effectiveAddress && (
