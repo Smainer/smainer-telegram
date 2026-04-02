@@ -333,6 +333,7 @@ async def handle_unlink(
     chat_id = message.get("chat", {}).get("id")
 
     await wallet_mgr.unlink_wallet(user_id)
+    invalidate_session(user_id)
     await bot.send_message(
         chat_id=chat_id,
         text="Wallet unlinked. Use /link or the MiniApp to connect a new wallet.",
