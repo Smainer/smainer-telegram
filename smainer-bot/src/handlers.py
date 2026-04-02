@@ -109,53 +109,59 @@ async def handle_start(
     bot: Bot,
     wallet_mgr: Optional["WalletManager"] = None,
 ) -> None:
-    """Handle /start command — welcome message + optional deep-link wallet connect."""
+    """Handle /start command — welcome message, and handle wallet deep-link payloads.
+
+    Supports:
+      /start                      — plain welcome message
+      /start link_<hex_address>   — link wallet from deep-link (hex address)
+      /start linkb_<b64_address>  — link wallet from deep-link (base64-encoded address)
+    """
     message = update.get("message", {})
-    chat_id = message.get("chat", {}).get("id")
     user_id = message.get("from", {}).get("id")
+    chat_id = message.get("chat", {}).get("id")
     text = message.get("text", "")
 
     # TM-004: Create/refresh session on /start
     if user_id:
         touch_session(user_id)
 
-    # Deep-link payload: /start link_0xABC... or /start linkb_<base64>
+    # Handle deep-link wallet payloads forwarded by Telegram from the MiniApp
     parts = text.split(maxsplit=1)
     payload = parts[1] if len(parts) > 1 else ""
 
-    if payload.startswith("link_") and wallet_mgr:
-        addr = payload[len("link_"):]
+    if payload.startswith("link_") and wallet_mgr is not None:
+        address = payload[len("link_"):]
         try:
-            await wallet_mgr.link_wallet(user_id, addr)
+            await wallet_mgr.link_wallet(user_id, address)
             await bot.send_message(
                 chat_id=chat_id,
-                text=f"Wallet connected: `{addr}`",
+                text=f"Wallet connected: `{address}`\n\nSend any message to run AI inference.",
                 parse_mode=ParseMode.MARKDOWN,
             )
         except ValueError:
             await bot.send_message(
                 chat_id=chat_id,
-                text="Invalid wallet address. Please check and try again.",
+                text="Invalid Starknet address in deep link. Please reconnect via the MiniApp.",
             )
         return
 
-    if payload.startswith("linkb_") and wallet_mgr:
+    if payload.startswith("linkb_") and wallet_mgr is not None:
         encoded = payload[len("linkb_"):]
-        # Restore base64 padding
-        padded = encoded + "=" * (-len(encoded) % 4)
         try:
+            # Restore base64 padding and decode
+            padded = encoded + "=" * (-len(encoded) % 4)
             addr_bytes = base64.urlsafe_b64decode(padded)
-            addr = "0x" + addr_bytes.hex()
-            await wallet_mgr.link_wallet(user_id, addr)
+            address = "0x" + addr_bytes.hex()
+            await wallet_mgr.link_wallet(user_id, address)
             await bot.send_message(
                 chat_id=chat_id,
-                text=f"Wallet connected: `{addr}`",
+                text=f"Wallet connected: `{address}`\n\nSend any message to run AI inference.",
                 parse_mode=ParseMode.MARKDOWN,
             )
-        except (ValueError, Exception) as e:
+        except Exception:
             await bot.send_message(
                 chat_id=chat_id,
-                text="Invalid wallet address. Please check and try again.",
+                text="Invalid wallet payload in deep link. Please reconnect via the MiniApp.",
             )
         return
 
@@ -255,7 +261,7 @@ async def handle_help(
         text=(
             "*Commands*\n"
             "/link `<address>` — Link your Starknet wallet\n"
-            "/unlink — Remove wallet link\n"
+            "/unlink — Remove linked wallet\n"
             "/balance — Check $STRK balance\n"
             "/availNodes — Show network status\n"
             "/models — Show available AI models\n"
@@ -265,6 +271,71 @@ async def handle_help(
             "Connect your wallet in the MiniApp when prompted."
         ),
         parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# ---------------------------------------------------------------------------
+# /link command
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("link")
+async def handle_link(
+    update: Dict[str, Any],
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle /link <address> — directly link a Starknet wallet address."""
+    message = update.get("message", {})
+    user_id = message.get("from", {}).get("id")
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
+
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Usage: /link <Starknet address>\nExample: /link 0x04a3...",
+        )
+        return
+
+    address = parts[1].strip()
+    try:
+        await wallet_mgr.link_wallet(user_id, address)
+    except ValueError:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Invalid Starknet address. Please check the format and try again.",
+        )
+        return
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=f"Wallet linked: `{address}`",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# ---------------------------------------------------------------------------
+# /unlink command
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("unlink")
+async def handle_unlink(
+    update: Dict[str, Any],
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle /unlink — remove the linked wallet."""
+    message = update.get("message", {})
+    user_id = message.get("from", {}).get("id")
+    chat_id = message.get("chat", {}).get("id")
+
+    await wallet_mgr.unlink_wallet(user_id)
+    await bot.send_message(
+        chat_id=chat_id,
+        text="Wallet unlinked. Use /link or the MiniApp to connect a new wallet.",
     )
 
 
@@ -717,7 +788,7 @@ async def handle_inference(
         available_tiers = set()
         for node in available_nodes:
             available_tiers.update(node.get("supported_tiers", []))
-        
+
         if available_tiers:
             tier_list = ", ".join(sorted(available_tiers))
             await bot.send_message(
@@ -737,6 +808,30 @@ async def handle_inference(
                 ),
             )
         return
+
+    # 2. Check wallet link
+    address = await wallet_mgr.get_linked_address(user_id)
+
+    # 3. If wallet is linked, verify sufficient balance before showing payment gate
+    if address:
+        try:
+            sufficient = await wallet_mgr.has_sufficient_balance(address)
+        except BalanceUnavailableError:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="Balance check failed. Please try again in a moment.",
+            )
+            return
+
+        if not sufficient:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    "Insufficient $STRK balance to run inference. "
+                    "Please top up your wallet and try again."
+                ),
+            )
+            return
 
     # 5. Build MiniApp pay URL - we'll use a placeholder message_id initially
     # and update with actual message_id after sending
@@ -762,7 +857,11 @@ async def handle_inference(
             f"📝 Prompt: _{escape_md(prompt_text[:50])}{'...' if len(prompt_text) > 50 else ''}_\n"
             f"🤖 Model: `{user_model}` ({tier.value})\n"
             f"💰 Cost: {cost_strk:.4f} $STRK\n\n"
-            "Tap below to pay via on-chain escrow and start compute."
+            + (
+                "Tap below to pay via on-chain escrow and start compute."
+                if address
+                else "Tap below to connect your wallet and pay via on-chain escrow to start compute."
+            )
         ),
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=temp_keyboard,

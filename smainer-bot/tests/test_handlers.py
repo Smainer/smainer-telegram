@@ -8,8 +8,6 @@ from src.handlers import (
     infer_tier,
     handle_start,
     handle_help,
-    handle_link,
-    handle_unlink,
     handle_balance,
     handle_models,
     handle_set_model,
@@ -106,41 +104,6 @@ class TestHandleStart:
         text = mock_bot.send_message.call_args[1]["text"]
         assert "Welcome to Smainer" in text
 
-    @pytest.mark.asyncio
-    async def test_start_with_link_payload(self, mock_bot):
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        addr = "0x" + "ab" * 32
-        update = _make_update(f"/start link_{addr}")
-
-        await handle_start(update, mock_bot, wallet_mgr)
-
-        wallet_mgr.link_wallet.assert_called_once_with(12345, addr)
-        text = mock_bot.send_message.call_args[1]["text"]
-        assert "Wallet connected" in text
-
-    @pytest.mark.asyncio
-    async def test_start_with_invalid_link_payload(self, mock_bot):
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        wallet_mgr.link_wallet.side_effect = ValueError("bad address")
-        update = _make_update("/start link_0xINVALID")
-
-        await handle_start(update, mock_bot, wallet_mgr)
-
-        text = mock_bot.send_message.call_args[1]["text"]
-        assert "Invalid" in text
-
-    @pytest.mark.asyncio
-    async def test_start_with_base64_payload(self, mock_bot):
-        import base64
-        addr_bytes = bytes.fromhex("04a3ff")
-        encoded = base64.urlsafe_b64encode(addr_bytes).decode().rstrip("=")
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        update = _make_update(f"/start linkb_{encoded}")
-
-        await handle_start(update, mock_bot, wallet_mgr)
-
-        wallet_mgr.link_wallet.assert_called_once()
-
 
 # ---------------------------------------------------------------------------
 # /help
@@ -155,68 +118,8 @@ class TestHandleHelp:
         await handle_help(update, mock_bot)
 
         text = mock_bot.send_message.call_args[1]["text"]
-        assert "/link" in text
         assert "/balance" in text
         assert "/models" in text
-
-
-# ---------------------------------------------------------------------------
-# /link
-# ---------------------------------------------------------------------------
-
-
-class TestHandleLink:
-    @pytest.mark.asyncio
-    async def test_link_with_address(self, mock_bot):
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        addr = "0x" + "ab" * 32
-        update = _make_update(f"/link {addr}")
-
-        await handle_link(update, mock_bot, wallet_mgr)
-
-        wallet_mgr.link_wallet.assert_called_once_with(12345, addr)
-        text = mock_bot.send_message.call_args[1]["text"]
-        assert "Wallet linked" in text
-
-    @pytest.mark.asyncio
-    async def test_link_no_address(self, mock_bot):
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        update = _make_update("/link")
-
-        await handle_link(update, mock_bot, wallet_mgr)
-
-        wallet_mgr.link_wallet.assert_not_called()
-        text = mock_bot.send_message.call_args[1]["text"]
-        assert "Usage" in text
-
-    @pytest.mark.asyncio
-    async def test_link_invalid_address(self, mock_bot):
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        wallet_mgr.link_wallet.side_effect = ValueError("bad")
-        update = _make_update("/link 0xBADBAD")
-
-        await handle_link(update, mock_bot, wallet_mgr)
-
-        text = mock_bot.send_message.call_args[1]["text"]
-        assert "Invalid" in text
-
-
-# ---------------------------------------------------------------------------
-# /unlink
-# ---------------------------------------------------------------------------
-
-
-class TestHandleUnlink:
-    @pytest.mark.asyncio
-    async def test_unlink(self, mock_bot):
-        wallet_mgr = AsyncMock(spec=WalletManager)
-        update = _make_update("/unlink")
-
-        await handle_unlink(update, mock_bot, wallet_mgr)
-
-        wallet_mgr.unlink_wallet.assert_called_once_with(12345)
-        text = mock_bot.send_message.call_args[1]["text"]
-        assert "unlinked" in text.lower()
 
 
 # ---------------------------------------------------------------------------

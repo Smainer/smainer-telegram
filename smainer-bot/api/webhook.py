@@ -23,9 +23,11 @@ from src.handlers import (
     handle_balance,
     handle_help,
     handle_inference,
+    handle_link,
     handle_models,
     handle_set_model,
     handle_start,
+    handle_unlink,
     handle_webapp_data,
 )
 from src.payment import PaymentManager
@@ -106,6 +108,10 @@ async def _process_update(update: dict) -> None:
         await handle_start(update, bot, wallet_mgr)
     elif text.startswith("/help"):
         await handle_help(update, bot)
+    elif text.startswith("/link"):
+        await handle_link(update, bot, wallet_mgr)
+    elif text.startswith("/unlink"):
+        await handle_unlink(update, bot, wallet_mgr)
     elif text.startswith("/balance"):
         await handle_balance(update, bot, wallet_mgr)
     elif text.startswith("/models"):

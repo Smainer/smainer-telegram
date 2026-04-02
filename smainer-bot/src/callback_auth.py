@@ -27,17 +27,33 @@ def verify_callback_signature(
     The signature is computed as: HMAC-SHA256(timestamp + "." + body, secret)
     This matches the original callback_server.py signing scheme.
 
+    SEC-001 fail-closed: rejects unsigned callbacks by default when
+    CALLBACK_SIGNING_SECRET is unset.  To allow unsigned callbacks during
+    local development, set SMAINER_CALLBACK_DEV_BYPASS=true explicitly.
+
     Args:
         raw_body: The raw request body bytes.
         timestamp: Value of X-Smainer-Timestamp header.
         sig_header: Value of X-Smainer-Signature header (hex digest).
 
     Returns:
-        True if the signature is valid or no secret is configured (dev mode).
+        True if the signature is valid.
+        True if explicit dev bypass is enabled (SMAINER_CALLBACK_DEV_BYPASS=true).
+        False otherwise (fail-closed).
     """
     if not settings.callback_signing_secret:
-        logger.warning("CALLBACK_SIGNING_SECRET not set — skipping signature check")
-        return True
+        if settings.callback_dev_bypass:
+            logger.warning(
+                "SEC-001: CALLBACK_SIGNING_SECRET not set and "
+                "SMAINER_CALLBACK_DEV_BYPASS=true — accepting unsigned callback "
+                "(THIS MUST NOT BE USED IN PRODUCTION)"
+            )
+            return True
+        logger.error(
+            "SEC-001: CALLBACK_SIGNING_SECRET not set — rejecting callback "
+            "(set the secret or enable SMAINER_CALLBACK_DEV_BYPASS=true for local dev)"
+        )
+        return False
     if not sig_header or not timestamp:
         return False
 

@@ -47,6 +47,11 @@ class Settings(BaseSettings):
         default="",
         description="HMAC-SHA256 secret used to verify relayer→bot callbacks",
     )
+    callback_dev_bypass: bool = Field(
+        default=False,
+        description="SEC-001: Explicit opt-in to accept unsigned callbacks when "
+        "CALLBACK_SIGNING_SECRET is unset. Must NEVER be true in production.",
+    )
 
     # ------------------------------------------------------------------
     # Wallet privacy (TM-001)

@@ -137,13 +137,29 @@ class TestTimestampTolerance:
 
 
 class TestDevModeNoSecret:
-    def test_no_secret_configured_allows_all(self):
-        """When CALLBACK_SIGNING_SECRET is empty, verification is skipped."""
+    def test_no_secret_no_bypass_rejects(self):
+        """SEC-001: When CALLBACK_SIGNING_SECRET is empty and bypass is off, reject."""
         with patch("src.callback_auth.settings") as mock_settings:
             mock_settings.callback_signing_secret = ""
+            mock_settings.callback_dev_bypass = False
+            assert verify_callback_signature(b"anything", None, None) is False
+
+    def test_no_secret_no_bypass_rejects_with_headers(self):
+        """SEC-001: Even with headers present, reject when no secret and no bypass."""
+        with patch("src.callback_auth.settings") as mock_settings:
+            mock_settings.callback_signing_secret = ""
+            mock_settings.callback_dev_bypass = False
+            assert verify_callback_signature(b"data", "123", "sig") is False
+
+    def test_no_secret_with_bypass_allows(self):
+        """When dev bypass is explicitly enabled and no secret, allow."""
+        with patch("src.callback_auth.settings") as mock_settings:
+            mock_settings.callback_signing_secret = ""
+            mock_settings.callback_dev_bypass = True
             assert verify_callback_signature(b"anything", None, None) is True
 
-    def test_no_secret_configured_with_headers_still_allows(self):
+    def test_no_secret_with_bypass_allows_with_headers(self):
         with patch("src.callback_auth.settings") as mock_settings:
             mock_settings.callback_signing_secret = ""
+            mock_settings.callback_dev_bypass = True
             assert verify_callback_signature(b"data", "123", "sig") is True
