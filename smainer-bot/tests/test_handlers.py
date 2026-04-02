@@ -311,8 +311,7 @@ class TestHandleInference:
 
     @pytest.mark.asyncio
     async def test_inference_insufficient_balance(self, deps):
-        """Unified flow: balance checks are deferred to on-chain escrow in the
-        MiniApp. The bot always shows the payment gate."""
+        """Balance pre-check: insufficient balance shows rejection message."""
         deps["wallet_mgr"].has_sufficient_balance.return_value = False
         update = _make_update("Hello AI")
 
@@ -326,7 +325,7 @@ class TestHandleInference:
 
         deps["relayer"].submit_inference.assert_not_called()
         text = deps["bot"].send_message.call_args[1]["text"]
-        assert "Ready to compute" in text
+        assert "Insufficient" in text
 
     @pytest.mark.asyncio
     async def test_inference_empty_message_ignored(self, deps):
@@ -364,8 +363,7 @@ class TestHandleInference:
 
     @pytest.mark.asyncio
     async def test_inference_balance_check_fails(self, deps):
-        """Unified flow: balance checks are deferred to MiniApp/on-chain.
-        Handler shows payment gate regardless of RPC availability."""
+        """Balance pre-check: RPC failure shows retry message."""
         deps["wallet_mgr"].has_sufficient_balance.side_effect = BalanceUnavailableError("down")
         update = _make_update("Hello AI")
 
@@ -378,7 +376,7 @@ class TestHandleInference:
         )
 
         text = deps["bot"].send_message.call_args[1]["text"]
-        assert "Ready to compute" in text
+        assert "Balance check failed" in text
 
 
 # ---------------------------------------------------------------------------
