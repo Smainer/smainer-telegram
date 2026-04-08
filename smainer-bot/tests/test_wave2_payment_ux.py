@@ -15,7 +15,7 @@ import pytest
 
 from src.config import settings
 from src.handlers import handle_inference, handle_webapp_data
-from src.models import ModelTier
+from src.models import ModelTier, SubmitResult
 from src.nonce import NONCE_TTL_SECONDS
 from src.payment import PaymentManager
 from src.relayer_client import RelayerClient
@@ -28,6 +28,13 @@ pytestmark = pytest.mark.usefixtures("_patch_touch_session")
 @pytest.fixture(autouse=True)
 def _patch_touch_session():
     with patch("src.handlers.touch_session"):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_payment_verifier():
+    with patch("src.handlers.PaymentVerifier") as MockVerifier:
+        MockVerifier.return_value.verify_escrow = AsyncMock(return_value=(True, None))
         yield
 
 
@@ -77,7 +84,7 @@ def _mock_relayer(model: str = None):
     )
     relayer.kv_get = AsyncMock(return_value=model)
     relayer.kv_set = AsyncMock()
-    relayer.submit_inference = AsyncMock(return_value="task-xyz-001")
+    relayer.submit_inference = AsyncMock(return_value=SubmitResult(task_id="task-xyz-001", ok=True, http_status=201))
     return relayer
 
 
@@ -108,9 +115,9 @@ class TestReturningUserFlow:
         call_kwargs = bot.edit_message_reply_markup.call_args[1]
         keyboard = call_kwargs["reply_markup"]
         btn = keyboard.inline_keyboard[0][0]
-        url = btn.web_app.url
+        url = btn.url
 
-        assert "wallet_linked=1" in url, f"Expected wallet_linked=1 in URL: {url}"
+        assert "flow=direct" in url, f"Expected flow=direct in URL: {url}"
         assert "nonce=nonce-returning-001" in url
 
     @pytest.mark.asyncio
@@ -121,7 +128,7 @@ class TestReturningUserFlow:
         wallet_mgr.get_linked_address = AsyncMock(return_value="0x" + "ab" * 32)
         payment_mgr = AsyncMock(spec=PaymentManager)
         relayer = _mock_relayer()
-        relayer.submit_inference = AsyncMock(return_value="task-ret-001")
+        relayer.submit_inference = AsyncMock(return_value=SubmitResult(task_id="task-ret-001", ok=True, http_status=201))
 
         data = json.dumps({
             "action": "payment_complete",
@@ -168,7 +175,7 @@ class TestFirstTimeUserFlow:
         call_kwargs = bot.edit_message_reply_markup.call_args[1]
         keyboard = call_kwargs["reply_markup"]
         btn = keyboard.inline_keyboard[0][0]
-        url = btn.web_app.url
+        url = btn.url
 
         assert "wallet_linked" not in url, f"wallet_linked should NOT appear in URL: {url}"
         assert "nonce=nonce-new-001" in url
@@ -181,7 +188,7 @@ class TestFirstTimeUserFlow:
         wallet_mgr.get_linked_address = AsyncMock(return_value=None)
         payment_mgr = AsyncMock(spec=PaymentManager)
         relayer = _mock_relayer()
-        relayer.submit_inference = AsyncMock(return_value="task-new-001")
+        relayer.submit_inference = AsyncMock(return_value=SubmitResult(task_id="task-new-001", ok=True, http_status=201))
 
         # Step 1: User connects wallet via MiniApp
         connect_data = json.dumps({

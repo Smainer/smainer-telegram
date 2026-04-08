@@ -30,7 +30,7 @@ from src.handlers import (
     handle_unlink,
     handle_webapp_data,
 )
-from src.models import InferenceRequest, ModelTier, TaskCallback
+from src.models import InferenceRequest, ModelTier, SubmitResult, TaskCallback
 from src.nonce import NONCE_TTL_SECONDS
 from src.payment import PaymentManager
 from src.relayer_client import RelayerClient
@@ -45,6 +45,13 @@ pytestmark = pytest.mark.usefixtures("_patch_touch_session")
 @pytest.fixture(autouse=True)
 def _patch_touch_session():
     with patch("src.handlers.touch_session"):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_payment_verifier():
+    with patch("src.handlers.PaymentVerifier") as MockVerifier:
+        MockVerifier.return_value.verify_escrow = AsyncMock(return_value=(True, None))
         yield
 
 
@@ -99,7 +106,7 @@ def _mock_relayer():
     )
     relayer.kv_get = AsyncMock(return_value=None)
     relayer.kv_set = AsyncMock()
-    relayer.submit_inference = AsyncMock(return_value="task-e2e-001")
+    relayer.submit_inference = AsyncMock(return_value=SubmitResult(task_id="task-e2e-001", ok=True, http_status=201))
     return relayer
 
 
@@ -157,9 +164,9 @@ class TestScenario1_FirstTimeUser:
         assert "Pay" in btn.text and "Compute" in btn.text
 
         # URL should NOT contain wallet_linked
-        assert "wallet_linked" not in btn.web_app.url
+        assert "wallet_linked" not in btn.url
         # URL should contain nonce
-        assert "nonce=nonce-first-001" in btn.web_app.url
+        assert "nonce=nonce-first-001" in btn.url
 
     @pytest.mark.asyncio
     async def test_step2_wallet_connect_via_miniapp(self):
@@ -251,7 +258,7 @@ class TestScenario1_FirstTimeUser:
             await handle_inference(update, bot, wallet_mgr, payment_mgr, relayer)
 
         assert bot.edit_message_reply_markup.called
-        url = bot.edit_message_reply_markup.call_args[1]["reply_markup"].inline_keyboard[0][0].web_app.url
+        url = bot.edit_message_reply_markup.call_args[1]["reply_markup"].inline_keyboard[0][0].url
         assert "wallet_linked" not in url
 
         # Step 2: User connects wallet via MiniApp
@@ -321,8 +328,8 @@ class TestScenario2_ReturningUser:
         btn = keyboard.inline_keyboard[0][0]
 
         assert "Pay" in btn.text and "Compute" in btn.text
-        assert "wallet_linked=1" in btn.web_app.url
-        assert "nonce=nonce-ret-001" in btn.web_app.url
+        assert "flow=direct" in btn.url
+        assert "nonce=nonce-ret-001" in btn.url
 
     @pytest.mark.asyncio
     async def test_step2_payment_complete_no_connect_needed(self):
@@ -380,8 +387,8 @@ class TestScenario2_ReturningUser:
         with patch("src.handlers.generate_nonce", return_value="nonce-full-ret"):
             await handle_inference(_make_update("How does STARK proving work?"), bot, wallet_mgr, payment_mgr, relayer)
 
-        url = bot.edit_message_reply_markup.call_args[1]["reply_markup"].inline_keyboard[0][0].web_app.url
-        assert "wallet_linked=1" in url
+        url = bot.edit_message_reply_markup.call_args[1]["reply_markup"].inline_keyboard[0][0].url
+        assert "flow=direct" in url
 
         # Step 2: Payment (no connect step)
         bot.reset_mock()
@@ -682,7 +689,7 @@ class TestScenario4_ErrorScenarios:
         wallet_mgr.get_linked_address = AsyncMock(return_value=ADDRESS)
         payment_mgr = AsyncMock(spec=PaymentManager)
         relayer = _mock_relayer()
-        relayer.submit_inference = AsyncMock(return_value=None)  # failure
+        relayer.submit_inference = AsyncMock(return_value=SubmitResult(ok=False, error_code="rejected", error_detail="Test failure"))  # failure
 
         data = _payment_complete_data(on_chain_task_id=77, prompt="Relayer fail test")
         update = _make_webapp_update(data)

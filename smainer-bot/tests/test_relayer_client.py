@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 
-from src.models import InferenceRequest, ModelTier, TaskStatusResponse
+from src.models import InferenceRequest, ModelTier, SubmitResult, TaskStatusResponse
 from src.relayer_client import RelayerClient
 
 
@@ -53,7 +53,8 @@ class TestSubmitInference:
 
             result = await client.submit_inference(sample_request)
 
-        assert result == "task-abc-123"
+        assert result.ok is True
+        assert result.task_id == "task-abc-123"
 
     @pytest.mark.asyncio
     async def test_submit_relayer_error(self, client, sample_request):
@@ -70,7 +71,8 @@ class TestSubmitInference:
 
             result = await client.submit_inference(sample_request)
 
-        assert result is None
+        assert not result.ok
+        assert result.http_status == 503
 
     @pytest.mark.asyncio
     async def test_submit_network_error(self, client, sample_request):
@@ -85,7 +87,8 @@ class TestSubmitInference:
 
             result = await client.submit_inference(sample_request)
 
-        assert result is None
+        assert not result.ok
+        assert result.error_code == "network_error"
 
     @pytest.mark.asyncio
     async def test_submit_sends_correct_callback_urls(self, client, sample_request):

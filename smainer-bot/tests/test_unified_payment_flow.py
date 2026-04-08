@@ -130,8 +130,8 @@ class TestUnifiedPaymentFlow:
         call_kwargs = mock_bot.edit_message_reply_markup.call_args[1]
         keyboard = call_kwargs["reply_markup"]
         btn = keyboard.inline_keyboard[0][0]
-        # WebAppInfo URL should contain the nonce
-        assert "nonce=nonce-xyz-123" in btn.web_app.url
+        # URL should contain the nonce
+        assert "nonce=nonce-xyz-123" in btn.url
 
 
 # ---------------------------------------------------------------------------
