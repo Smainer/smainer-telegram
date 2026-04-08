@@ -248,17 +248,154 @@ class TestPaymentVerifier:
             assert err is None
 
     @pytest.mark.asyncio
-    async def test_verify_escrow_handles_import_error(self):
-        """When starknet-py is not available, verification passes gracefully."""
+    async def test_verify_escrow_fails_closed_on_import_error(self):
+        """SEC-003: When starknet-py is not available, verification must REJECT."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            mock_settings.starknet_rpc_url = "https://test-rpc.example.com"
+
+            # SEC-003: simulate missing starknet_py at init time
+            with patch.dict("sys.modules", {"starknet_py": None}):
+                verifier = PaymentVerifier()
+                assert verifier._starknet_available is False
+
+            ok, err = await verifier.verify_escrow(1, "0x04a3")
+            assert ok is False
+            assert "unavailable" in err.lower()
+
+    @pytest.mark.asyncio
+    async def test_verify_escrow_fails_closed_on_rpc_error(self):
+        """SEC-001: RPC errors must reject after retries, not allow unverified compute."""
         with patch("src.payment_verifier.settings") as mock_settings:
             mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
             mock_settings.starknet_rpc_url = "https://test-rpc.example.com"
             verifier = PaymentVerifier()
+            verifier._starknet_available = True  # force past SEC-003 check
 
-            # Force ImportError by patching the import
-            with patch.dict("sys.modules", {"starknet_py": None, "starknet_py.net.full_node_client": None}):
-                ok, err = await verifier.verify_escrow(1, "0x04a3")
-                assert ok is True
+            mock_client = AsyncMock()
+            mock_client.call_contract.side_effect = ConnectionError("RPC timeout")
+
+            with patch.dict("sys.modules", {
+                "starknet_py": MagicMock(),
+                "starknet_py.net.full_node_client": MagicMock(),
+                "starknet_py.net.client_models": MagicMock(),
+                "starknet_py.hash.selector": MagicMock(),
+            }):
+                import sys
+                sys.modules["starknet_py.net.full_node_client"].FullNodeClient.return_value = mock_client
+
+                # Eliminate backoff delay in tests
+                with patch("src.payment_verifier.asyncio.sleep", new_callable=AsyncMock):
+                    ok, err = await verifier.verify_escrow(1, "0x04a3")
+
+                assert ok is False
+                assert "failed" in err.lower()
+
+    @pytest.mark.asyncio
+    async def test_verify_escrow_retries_before_failing(self):
+        """SEC-001: verify_escrow must retry _MAX_RPC_RETRIES times before rejecting."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            mock_settings.starknet_rpc_url = "https://test-rpc.example.com"
+            verifier = PaymentVerifier()
+            verifier._starknet_available = True
+
+            mock_client = AsyncMock()
+            mock_client.call_contract.side_effect = ConnectionError("RPC timeout")
+
+            with patch.dict("sys.modules", {
+                "starknet_py": MagicMock(),
+                "starknet_py.net.full_node_client": MagicMock(),
+                "starknet_py.net.client_models": MagicMock(),
+                "starknet_py.hash.selector": MagicMock(),
+            }):
+                import sys
+                sys.modules["starknet_py.net.full_node_client"].FullNodeClient.return_value = mock_client
+
+                with patch("src.payment_verifier.asyncio.sleep", new_callable=AsyncMock):
+                    ok, err = await verifier.verify_escrow(1, "0x04a3")
+
+                # Must have attempted exactly _MAX_RPC_RETRIES times
+                from src.payment_verifier import _MAX_RPC_RETRIES
+                assert mock_client.call_contract.call_count == _MAX_RPC_RETRIES
+                assert ok is False
+
+    @pytest.mark.asyncio
+    async def test_verify_escrow_no_bypass_on_network_error(self):
+        """SEC-001: No env var or flag can override fail-closed on network errors."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            mock_settings.starknet_rpc_url = "https://test-rpc.example.com"
+            verifier = PaymentVerifier()
+            verifier._starknet_available = True
+
+            mock_client = AsyncMock()
+            mock_client.call_contract.side_effect = TimeoutError("gateway timeout")
+
+            with patch.dict("sys.modules", {
+                "starknet_py": MagicMock(),
+                "starknet_py.net.full_node_client": MagicMock(),
+                "starknet_py.net.client_models": MagicMock(),
+                "starknet_py.hash.selector": MagicMock(),
+            }):
+                import sys
+                sys.modules["starknet_py.net.full_node_client"].FullNodeClient.return_value = mock_client
+
+                with patch("src.payment_verifier.asyncio.sleep", new_callable=AsyncMock):
+                    ok, err = await verifier.verify_escrow(1, "0x04a3")
+
+                assert ok is False, "TimeoutError must cause rejection"
+                assert "failed" in err.lower()
+
+    @pytest.mark.asyncio
+    async def test_verify_escrow_rejects_malformed_address(self):
+        """SEC-002: Malformed expected_address must fail before RPC call."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            verifier = PaymentVerifier()
+            ok, err = await verifier.verify_escrow(1, "not-a-hex-address")
+            assert ok is False
+            assert "invalid" in err.lower()
+
+    @pytest.mark.asyncio
+    async def test_verify_escrow_rejects_address_without_0x(self):
+        """SEC-002: Address without 0x prefix must be rejected immediately."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            verifier = PaymentVerifier()
+            ok, err = await verifier.verify_escrow(1, "4a3bcd")
+            assert ok is False
+            assert "invalid" in err.lower()
+
+    @pytest.mark.asyncio
+    async def test_verify_escrow_rejects_non_hex_address(self):
+        """SEC-002: Address with non-hex chars must be rejected immediately."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            verifier = PaymentVerifier()
+            ok, err = await verifier.verify_escrow(1, "0xGGGG")
+            assert ok is False
+            assert "invalid" in err.lower()
+
+    @pytest.mark.asyncio
+    async def test_sec003_init_detection_persists(self):
+        """SEC-003: Once init detects missing dep, ALL subsequent calls must reject."""
+        with patch("src.payment_verifier.settings") as mock_settings:
+            mock_settings.smainer_contract_address = "0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe"
+            mock_settings.starknet_rpc_url = "https://test-rpc.example.com"
+
+            with patch.dict("sys.modules", {"starknet_py": None}):
+                verifier = PaymentVerifier()
+
+            # First call
+            ok1, err1 = await verifier.verify_escrow(1, "0x04a3")
+            assert ok1 is False
+            assert "unavailable" in err1.lower()
+
+            # Second call — must STILL reject
+            ok2, err2 = await verifier.verify_escrow(2, "0x04a3")
+            assert ok2 is False
+            assert "unavailable" in err2.lower()
 
 
 # ---------------------------------------------------------------------------
