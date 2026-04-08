@@ -8,7 +8,7 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-08-v21-no-wallet-loop';
+const BUILD_VERSION = '2026-04-08-v22-fix-confirm-cta';
 
 // LocalStorage key for persisted wallet session (TM-005)
 const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
@@ -1071,9 +1071,9 @@ export function PaymentFlow({
                   </button>
                   <button
                     onClick={handlePayment}
-                    disabled={hasInsufficientBalance || !isContractReady || !account || isLoading}
+                    disabled={hasInsufficientBalance || isLoading || (capabilities.canSign ? (!isContractReady || !account) : !effectiveAddress)}
                     className="flex-1 px-4 py-3.5 rounded-xl bg-[var(--blue)] text-white font-semibold hover:bg-[var(--blue-hover)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || !isContractReady || !account || isLoading) ? 0.4 : 1 }}
+                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: '#3B82F6', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (hasInsufficientBalance || isLoading || (capabilities.canSign ? (!isContractReady || !account) : !effectiveAddress)) ? 0.4 : 1 }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
