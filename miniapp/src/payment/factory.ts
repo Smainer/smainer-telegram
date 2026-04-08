@@ -35,8 +35,13 @@ export function resolveEnvironment(input: ResolveEnvironmentInput): PaymentEnvir
   // Bot-linked wallet in a standalone browser (no extension connected yet).
   if (input.botLinkedWallet) return 'bot-linked-readonly';
 
-  // Fallback: treat as WebView (show "Open in Browser" CTA).
-  return 'telegram-webview';
+  // Standalone browser, no wallet connected yet.
+  // Do NOT fall back to 'telegram-webview' here — that sets
+  // requiresRedirect=true which shows wallet-choice redirect buttons.
+  // On desktop, those buttons open the same URL → infinite loop.
+  // 'bot-linked-readonly' has requiresRedirect=false so the user sees
+  // the standard connect UI and can install/connect a wallet extension.
+  return 'bot-linked-readonly';
 }
 
 // -------------------------------------------------------------------------

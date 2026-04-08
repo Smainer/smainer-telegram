@@ -8,7 +8,7 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-08-v20-desktop-wallet-fix';
+const BUILD_VERSION = '2026-04-08-v21-no-wallet-loop';
 
 // LocalStorage key for persisted wallet session (TM-005)
 const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
@@ -349,9 +349,18 @@ export function PaymentFlow({
   );
 
   // Wave 0 Option D: Direct wallet flow — bot sent flow=direct,
-  // skip all connect/approve UI and auto-redirect to wallet
+  // skip all connect/approve UI and auto-redirect to wallet.
+  // Only active in Telegram WebView (where redirect to browser is needed)
+  // or on mobile (where redirect to wallet app deep link is needed).
+  // On desktop browser, wallet extensions handle connection directly —
+  // no redirect needed. Setting isDirectFlow=false on desktop prevents
+  // a loop where redirect buttons re-open the same MiniApp URL.
   const isDirectFlow = useMemo(
-    () => new URLSearchParams(window.location.search).get('flow') === 'direct',
+    () => {
+      if (new URLSearchParams(window.location.search).get('flow') !== 'direct') return false;
+      const isTgWebView = !!(window as any).Telegram?.WebApp;
+      return isTgWebView || isMobileDevice();
+    },
     [],
   );
   const [directFlowTriggered, setDirectFlowTriggered] = useState(false);
@@ -842,8 +851,43 @@ export function PaymentFlow({
                     <Spinner size={20} />
                     <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Connecting to wallet...</span>
                   </div>
-                ) : (
+                ) : isInTelegram ? (
+                  /* In Telegram WebView: show redirect buttons to open wallet app */
                   <WalletDeepLinks />
+                ) : (
+                  /* Desktop/mobile browser without wallet extension:
+                     show install prompt instead of redirect buttons that loop */
+                  <div className="p-4 rounded-xl bg-[var(--void)] border border-[var(--border-subtle)] text-center space-y-3" style={{ padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                    <p className="text-white text-sm font-medium" style={{ color: 'white', fontSize: '14px', fontWeight: 500 }}>
+                      No wallet extension detected
+                    </p>
+                    <p className="text-[var(--text-muted)] text-xs" style={{ color: '#A1A1AA', fontSize: '12px' }}>
+                      Install Braavos or Argent X browser extension to continue
+                    </p>
+                    <div className="flex gap-2 justify-center" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <a
+                        href="https://braavos.app"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150"
+                        style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', fontWeight: 500, background: 'linear-gradient(135deg, #F5841F, #FFB84D)', color: '#000', textDecoration: 'none' }}
+                      >
+                        Get Braavos
+                      </a>
+                      <a
+                        href="https://www.argent.xyz/argent-x/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150"
+                        style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', fontWeight: 500, background: 'rgba(255,135,91,0.15)', color: '#FF875B', border: '1px solid rgba(255,135,91,0.3)', textDecoration: 'none' }}
+                      >
+                        Get Argent X
+                      </a>
+                    </div>
+                    <p className="text-[var(--text-muted)] text-xs" style={{ color: '#71717A', fontSize: '11px' }}>
+                      After installing, refresh this page
+                    </p>
+                  </div>
                 )}
               </div>)}
 
@@ -993,11 +1037,12 @@ export function PaymentFlow({
               )}
 
               {/* Action Buttons */}
-              {capabilities.requiresRedirect ? (
+              {capabilities.requiresRedirect && isInTelegram ? (
                 /* Wallet can't sign in this WebView — show redirect buttons
                    to open in external browser where extensions work.
-                   Never show 'Connecting to wallet...' here — requiresRedirect
-                   means the extension can't be used even if it's injected. */
+                   Guard: only in actual Telegram WebView. In standalone
+                   browser, requiresRedirect should be false (factory fix),
+                   but this guard prevents loops if it's ever wrong. */
                 <div
                   className="flex flex-col gap-3 pt-2"
                   style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}
