@@ -8,7 +8,7 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-08-v19-tdz-fix';
+const BUILD_VERSION = '2026-04-08-v20-desktop-wallet-fix';
 
 // LocalStorage key for persisted wallet session (TM-005)
 const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
@@ -475,14 +475,19 @@ export function PaymentFlow({
   }, [isConnected, connectingId, availableConnectors, connect]);
 
   // Timeout: if injected wallet is detected but connection doesn't succeed
-  // within 8 seconds (e.g. Telegram Desktop WebView where extension popups
+  // within 5 seconds (e.g. Telegram Desktop WebView where extension popups
   // can't open), fall back to redirect buttons.
+  // NOTE: In Telegram Desktop WebView, isConnected can be stale from a
+  // cached starknet-react session while the extension cannot actually sign.
+  // Always start the timeout in WebView context, even if isConnected is true.
   useEffect(() => {
-    if (isConnected || !hasInjectedWallet()) return;
+    if (!hasInjectedWallet()) return;
+    const isTgWebView = !!(window as any).Telegram?.WebApp || navigator.userAgent.includes('Telegram');
+    if (isConnected && !isTgWebView) return;
     const timer = setTimeout(() => {
       console.log('[PaymentFlow] Injected wallet connection timed out — showing redirect buttons');
       setInjectedWalletTimedOut(true);
-    }, 8000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [isConnected]);
 
@@ -988,29 +993,17 @@ export function PaymentFlow({
               )}
 
               {/* Action Buttons */}
-              {capabilities.requiresRedirect && !hasInjectedWallet() ? (
+              {capabilities.requiresRedirect ? (
+                /* Wallet can't sign in this WebView — show redirect buttons
+                   to open in external browser where extensions work.
+                   Never show 'Connecting to wallet...' here — requiresRedirect
+                   means the extension can't be used even if it's injected. */
                 <div
                   className="flex flex-col gap-3 pt-2"
                   style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}
                 >
-                  {/* Wallet deep link buttons — only when NOT in a wallet's browser */}
                   <WalletPayButtons />
 
-                  <button
-                    onClick={onCancel}
-                    className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', fontWeight: 500, border: 'none', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : capabilities.requiresRedirect && hasInjectedWallet() && !injectedWalletTimedOut ? (
-                /* Wallet IS injected (Braavos/Argent in-app browser) — go back to connect step */
-                <div className="flex flex-col gap-3 pt-2" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}>
-                  <div className="flex items-center justify-center gap-3 py-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '16px 0' }}>
-                    <Spinner size={20} />
-                    <span className="text-[var(--text-muted)] text-sm" style={{ color: '#A1A1AA', fontSize: '14px' }}>Connecting to wallet...</span>
-                  </div>
                   <button
                     onClick={onCancel}
                     className="w-full px-4 py-3 rounded-xl bg-[var(--surface-elevated)] text-[var(--text-secondary)] font-medium hover:bg-[var(--surface-glass)] hover:text-white transition-all duration-150"
