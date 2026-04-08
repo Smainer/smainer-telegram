@@ -8,7 +8,7 @@ import { useTelegramData } from '@/hooks/useTelegramData';
 import { storePaymentContext, clearPaymentContext } from '@/lib/paymentContext';
 
 // Version for deployment verification (increment on each deploy)
-const BUILD_VERSION = '2026-04-02-v18-wave2';
+const BUILD_VERSION = '2026-04-08-v19-tdz-fix';
 
 // LocalStorage key for persisted wallet session (TM-005)
 const WALLET_PERSIST_KEY = 'smainer_connected_wallet';
@@ -558,22 +558,6 @@ export function PaymentFlow({
     }
   }, [phase]);
 
-  // Wave 2: Auto-execute payment in direct flow when wallet is connected.
-  // Removes the visible "Approve & Pay" confirm step — transaction goes
-  // straight to the wallet for signing without an intermediate MiniApp screen.
-  const [directPayTriggered, setDirectPayTriggered] = useState(false);
-  useEffect(() => {
-    if (!isDirectFlow) return;
-    if (step !== 'confirm') return;
-    if (directPayTriggered) return;
-    if (!account || !isContractReady || isLoading) return;
-    if (hasInsufficientBalance) return;
-
-    setDirectPayTriggered(true);
-    console.log('[PaymentFlow] Wave 2: Direct flow auto-executing payment');
-    handlePayment();
-  }, [isDirectFlow, step, directPayTriggered, account, isContractReady, isLoading, hasInsufficientBalance]);
-
   const costEstimate = useCostEstimate(prompt, tier, userModel);
   const tierInfo = COMPUTE_TIERS[tier];
 
@@ -656,6 +640,22 @@ export function PaymentFlow({
   };
 
   const hasInsufficientBalance = parseFloat(balance) < parseFloat(costEstimate.maxEscrow);
+
+  // Wave 2: Auto-execute payment in direct flow when wallet is connected.
+  // Removes the visible "Approve & Pay" confirm step — transaction goes
+  // straight to the wallet for signing without an intermediate MiniApp screen.
+  const [directPayTriggered, setDirectPayTriggered] = useState(false);
+  useEffect(() => {
+    if (!isDirectFlow) return;
+    if (step !== 'confirm') return;
+    if (directPayTriggered) return;
+    if (!account || !isContractReady || isLoading) return;
+    if (hasInsufficientBalance) return;
+
+    setDirectPayTriggered(true);
+    console.log('[PaymentFlow] Wave 2: Direct flow auto-executing payment');
+    handlePayment();
+  }, [isDirectFlow, step, directPayTriggered, account, isContractReady, isLoading, hasInsufficientBalance]);
 
   // Get wallet brand styling
   const getWalletBrand = (connectorId: string) => {
