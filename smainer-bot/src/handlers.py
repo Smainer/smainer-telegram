@@ -100,6 +100,227 @@ def with_error_handling(handler_name: str):
 
 
 # ---------------------------------------------------------------------------
+# WebApp data helper functions
+# ---------------------------------------------------------------------------
+
+
+async def _handle_wallet_connect(
+    payload: Dict[str, Any],
+    user_id: int,
+    chat_id: int,
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle wallet connection from MiniApp."""
+    address = payload.get("address")
+    if not address:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="No wallet address received. Please try again.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    try:
+        await wallet_mgr.link_wallet(user_id, address)
+    except ValueError:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "Invalid Starknet address received from miniapp. "
+                "Please try again via the MiniApp."
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    wallet_type = payload.get("wallet_type", "unknown")
+    logger.info("Wallet connected via miniapp: user=%s wallet_type=%s", user_id, wallet_type)
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=f"Wallet connected: `{address}`\n\nSend any message to run AI inference.",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+async def _verify_payment_escrow(
+    verifier: PaymentVerifier,
+    on_chain_task_id: int,
+    starknet_address: str,
+) -> tuple[bool, Optional[str]]:
+    """Verify on-chain escrow with retry logic for delayed transactions."""
+    escrow_ok, escrow_err = await verifier.verify_escrow(
+        on_chain_task_id=on_chain_task_id,
+        expected_address=starknet_address,
+    )
+
+    if not escrow_ok and escrow_err and "not found" in escrow_err.lower():
+        # Delayed verification — tx may still be propagating
+        for delay in (2, 4):
+            logger.info(
+                "metric.verification-retry task=%s delay=%ds",
+                on_chain_task_id, delay,
+            )
+            await asyncio.sleep(delay)
+            escrow_ok, escrow_err = await verifier.verify_escrow(
+                on_chain_task_id=on_chain_task_id,
+                expected_address=starknet_address,
+            )
+            if escrow_ok:
+                break
+
+    return escrow_ok, escrow_err
+
+
+async def _handle_wallet_disconnect(
+    user_id: int,
+    chat_id: int,
+    bot: Bot,
+    wallet_mgr: WalletManager,
+) -> None:
+    """Handle wallet disconnect from MiniApp."""
+    await wallet_mgr.unlink_wallet(user_id)
+    invalidate_session(user_id)
+    await bot.send_message(
+        chat_id=chat_id,
+        text="Wallet disconnected.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+async def _handle_payment_complete(
+    payload: Dict[str, Any],
+    user_id: int,
+    chat_id: int,
+    bot: Bot,
+    wallet_mgr: WalletManager,
+    payment_mgr: PaymentManager,
+    relayer: RelayerClient,
+) -> None:
+    """Handle payment completion from MiniApp."""
+    # METRIC: approval-complete — user returned from wallet approval
+    logger.info("metric.approval-complete user=%s", user_id)
+
+    # TM-004: Verify session is still active (15-min idle timeout)
+    if not check_session_active(user_id):
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Session expired (idle too long). Please send a new prompt to restart.",
+        )
+        return
+
+    on_chain_task_id = payload.get("on_chain_task_id")
+    prompt = payload.get("prompt", "")
+    tier = payload.get("tier", "small")
+    original_chat_id = payload.get("chat_id")
+    original_message_id = payload.get("message_id")
+
+    if not on_chain_task_id or not prompt:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Payment confirmation missing required data. Please try again.",
+        )
+        return
+
+    # Get wallet address — prefer payload (set by MiniApp), fall back to KV
+    starknet_address = payload.get("starknet_address") or await wallet_mgr.get_linked_address(user_id)
+    if not starknet_address:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Wallet address not found. Connect your wallet via the MiniApp.",
+        )
+        return
+
+    # MTG-301 constraint #5: Verify on-chain escrow before scheduling
+    verifier = PaymentVerifier()
+    escrow_ok, escrow_err = await _verify_payment_escrow(
+        verifier, int(on_chain_task_id), starknet_address
+    )
+
+    if not escrow_ok:
+        # METRIC: verification-failed — on-chain check rejected the payment
+        logger.warning(
+            "metric.verification-failed user=%s task=%s reason=%s",
+            user_id, on_chain_task_id, escrow_err,
+        )
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "Payment verification failed. "
+                "If you just approved, wait 30 seconds and re-send your prompt — "
+                "the transaction may still be confirming on-chain."
+            ),
+        )
+        return
+
+    # Determine model from user prefs
+    user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
+    model_tier = infer_tier(user_model)
+
+    # Send typing + placeholder
+    await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    placeholder = await bot.send_message(
+        chat_id=chat_id,
+        text=f"Payment confirmed (Task #{on_chain_task_id}). Running compute task...",
+    )
+
+    # Build request and submit to relayer with on_chain_task_id
+    req = InferenceRequest(
+        telegram_user_id=user_id,
+        chat_id=chat_id,
+        message_id=placeholder.message_id,
+        prompt=prompt,
+        model=user_model,
+        model_tier=model_tier,
+        starknet_address=starknet_address,
+        cost_strk=settings.prompt_cost_strk,
+    )
+
+    result = await relayer.submit_inference(req, on_chain_task_id=int(on_chain_task_id))
+    if not result.ok:
+        # User-friendly errors for specific relayer failures
+        if result.error_code == "payment_required":
+            msg = "Relayer requires payment for this task. Please verify your on-chain approval and try again."
+        elif result.error_code == "bad_gateway":
+            msg = "Compute nodes temporarily unreachable. Please try again in a minute."
+        else:
+            msg = "Failed to submit task. Please try again."
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=placeholder.message_id,
+            text=msg,
+        )
+        return
+
+    task_id = result.task_id
+
+    # METRIC: compute-submitted — task accepted by relayer
+    logger.info(
+        "metric.compute-submitted user=%s task_id=%s on_chain=%s",
+        user_id, task_id, on_chain_task_id,
+    )
+
+    # Log payment reservation with on_chain_task_id
+    await payment_mgr.reserve_payment(
+        task_id=task_id,
+        user_id=user_id,
+        starknet_address=starknet_address,
+        amount=settings.prompt_cost_strk,
+        on_chain_task_id=int(on_chain_task_id),
+    )
+
+    await bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=placeholder.message_id,
+        text=f"Task #{on_chain_task_id} submitted (`{task_id[:8]}...`). Computing results...",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
+# ---------------------------------------------------------------------------
 # /start command
 # ---------------------------------------------------------------------------
 
@@ -224,30 +445,6 @@ async def handle_link(
 # ---------------------------------------------------------------------------
 
 
-@with_error_handling("unlink")
-async def handle_unlink(
-    update: Dict[str, Any],
-    bot: Bot,
-    wallet_mgr: WalletManager,
-) -> None:
-    """Handle /unlink — remove linked wallet."""
-    message = update.get("message", {})
-    chat_id = message.get("chat", {}).get("id")
-    user_id = message.get("from", {}).get("id")
-
-    await wallet_mgr.unlink_wallet(user_id)
-    invalidate_session(user_id)
-    await bot.send_message(
-        chat_id=chat_id,
-        text="Wallet unlinked.",
-    )
-
-
-# ---------------------------------------------------------------------------
-# /help command
-# ---------------------------------------------------------------------------
-
-
 @with_error_handling("help")
 async def handle_help(
     update: Dict[str, Any],
@@ -271,48 +468,6 @@ async def handle_help(
             "Send any text to start a compute task. "
             "Connect your wallet in the MiniApp when prompted."
         ),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-
-
-# ---------------------------------------------------------------------------
-# /link command
-# ---------------------------------------------------------------------------
-
-
-@with_error_handling("link")
-async def handle_link(
-    update: Dict[str, Any],
-    bot: Bot,
-    wallet_mgr: WalletManager,
-) -> None:
-    """Handle /link <address> — directly link a Starknet wallet address."""
-    message = update.get("message", {})
-    user_id = message.get("from", {}).get("id")
-    chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "")
-
-    parts = text.split(maxsplit=1)
-    if len(parts) < 2:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Usage: /link <Starknet address>\nExample: /link 0x04a3...",
-        )
-        return
-
-    address = parts[1].strip()
-    try:
-        await wallet_mgr.link_wallet(user_id, address)
-    except ValueError:
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Invalid Starknet address. Please check the format and try again.",
-        )
-        return
-
-    await bot.send_message(
-        chat_id=chat_id,
-        text=f"Wallet linked: `{address}`",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -396,198 +551,20 @@ async def handle_webapp_data(
     # TM-004: Touch session on valid activity
     touch_session(user_id)
 
-    # Handle wallet connection from MiniApp
+    # Delegate to specific handler functions based on action
     if action == "wallet_connect":
-        address = payload.get("address")
-        if not address:
-            await bot.send_message(
-                chat_id=chat_id,
-                text="No wallet address received. Please try again.",
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            return
-
-        try:
-            await wallet_mgr.link_wallet(user_id, address)
-        except ValueError:
-            await bot.send_message(
-                chat_id=chat_id,
-                text=(
-                    "Invalid Starknet address received from miniapp. "
-                    "Please try again via the MiniApp."
-                ),
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            return
-
-        wallet_type = payload.get("wallet_type", "unknown")
-        logger.info("Wallet connected via miniapp: user=%s wallet_type=%s", user_id, wallet_type)
-
+        await _handle_wallet_connect(payload, user_id, chat_id, bot, wallet_mgr)
+    elif action == "payment_complete":
+        await _handle_payment_complete(payload, user_id, chat_id, bot, wallet_mgr, payment_mgr, relayer)
+    elif action == "wallet_disconnect":
+        await _handle_wallet_disconnect(user_id, chat_id, bot, wallet_mgr)
+    else:
+        # Unreachable: allowlist guarantees only known actions reach here
         await bot.send_message(
             chat_id=chat_id,
-            text=f"Wallet connected: `{address}`\n\nSend any message to run AI inference.",
-            parse_mode=ParseMode.MARKDOWN,
+            text="Unexpected data from miniapp. Please try /start again.",
             reply_markup=ReplyKeyboardRemove(),
         )
-        return
-
-    # Handle payment completion from MiniApp
-    if action == "payment_complete":
-        # METRIC: approval-complete — user returned from wallet approval
-        logger.info("metric.approval-complete user=%s", user_id)
-
-        # TM-004: Verify session is still active (15-min idle timeout)
-        if not check_session_active(user_id):
-            await bot.send_message(
-                chat_id=chat_id,
-                text="Session expired (idle too long). Please send a new prompt to restart.",
-            )
-            return
-
-        on_chain_task_id = payload.get("on_chain_task_id")
-        prompt = payload.get("prompt", "")
-        tier = payload.get("tier", "small")
-        original_chat_id = payload.get("chat_id")
-        original_message_id = payload.get("message_id")
-
-        if not on_chain_task_id or not prompt:
-            await bot.send_message(
-                chat_id=chat_id,
-                text="Payment confirmation missing required data. Please try again.",
-            )
-            return
-
-        # Get wallet address — prefer payload (set by MiniApp), fall back to KV
-        starknet_address = payload.get("starknet_address") or await wallet_mgr.get_linked_address(user_id)
-        if not starknet_address:
-            await bot.send_message(
-                chat_id=chat_id,
-                text="Wallet address not found. Connect your wallet via the MiniApp.",
-            )
-            return
-
-        # MTG-301 constraint #5: Verify on-chain escrow before scheduling
-        # Delayed verification: the tx may not be indexed yet. Retry up to 2 extra
-        # times with short backoff before failing closed.
-        verifier = PaymentVerifier()
-        escrow_ok, escrow_err = await verifier.verify_escrow(
-            on_chain_task_id=int(on_chain_task_id),
-            expected_address=starknet_address,
-        )
-
-        if not escrow_ok and escrow_err and "not found" in escrow_err.lower():
-            # Delayed verification — tx may still be propagating
-            for delay in (2, 4):
-                logger.info(
-                    "metric.verification-retry task=%s delay=%ds",
-                    on_chain_task_id, delay,
-                )
-                await asyncio.sleep(delay)
-                escrow_ok, escrow_err = await verifier.verify_escrow(
-                    on_chain_task_id=int(on_chain_task_id),
-                    expected_address=starknet_address,
-                )
-                if escrow_ok:
-                    break
-
-        if not escrow_ok:
-            # METRIC: verification-failed — on-chain check rejected the payment
-            logger.warning(
-                "metric.verification-failed user=%s task=%s reason=%s",
-                user_id, on_chain_task_id, escrow_err,
-            )
-            await bot.send_message(
-                chat_id=chat_id,
-                text=(
-                    "Payment verification failed. "
-                    "If you just approved, wait 30 seconds and re-send your prompt — "
-                    "the transaction may still be confirming on-chain."
-                ),
-            )
-            return
-
-        # Determine model from user prefs
-        user_model = await relayer.kv_get(f"prefs:{user_id}:model") or settings.default_model
-        model_tier = infer_tier(user_model)
-
-        # Send typing + placeholder
-        await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-        placeholder = await bot.send_message(
-            chat_id=chat_id,
-            text=f"Payment confirmed (Task #{on_chain_task_id}). Running compute task...",
-        )
-
-        # Build request and submit to relayer with on_chain_task_id
-        req = InferenceRequest(
-            telegram_user_id=user_id,
-            chat_id=chat_id,
-            message_id=placeholder.message_id,
-            prompt=prompt,
-            model=user_model,
-            model_tier=model_tier,
-            starknet_address=starknet_address,
-            cost_strk=settings.prompt_cost_strk,
-        )
-
-        result = await relayer.submit_inference(req, on_chain_task_id=int(on_chain_task_id))
-        if not result.ok:
-            # User-friendly errors for specific relayer failures
-            if result.error_code == "payment_required":
-                msg = "Relayer requires payment for this task. Please verify your on-chain approval and try again."
-            elif result.error_code == "bad_gateway":
-                msg = "Compute nodes temporarily unreachable. Please try again in a minute."
-            else:
-                msg = "Failed to submit task. Please try again."
-            await bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=placeholder.message_id,
-                text=msg,
-            )
-            return
-
-        task_id = result.task_id
-
-        # METRIC: compute-submitted — task accepted by relayer
-        logger.info(
-            "metric.compute-submitted user=%s task_id=%s on_chain=%s",
-            user_id, task_id, on_chain_task_id,
-        )
-
-        # Log payment reservation with on_chain_task_id
-        await payment_mgr.reserve_payment(
-            task_id=task_id,
-            user_id=user_id,
-            starknet_address=starknet_address,
-            amount=settings.prompt_cost_strk,
-            on_chain_task_id=int(on_chain_task_id),
-        )
-
-        await bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=placeholder.message_id,
-            text=f"Task #{on_chain_task_id} submitted (`{task_id[:8]}...`). Computing results...",
-            parse_mode=ParseMode.MARKDOWN,
-        )
-        return
-
-    # Handle wallet disconnect from MiniApp
-    if action == "wallet_disconnect":
-        await wallet_mgr.unlink_wallet(user_id)
-        invalidate_session(user_id)
-        await bot.send_message(
-            chat_id=chat_id,
-            text="Wallet disconnected.",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return
-
-    # Unreachable: allowlist guarantees only known actions reach here
-    await bot.send_message(
-        chat_id=chat_id,
-        text="Unexpected data from miniapp. Please try /start again.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
 
 
 
@@ -1014,3 +991,103 @@ async def handle_inference(
     )
     # STOP HERE — do NOT proceed with inference until payment_complete callback
     return
+
+
+# ---------------------------------------------------------------------------
+# One-tap approval flow (session-based)
+# ---------------------------------------------------------------------------
+
+
+@with_error_handling("one_tap_inference")
+async def handle_one_tap_inference(
+    update: Dict[str, Any],
+    bot: Bot,
+    relayer: RelayerClient,
+) -> None:
+    """Handle a free-text message as a one-tap AI inference request.
+    
+    Uses the session API to create a pending task, then directs user to
+    MiniApp for one-tap approval. The flow:
+    1. Register prompt with relayer session API
+    2. Show inline button to open MiniApp /approve?chat_id=X
+    3. MiniApp shows cost, user taps approve, tx fires
+    4. MiniApp calls relayer to confirm wallet
+    5. Relayer executes task, callbacks update message
+    """
+    message = update.get("message", {})
+    user_id = message.get("from", {}).get("id")
+    chat_id = message.get("chat", {}).get("id")
+    prompt_text = message.get("text", "")
+    
+    if not prompt_text.strip():
+        return  # Ignore empty messages
+
+    # TM-004: Touch session
+    touch_session(user_id)
+
+    # 1. Check for available compute nodes
+    available_nodes = await relayer.list_available_models()
+    if not available_nodes:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="No compute nodes online. Try again in 2 minutes.",
+        )
+        return
+
+    # 2. Register prompt with session API
+    amount_strk = settings.default_task_amount_strk
+    session_result = await relayer.register_session_prompt(
+        chat_id=chat_id,
+        prompt=prompt_text,
+        amount_strk=amount_strk,
+    )
+
+    if not session_result:
+        await bot.send_message(
+            chat_id=chat_id,
+            text="Failed to create task session. Please try again.",
+        )
+        return
+
+    prompt_hash = session_result.get("prompt_hash", "")[:8]
+    dust_required = session_result.get("dust_required")
+
+    # 3. Build MiniApp URL for one-tap approval
+    approve_url = f"{settings.miniapp_url}/approve?chat_id={chat_id}"
+
+    # 4. Send message with inline button
+    cost_display = f"{amount_strk} STRK"
+    if dust_required:
+        cost_display += f" + {dust_required/1e18:.4f} dust"
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💎 Approve & Run",
+                    web_app=WebAppInfo(url=approve_url),
+                )
+            ]
+        ]
+    )
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=(
+            f"*Ready to compute*\n\n"
+            f"📝 Prompt: _{escape_md(prompt_text[:50])}{'...' if len(prompt_text) > 50 else ''}_\n"
+            f"💰 Cost: {cost_display}\n"
+            f"🔑 Session: `{prompt_hash}...`\n\n"
+            "Tap below to connect wallet and approve with one tap."
+        ),
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=keyboard,
+    )
+
+    logger.info(
+        "One-tap session created: user=%s chat=%s prompt_hash=%s amount=%d",
+        str(user_id)[:4] + "***" if user_id else "unknown",
+        str(chat_id)[:8] + "***" if chat_id else "unknown",
+        prompt_hash,
+        amount_strk,
+    )

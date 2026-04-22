@@ -107,6 +107,10 @@ class Settings(BaseSettings):
         default=100_000_000_000_000_000,  # 0.1 STRK
         description="Cost per prompt in $STRK wei",
     )
+    default_task_amount_strk: int = Field(
+        default=5,  # 5 STRK (whole units, not wei)
+        description="Default task amount for one-tap approval flow in whole STRK units",
+    )
 
     # ------------------------------------------------------------------
     # MiniApp
@@ -134,6 +138,14 @@ class Settings(BaseSettings):
             "flow (URL button → Braavos/Argent) instead of MiniApp WebApp screen. "
             "Scoped to flow selection only — payment verification and on-chain "
             "validation remain mandatory regardless of flow path."
+        ),
+    )
+    one_tap_flow_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable the one-tap approval flow (session-based). "
+            "When enabled, text messages use the simplified session API. "
+            "When disabled, falls back to legacy payment flow."
         ),
     )
 

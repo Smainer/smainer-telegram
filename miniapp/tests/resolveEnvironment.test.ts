@@ -61,7 +61,7 @@ describe('resolveEnvironment', () => {
       isTelegramWebView: true,
       account: undefined,
       botLinkedWallet: '0x04a3',
-      checkAllowance: async () => 0n,
+      checkAllowance: async () => BigInt(0),
       onProgress: () => {},
     });
     const caps = strategy.getCapabilities();
@@ -121,7 +121,7 @@ describe('resolveEnvironment', () => {
       isTelegramWebView: false,
       account: undefined,
       botLinkedWallet: null,
-      checkAllowance: async () => 0n,
+      checkAllowance: async () => BigInt(0),
       onProgress: () => {},
     });
     const caps = strategy.getCapabilities();
@@ -137,7 +137,7 @@ describe('resolveEnvironment', () => {
       isTelegramWebView: false,
       account: undefined,
       botLinkedWallet: '0x04a3',
-      checkAllowance: async () => 0n,
+      checkAllowance: async () => BigInt(0),
       onProgress: () => {},
     });
     const caps = strategy.getCapabilities();

@@ -25,6 +25,7 @@ from src.handlers import (
     handle_inference,
     handle_link,
     handle_models,
+    handle_one_tap_inference,
     handle_set_model,
     handle_start,
     handle_unlink,
@@ -122,13 +123,16 @@ async def _process_update(update: dict) -> None:
         await handle_avail_nodes(update, bot, relayer)
     elif not text.startswith("/"):
         # Any plain text that isn't a command → treat as inference request
-        await handle_inference(
-            update,
-            bot,
-            wallet_mgr,
-            payment_mgr,
-            relayer,
-        )
+        if settings.one_tap_flow_enabled:
+            await handle_one_tap_inference(update, bot, relayer)
+        else:
+            await handle_inference(
+                update,
+                bot,
+                wallet_mgr,
+                payment_mgr,
+                relayer,
+            )
     else:
         # Unknown command — send help hint
         chat_id = message.get("chat", {}).get("id")

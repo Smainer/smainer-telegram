@@ -12,6 +12,7 @@ from src.handlers import (
     handle_models,
     handle_set_model,
     handle_inference,
+    handle_one_tap_inference,
     handle_webapp_data,
 )
 from src.models import ModelTier
@@ -445,3 +446,76 @@ class TestHandleWebappData:
 
         text = mock_bot.send_message.call_args[1]["text"]
         assert "Invalid" in text
+
+
+# ---------------------------------------------------------------------------
+# One-tap approval flow
+# ---------------------------------------------------------------------------
+
+
+class TestHandleOneTapInference:
+    """Tests for the one-tap approval flow handler."""
+
+    @pytest.fixture
+    def deps(self, mock_bot):
+        relayer = AsyncMock(spec=RelayerClient)
+        relayer.list_available_models.return_value = [
+            {"node_id": "node1", "gpu": "RTX 4090", "ram_gb": 64, "supported_tiers": ["small", "medium"]}
+        ]
+        relayer.register_session_prompt.return_value = {
+            "prompt_hash": "abc123def456",
+            "dust_required": 1000000000000000,  # 0.001 STRK
+        }
+        return {"bot": mock_bot, "relayer": relayer}
+
+    @pytest.mark.asyncio
+    async def test_one_tap_creates_session(self, deps):
+        """Sending text creates a session and shows approve button."""
+        update = _make_update("Generate an image of a cat")
+
+        await handle_one_tap_inference(update, deps["bot"], deps["relayer"])
+
+        # Should call register_session_prompt
+        deps["relayer"].register_session_prompt.assert_called_once()
+        call_args = deps["relayer"].register_session_prompt.call_args
+        assert call_args[1]["chat_id"] == 67890
+        assert call_args[1]["prompt"] == "Generate an image of a cat"
+
+        # Should send message with inline keyboard
+        deps["bot"].send_message.assert_called_once()
+        call_kwargs = deps["bot"].send_message.call_args[1]
+        assert "Ready to compute" in call_kwargs["text"]
+        assert call_kwargs["reply_markup"] is not None
+
+    @pytest.mark.asyncio
+    async def test_one_tap_no_nodes(self, deps):
+        """No nodes online shows appropriate message."""
+        deps["relayer"].list_available_models.return_value = []
+        update = _make_update("Hello AI")
+
+        await handle_one_tap_inference(update, deps["bot"], deps["relayer"])
+
+        deps["relayer"].register_session_prompt.assert_not_called()
+        text = deps["bot"].send_message.call_args[1]["text"]
+        assert "No compute nodes" in text
+
+    @pytest.mark.asyncio
+    async def test_one_tap_session_fails(self, deps):
+        """Session creation failure shows error message."""
+        deps["relayer"].register_session_prompt.return_value = None
+        update = _make_update("Hello AI")
+
+        await handle_one_tap_inference(update, deps["bot"], deps["relayer"])
+
+        text = deps["bot"].send_message.call_args[1]["text"]
+        assert "Failed to create task session" in text
+
+    @pytest.mark.asyncio
+    async def test_one_tap_empty_message_ignored(self, deps):
+        """Empty messages are silently ignored."""
+        update = _make_update("   ")
+
+        await handle_one_tap_inference(update, deps["bot"], deps["relayer"])
+
+        deps["bot"].send_message.assert_not_called()
+        deps["relayer"].register_session_prompt.assert_not_called()

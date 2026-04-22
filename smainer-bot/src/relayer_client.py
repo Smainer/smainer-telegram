@@ -354,3 +354,69 @@ class RelayerClient:
         except httpx.RequestError as e:
             logger.error(f"Error fetching node summary: {e}")
             return None
+
+    # ------------------------------------------------------------------
+    # Session API for one-tap approval flow
+    # ------------------------------------------------------------------
+
+    async def register_session_prompt(
+        self,
+        chat_id: int,
+        prompt: str,
+        amount_strk: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Register a prompt for the one-tap approval flow (step 1).
+        
+        POST /api/v1/sessions/prompt
+        Returns: { prompt_hash: str, dust_required: int|null }
+        """
+        try:
+            async with httpx.AsyncClient(
+                headers=self._headers, timeout=DEFAULT_TIMEOUT
+            ) as client:
+                resp = await client.post(
+                    f"{self._base}/api/v1/sessions/prompt",
+                    json={
+                        "chat_id": str(chat_id),
+                        "prompt": prompt,
+                        "amount_strk": amount_strk,
+                    },
+                )
+                if resp.status_code == 201:
+                    return resp.json()
+                logger.warning(
+                    "Session prompt registration failed",
+                    extra={"status_code": resp.status_code, "body": resp.text[:200]},
+                )
+                return None
+        except httpx.RequestError as e:
+            logger.error(f"Error registering session prompt: {e}")
+            return None
+
+    async def get_session_status(self, chat_id: int) -> Optional[Dict[str, Any]]:
+        """Get the status of a one-tap approval session.
+        
+        GET /api/v1/sessions/{chat_id}/status
+        Returns: { status: str, error?: str, execution_tx?: str }
+        
+        Status values: awaiting_wallet, awaiting_approval, executing, completed, failed
+        """
+        try:
+            async with httpx.AsyncClient(
+                headers=self._headers, timeout=DEFAULT_TIMEOUT
+            ) as client:
+                resp = await client.get(
+                    f"{self._base}/api/v1/sessions/{chat_id}/status",
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+                if resp.status_code == 404:
+                    return None
+                logger.warning(
+                    "Session status fetch failed",
+                    extra={"status_code": resp.status_code},
+                )
+                return None
+        except httpx.RequestError as e:
+            logger.error(f"Error fetching session status: {e}")
+            return None
