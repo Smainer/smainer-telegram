@@ -1,0 +1,4 @@
+[submodule "smainer-bot"]
+	path = smainer-bot
+	url = https://github.com/Smainer/smainer-bot.git
+	branch = main

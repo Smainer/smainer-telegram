@@ -6,8 +6,6 @@ dist/
 build/
 .eggs/
 *.egg
-.env
-.env.local
 .venv/
 venv/
 node_modules/
@@ -23,3 +21,4 @@ node_modules/
 miniapp/src/apply_redesign.py
 miniapp/src/apply_redesign2.py
 .vercel
+config.bat
