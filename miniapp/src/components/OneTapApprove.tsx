@@ -16,10 +16,7 @@ import { Contract, RpcProvider, CallData, uint256 } from 'starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 import { CONTRACT_ADDRESSES, SMAINER_TOKEN_ABI } from '@/lib/starknet';
 
-const RELAYER_API_URL =
-  import.meta.env.VITE_RELAYER_API_URL ||
-  import.meta.env.VITE_RELAYER_URL ||
-  'https://api.smainer.io';
+const RELAYER_API_URL = import.meta.env.VITE_RELAYER_API_URL || 'http://localhost:8000';
 const RELAYER_API_KEY = import.meta.env.VITE_RELAYER_API_KEY || '';
 
 // Build version for debugging
@@ -40,7 +37,7 @@ export function OneTapApprove() {
   const { address, account, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { initDataRaw, miniApp, isInTelegram } = useTelegramData();
+  const { miniApp, isInTelegram } = useTelegramData();
   
   const [step, setStep] = useState<FlowStep>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +75,6 @@ export function OneTapApprove() {
 
   const registerWalletAndApprove = useCallback(async () => {
     if (!chatId || !address || !account) return;
-
-    if (!initDataRaw) {
-      setError('Telegram session verification is required. Open this flow inside Telegram.');
-      setStep('error');
-      return;
-    }
     
     setStep('approving');
     setError(null);
@@ -94,7 +85,6 @@ export function OneTapApprove() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': initDataRaw,
           ...(RELAYER_API_KEY && { 'Authorization': `Bearer ${RELAYER_API_KEY}` }),
         },
         body: JSON.stringify({
@@ -155,7 +145,7 @@ export function OneTapApprove() {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setStep('error');
     }
-  }, [chatId, address, account, initDataRaw, miniApp]);
+  }, [chatId, address, account, miniApp]);
 
   const handleConnect = (connectorId: string) => {
     const connector = connectors.find(c => c.id === connectorId);
