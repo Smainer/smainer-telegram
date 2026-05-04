@@ -357,7 +357,7 @@ show_performance_recommendations() {
     echo "For recovery actions:"
     echo "• Restart bot only: systemctl restart $SERVICE_NAME"
     echo "• Full clean restart: $0 --restart --verbose"
-    echo "• Emergency fix: ./emergency-bot-fix.sh"
+    echo "• Restart canonical stack: ../scripts/stop-telegram-stack.sh && ../scripts/start-telegram-stack.sh"
     echo ""
 }
 
