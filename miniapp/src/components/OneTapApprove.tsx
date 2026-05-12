@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { Contract, RpcProvider, CallData, uint256 } from 'starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
@@ -20,19 +20,45 @@ const RELAYER_API_URL = import.meta.env.VITE_RELAYER_API_URL || 'http://localhos
 const RELAYER_API_KEY = import.meta.env.VITE_RELAYER_API_KEY || '';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-04-20-one-tap-v1';
+const BUILD_VERSION = '2026-05-12-one-tap-v2';
+const STRK_WEI = 1_000_000_000_000_000_000n;
 
 interface SessionWalletResponse {
   dust_value: number;
   spender_address: string;
-  amount_to_approve_strk: number;
+  amount_to_approve_strk?: number | string;
+  amount_to_approve_wei?: number | string;
+  amount_to_approve_display?: string;
+}
+
+function extractIntegerField(rawJson: string, fieldName: string): string | null {
+  const match = rawJson.match(new RegExp(`"${fieldName}"\\s*:\\s*"?(\\d+)"?`));
+  return match?.[1] ?? null;
+}
+
+function normalizeAmountWei(rawAmount: string): bigint {
+  const parsed = BigInt(rawAmount);
+  // Legacy relayer sessions returned whole STRK. New sessions store wei.
+  return parsed > 1_000_000_000_000n ? parsed : parsed * STRK_WEI;
+}
+
+function formatStrkFromWei(amountWei: bigint): string {
+  const whole = amountWei / STRK_WEI;
+  const fractional = amountWei % STRK_WEI;
+  if (fractional === 0n) return whole.toString();
+  return `${whole}.${fractional.toString().padStart(18, '0').replace(/0+$/, '')}`;
+}
+
+function buildBraavosApproveUrl(chatId: string): string {
+  return `https://link.braavos.app/dapp/smainer-miniapp.vercel.app/approve/${encodeURIComponent(chatId)}`;
 }
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
 export function OneTapApprove() {
   const [searchParams] = useSearchParams();
-  const chatId = searchParams.get('chat_id');
+  const routeParams = useParams<{ chatId?: string }>();
+  const chatId = routeParams.chatId || searchParams.get('chat_id');
   
   const { address, account, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
@@ -85,7 +111,10 @@ export function OneTapApprove() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(RELAYER_API_KEY && { 'Authorization': `Bearer ${RELAYER_API_KEY}` }),
+          ...(RELAYER_API_KEY && {
+            'Authorization': `Bearer ${RELAYER_API_KEY}`,
+            'X-API-Key': RELAYER_API_KEY,
+          }),
         },
         body: JSON.stringify({
           chat_id: chatId,
@@ -98,19 +127,24 @@ export function OneTapApprove() {
         throw new Error(`Relayer error: ${walletRes.status} - ${errText}`);
       }
 
-      const session: SessionWalletResponse = await walletRes.json();
-      setSessionData(session);
+      const rawSession = await walletRes.text();
+      const session: SessionWalletResponse = JSON.parse(rawSession);
+      const amountRaw = (
+        extractIntegerField(rawSession, 'amount_to_approve_wei')
+        || extractIntegerField(rawSession, 'amount_to_approve_strk')
+        || String(session.amount_to_approve_wei || session.amount_to_approve_strk || '0')
+      );
+      const amountWei = normalizeAmountWei(amountRaw);
+      const dustRaw = extractIntegerField(rawSession, 'dust_value') || String(session.dust_value || 0);
+      const dustWei = BigInt(dustRaw);
+      const totalApproveWei = amountWei + dustWei;
+      const displayAmount = formatStrkFromWei(amountWei);
+      setSessionData({ ...session, amount_to_approve_display: displayAmount });
       console.log('[OneTapApprove] Session data:', session);
 
-      // Step 2: Compute approve amount in wei
-      // amount_to_approve_strk is in whole STRK units, convert to wei (18 decimals)
-      const amountWei = BigInt(session.amount_to_approve_strk) * BigInt(10 ** 18);
-      const dustWei = BigInt(session.dust_value);
-      const totalApproveWei = amountWei + dustWei;
-
       console.log('[OneTapApprove] Approve amount:', {
-        amountStrk: session.amount_to_approve_strk,
-        dustValue: session.dust_value,
+        amountStrk: displayAmount,
+        dustValue: dustRaw,
         totalWei: totalApproveWei.toString(),
       });
 
@@ -164,12 +198,12 @@ export function OneTapApprove() {
   };
 
   const openInBrowser = () => {
-    // Open the current URL in external browser for wallet extension support
-    const currentUrl = window.location.href;
+    if (!chatId) return;
+    const walletUrl = buildBraavosApproveUrl(chatId);
     if (miniApp) {
-      (window.Telegram?.WebApp as any)?.openLink?.(currentUrl);
+      (window.Telegram?.WebApp as any)?.openLink?.(walletUrl);
     } else {
-      window.open(currentUrl, '_blank');
+      window.location.href = walletUrl;
     }
   };
 
@@ -228,13 +262,13 @@ export function OneTapApprove() {
             ) : (
               <div className="text-center space-y-4">
                 <p className="text-white/60 text-sm">
-                  No wallet detected. Open this page in a browser with Braavos or Argent X installed.
+                  No wallet detected in Telegram. Open this approval in Braavos to continue.
                 </p>
                 <button
                   onClick={openInBrowser}
                   className="w-full py-3 px-4 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-colors"
                 >
-                  Open in Browser
+                  Open Braavos
                 </button>
               </div>
             )}
@@ -252,7 +286,7 @@ export function OneTapApprove() {
               <div className="bg-white/5 rounded-xl p-4 text-left text-sm">
                 <div className="flex justify-between mb-2">
                   <span className="text-white/60">Amount:</span>
-                  <span>{sessionData.amount_to_approve_strk} STRK</span>
+                  <span>{sessionData.amount_to_approve_display || sessionData.amount_to_approve_strk} STRK</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/60">Chat ID:</span>

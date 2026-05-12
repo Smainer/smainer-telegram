@@ -261,7 +261,7 @@ function PaymentFlowWrapper({ params }: { params: PaymentFlowParams }) {
   const handleCancel = () => {
     // Close the MiniApp when user cancels
     try {
-      window.Telegram?.WebApp?.close();
+      (window.Telegram?.WebApp as any)?.close?.();
     } catch (e) {
       // Fallback: navigate back or show message
       console.log('Could not close WebApp:', e);
@@ -386,7 +386,8 @@ export default function App() {
       <Route path="/home" element={<MainApp />} />
       <Route path="/chat" element={<MainApp />} />
       <Route path="/approve" element={<OneTapApprove />} />
-<Route path="/dashboard" element={<MainApp />} />
+      <Route path="/approve/:chatId" element={<OneTapApprove />} />
+      <Route path="/dashboard" element={<MainApp />} />
       <Route path="*" element={<MainApp />} />
     </Routes>
   );
