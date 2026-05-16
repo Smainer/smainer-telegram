@@ -22,19 +22,23 @@ import {
   buildOneTapAuthHeaders,
   parseSessionWallet,
   buildBraavosApproveUrl,
+  resolveOneTapToken,
   type SessionWalletResponse,
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-12-one-tap-v2';
+const BUILD_VERSION = '2026-05-16-one-tap-path-token';
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
 export function OneTapApprove() {
   const [searchParams] = useSearchParams();
-  const routeParams = useParams<{ chatId?: string }>();
+  const routeParams = useParams<{ chatId?: string; token?: string }>();
   const chatId = routeParams.chatId || searchParams.get('chat_id');
-  const oneTapToken = searchParams.get('token');
+  const oneTapToken = resolveOneTapToken({
+    tokenFromPath: routeParams.token,
+    tokenFromQuery: searchParams.get('token'),
+  });
 
   const relayerBaseUrl = useMemo(() => {
     try {

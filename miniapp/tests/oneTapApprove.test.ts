@@ -5,6 +5,8 @@ import {
   buildOneTapAuthHeaders,
   validateOneTapUrlContext,
   parseSessionWallet,
+  resolveOneTapToken,
+  buildBraavosApproveUrl,
 } from '../src/lib/oneTapApprove';
 
 describe('oneTapApprove helpers', () => {
@@ -37,6 +39,32 @@ describe('oneTapApprove helpers', () => {
       expect(result.code).toBe('missing_token');
       expect(result.message.toLowerCase()).toContain('missing');
     }
+  });
+
+  it('resolveOneTapToken prefers path token over query token', () => {
+    const token = resolveOneTapToken({ tokenFromPath: 'pathToken', tokenFromQuery: 'queryToken' });
+    expect(token).toBe('pathToken');
+  });
+
+  it('resolveOneTapToken falls back to query token when path token is absent', () => {
+    const token = resolveOneTapToken({ tokenFromPath: null, tokenFromQuery: 'queryToken' });
+    expect(token).toBe('queryToken');
+  });
+
+  it('resolveOneTapToken returns null when both path and query tokens are missing/blank', () => {
+    const token = resolveOneTapToken({ tokenFromPath: undefined, tokenFromQuery: '   ' });
+    expect(token).toBe(null);
+  });
+
+  it('resolveOneTapToken safely decodes percent-encoded tokens', () => {
+    const token = resolveOneTapToken({ tokenFromPath: 'abc%2Fdef%3D%3D', tokenFromQuery: null });
+    expect(token).toBe('abc/def==');
+  });
+
+  it('buildBraavosApproveUrl includes token as a path segment (not query)', () => {
+    const url = buildBraavosApproveUrl({ chatId: '123', token: 'tok%2Fenc' });
+    expect(url).toContain('/approve/123/');
+    expect(url).not.toContain('?token=');
   });
 
   it('parseSessionWallet prefers amount_to_approve_wei and keeps bigint precision via raw text', () => {

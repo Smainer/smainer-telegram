@@ -64,6 +64,27 @@ export function buildOneTapAuthHeaders(token: string): Record<string, string> {
   };
 }
 
+export function safeDecodeUrlComponent(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    // If the value contains stray '%' sequences or is already decoded,
+    // return it as-is rather than throwing.
+    return trimmed;
+  }
+}
+
+export function resolveOneTapToken(input: {
+  tokenFromPath?: string | null | undefined;
+  tokenFromQuery?: string | null | undefined;
+}): string | null {
+  return safeDecodeUrlComponent(input.tokenFromPath) ?? safeDecodeUrlComponent(input.tokenFromQuery);
+}
+
 export function extractIntegerField(rawJson: string, fieldName: string): string | null {
   const match = rawJson.match(new RegExp(`"${fieldName}"\\s*:\\s*"?(\\d+)"?`));
   return match?.[1] ?? null;
@@ -149,6 +170,6 @@ export function buildBraavosApproveUrl(input: { chatId: string; token?: string |
   const base = `https://link.braavos.app/dapp/smainer-miniapp.vercel.app/approve/${encodeURIComponent(input.chatId)}`;
   if (!input.token) return base;
 
-  const query = new URLSearchParams({ token: input.token });
-  return `${base}?${query.toString()}`;
+  // Prefer token-in-path because some wallet deeplink handlers drop query params.
+  return `${base}/${encodeURIComponent(input.token)}`;
 }
