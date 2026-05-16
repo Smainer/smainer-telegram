@@ -386,6 +386,7 @@ export default function App() {
       <Route path="/home" element={<MainApp />} />
       <Route path="/chat" element={<MainApp />} />
       <Route path="/approve" element={<OneTapApprove />} />
+      <Route path="/approve/:chatId/:token" element={<OneTapApprove />} />
       <Route path="/approve/:chatId" element={<OneTapApprove />} />
       <Route path="/dashboard" element={<MainApp />} />
       <Route path="*" element={<MainApp />} />
