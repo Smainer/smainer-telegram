@@ -61,10 +61,26 @@ describe('oneTapApprove helpers', () => {
     expect(token).toBe('abc/def==');
   });
 
-  it('buildBraavosApproveUrl includes token as a path segment (not query)', () => {
-    const url = buildBraavosApproveUrl({ chatId: '123', token: 'tok%2Fenc' });
-    expect(url).toContain('/approve/123/');
+  it('buildBraavosApproveUrl encodes full approve URL as a single Braavos target segment', () => {
+    const url = buildBraavosApproveUrl({ chatId: '123', token: 'abc/def==' });
+
+    expect(url.startsWith('https://link.braavos.app/dapp/')).toBe(true);
+    expect(url).not.toContain('/dapp/smainer-miniapp.vercel.app/approve/');
     expect(url).not.toContain('?token=');
+
+    const encodedTarget = url.split('/dapp/', 2)[1];
+    const decodedTarget = decodeURIComponent(encodedTarget);
+    expect(decodedTarget).toBe('https://smainer-miniapp.vercel.app/approve/123/abc%2Fdef%3D%3D');
+  });
+
+  it('buildBraavosApproveUrl works without token (still wraps full target as a single segment)', () => {
+    const url = buildBraavosApproveUrl({ chatId: '123', token: null });
+    expect(url.startsWith('https://link.braavos.app/dapp/')).toBe(true);
+    expect(url).not.toContain('/dapp/smainer-miniapp.vercel.app/approve/');
+
+    const encodedTarget = url.split('/dapp/', 2)[1];
+    const decodedTarget = decodeURIComponent(encodedTarget);
+    expect(decodedTarget).toBe('https://smainer-miniapp.vercel.app/approve/123');
   });
 
   it('parseSessionWallet prefers amount_to_approve_wei and keeps bigint precision via raw text', () => {

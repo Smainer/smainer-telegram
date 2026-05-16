@@ -167,9 +167,16 @@ export function parseSessionWallet(rawText: string): {
 }
 
 export function buildBraavosApproveUrl(input: { chatId: string; token?: string | null }): string {
-  const base = `https://link.braavos.app/dapp/smainer-miniapp.vercel.app/approve/${encodeURIComponent(input.chatId)}`;
-  if (!input.token) return base;
+  const encodedChatId = encodeURIComponent(input.chatId);
+  const encodedToken = input.token ? encodeURIComponent(input.token) : null;
 
   // Prefer token-in-path because some wallet deeplink handlers drop query params.
-  return `${base}/${encodeURIComponent(input.token)}`;
+  const target = encodedToken
+    ? `https://smainer-miniapp.vercel.app/approve/${encodedChatId}/${encodedToken}`
+    : `https://smainer-miniapp.vercel.app/approve/${encodedChatId}`;
+
+  // Braavos deep-link parsing may drop extra path segments after `dapp/<host>/...`.
+  // To make `/approve/:chatId/:token` robust, encode the *entire* target URL as a single segment.
+  const encodedTarget = encodeURIComponent(target);
+  return `https://link.braavos.app/dapp/${encodedTarget}`;
 }
