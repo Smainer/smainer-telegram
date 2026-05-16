@@ -9,49 +9,24 @@
  * 5. Close MiniApp after tx submitted
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
-import { Contract, RpcProvider, CallData, uint256 } from 'starknet';
+import { useAccount, useConnect } from '@starknet-react/core';
+import { Contract, uint256 } from 'starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
 import { CONTRACT_ADDRESSES, SMAINER_TOKEN_ABI } from '@/lib/starknet';
 
-const RELAYER_API_URL = import.meta.env.VITE_RELAYER_API_URL || 'http://localhost:8000';
-const RELAYER_API_KEY = import.meta.env.VITE_RELAYER_API_KEY || '';
+import {
+  resolveRelayerBaseUrl,
+  validateOneTapUrlContext,
+  buildOneTapAuthHeaders,
+  parseSessionWallet,
+  buildBraavosApproveUrl,
+  type SessionWalletResponse,
+} from '@/lib/oneTapApprove';
 
 // Build version for debugging
 const BUILD_VERSION = '2026-05-12-one-tap-v2';
-const STRK_WEI = 1_000_000_000_000_000_000n;
-
-interface SessionWalletResponse {
-  dust_value: number;
-  spender_address: string;
-  amount_to_approve_strk?: number | string;
-  amount_to_approve_wei?: number | string;
-  amount_to_approve_display?: string;
-}
-
-function extractIntegerField(rawJson: string, fieldName: string): string | null {
-  const match = rawJson.match(new RegExp(`"${fieldName}"\\s*:\\s*"?(\\d+)"?`));
-  return match?.[1] ?? null;
-}
-
-function normalizeAmountWei(rawAmount: string): bigint {
-  const parsed = BigInt(rawAmount);
-  // Legacy relayer sessions returned whole STRK. New sessions store wei.
-  return parsed > 1_000_000_000_000n ? parsed : parsed * STRK_WEI;
-}
-
-function formatStrkFromWei(amountWei: bigint): string {
-  const whole = amountWei / STRK_WEI;
-  const fractional = amountWei % STRK_WEI;
-  if (fractional === 0n) return whole.toString();
-  return `${whole}.${fractional.toString().padStart(18, '0').replace(/0+$/, '')}`;
-}
-
-function buildBraavosApproveUrl(chatId: string): string {
-  return `https://link.braavos.app/dapp/smainer-miniapp.vercel.app/approve/${encodeURIComponent(chatId)}`;
-}
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
@@ -59,11 +34,19 @@ export function OneTapApprove() {
   const [searchParams] = useSearchParams();
   const routeParams = useParams<{ chatId?: string }>();
   const chatId = routeParams.chatId || searchParams.get('chat_id');
+  const oneTapToken = searchParams.get('token');
+
+  const relayerBaseUrl = useMemo(() => {
+    try {
+      return resolveRelayerBaseUrl(import.meta.env as any);
+    } catch {
+      return null;
+    }
+  }, []);
   
   const { address, account, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { miniApp, isInTelegram } = useTelegramData();
+  const { miniApp } = useTelegramData();
   
   const [step, setStep] = useState<FlowStep>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -76,46 +59,30 @@ export function OneTapApprove() {
   const hasArgent = availableConnectors.some(c => c.id === 'argentX');
   const hasAnyWallet = hasBraavos || hasArgent;
 
-  // Initialize — check if chat_id is valid
-  useEffect(() => {
-    if (!chatId) {
-      setError('Missing chat_id parameter. Open this link from Telegram.');
+  const registerWalletAndApprove = useCallback(async () => {
+    const validation = validateOneTapUrlContext({ chatId, token: oneTapToken });
+    if (!validation.ok) {
+      setError(validation.message);
       setStep('error');
       return;
     }
-    
-    // Ready to connect wallet
-    if (isConnected && address) {
-      registerWalletAndApprove();
-    } else {
-      setStep('connect');
+    if (!relayerBaseUrl) {
+      setError(
+        'Relayer URL is misconfigured. Set VITE_RELAYER_URL to a full https:// URL (example: https://api.smainer.io).'
+      );
+      setStep('error');
+      return;
     }
-  }, [chatId]);
+    if (!address || !account) return;
 
-  // When wallet connects, register it and trigger approve
-  useEffect(() => {
-    if (isConnected && address && step === 'connect') {
-      registerWalletAndApprove();
-    }
-  }, [isConnected, address, step]);
-
-  const registerWalletAndApprove = useCallback(async () => {
-    if (!chatId || !address || !account) return;
-    
     setStep('approving');
     setError(null);
 
     try {
       // Step 1: Register wallet with relayer
-      const walletRes = await fetch(`${RELAYER_API_URL}/api/v1/sessions/wallet`, {
+      const walletRes = await fetch(`${relayerBaseUrl}/api/v1/sessions/wallet`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(RELAYER_API_KEY && {
-            'Authorization': `Bearer ${RELAYER_API_KEY}`,
-            'X-API-Key': RELAYER_API_KEY,
-          }),
-        },
+        headers: buildOneTapAuthHeaders(oneTapToken!),
         body: JSON.stringify({
           chat_id: chatId,
           wallet_address: address,
@@ -123,30 +90,28 @@ export function OneTapApprove() {
       });
 
       if (!walletRes.ok) {
-        const errText = await walletRes.text();
-        throw new Error(`Relayer error: ${walletRes.status} - ${errText}`);
+        // Actionable token/session errors vs network/CORS.
+        if (walletRes.status === 401 || walletRes.status === 403) {
+          throw new Error(
+            'This approval link is expired or invalid. Go back to Telegram and open the latest approval button again.'
+          );
+        }
+        if (walletRes.status === 404) {
+          throw new Error(
+            'Approval session was not found. Go back to Telegram and open the latest approval button again.'
+          );
+        }
+        if (walletRes.status === 409) {
+          throw new Error(
+            'This approval link was already used. Go back to Telegram and request a new approval.'
+          );
+        }
+        throw new Error(`Relayer error (HTTP ${walletRes.status}). Please retry in a moment.`);
       }
 
       const rawSession = await walletRes.text();
-      const session: SessionWalletResponse = JSON.parse(rawSession);
-      const amountRaw = (
-        extractIntegerField(rawSession, 'amount_to_approve_wei')
-        || extractIntegerField(rawSession, 'amount_to_approve_strk')
-        || String(session.amount_to_approve_wei || session.amount_to_approve_strk || '0')
-      );
-      const amountWei = normalizeAmountWei(amountRaw);
-      const dustRaw = extractIntegerField(rawSession, 'dust_value') || String(session.dust_value || 0);
-      const dustWei = BigInt(dustRaw);
-      const totalApproveWei = amountWei + dustWei;
-      const displayAmount = formatStrkFromWei(amountWei);
-      setSessionData({ ...session, amount_to_approve_display: displayAmount });
-      console.log('[OneTapApprove] Session data:', session);
-
-      console.log('[OneTapApprove] Approve amount:', {
-        amountStrk: displayAmount,
-        dustValue: dustRaw,
-        totalWei: totalApproveWei.toString(),
-      });
+      const { session, totalApproveWei } = parseSessionWallet(rawSession);
+      setSessionData(session);
 
       // Step 3: Fire approve transaction
       const strkContract = new Contract(
@@ -158,10 +123,7 @@ export function OneTapApprove() {
       // Convert to Uint256 format for starknet.js
       const approveAmountU256 = uint256.bnToUint256(totalApproveWei);
 
-      const tx = await strkContract.approve(
-        session.spender_address,
-        approveAmountU256
-      );
+      const tx = await strkContract.approve(session.spender_address, approveAmountU256);
 
       setTxHash(tx.transaction_hash);
       setStep('success');
@@ -173,13 +135,51 @@ export function OneTapApprove() {
           miniApp.close();
         }
       }, 2000);
-
     } catch (err) {
-      console.error('[OneTapApprove] Error:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      // Avoid logging one-tap tokens or request headers.
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      if (message.toLowerCase().includes('fetch')) {
+        setError(
+          'Network error reaching the relayer (possible CORS/network issue). Check your connection and try again.'
+        );
+      } else {
+        setError(message);
+      }
       setStep('error');
     }
-  }, [chatId, address, account, miniApp]);
+  }, [chatId, oneTapToken, relayerBaseUrl, address, account, miniApp]);
+
+  // Initialize — validate URL context (chat id + one-tap token)
+  useEffect(() => {
+    const validation = validateOneTapUrlContext({ chatId, token: oneTapToken });
+    if (!validation.ok) {
+      setError(validation.message);
+      setStep('error');
+      return;
+    }
+
+    if (!relayerBaseUrl) {
+      setError(
+        'Relayer URL is misconfigured. Set VITE_RELAYER_URL to a full https:// URL (example: https://api.smainer.io).'
+      );
+      setStep('error');
+      return;
+    }
+    
+    // Ready to connect wallet
+    if (isConnected && address) {
+      registerWalletAndApprove();
+    } else {
+      setStep('connect');
+    }
+  }, [chatId, oneTapToken, relayerBaseUrl, isConnected, address, registerWalletAndApprove]);
+
+  // When wallet connects, register it and trigger approve
+  useEffect(() => {
+    if (isConnected && address && step === 'connect') {
+      registerWalletAndApprove();
+    }
+  }, [isConnected, address, step, registerWalletAndApprove]);
 
   const handleConnect = (connectorId: string) => {
     const connector = connectors.find(c => c.id === connectorId);
@@ -199,7 +199,7 @@ export function OneTapApprove() {
 
   const openInBrowser = () => {
     if (!chatId) return;
-    const walletUrl = buildBraavosApproveUrl(chatId);
+    const walletUrl = buildBraavosApproveUrl({ chatId, token: oneTapToken });
     if (miniApp) {
       (window.Telegram?.WebApp as any)?.openLink?.(walletUrl);
     } else {
