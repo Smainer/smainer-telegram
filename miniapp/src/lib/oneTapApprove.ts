@@ -1,6 +1,6 @@
 const STRK_WEI = 1_000_000_000_000_000_000n;
 
-export type OneTapUrlValidationErrorCode = 'missing_chat_id' | 'missing_token';
+export type OneTapUrlValidationErrorCode = 'missing_chat_id' | 'missing_credential';
 
 export type OneTapUrlValidationResult =
   | { ok: true }
@@ -16,7 +16,7 @@ export interface SessionWalletResponse {
 
 export function validateOneTapUrlContext(input: {
   chatId: string | null | undefined;
-  token: string | null | undefined;
+  credential: string | null | undefined;
 }): OneTapUrlValidationResult {
   if (!input.chatId) {
     return {
@@ -26,12 +26,12 @@ export function validateOneTapUrlContext(input: {
     };
   }
 
-  if (!input.token) {
+  if (!input.credential) {
     return {
       ok: false,
-      code: 'missing_token',
+      code: 'missing_credential',
       message:
-        'This approval link is missing its token. Go back to Telegram and open the latest approval button again.',
+        'This approval link is missing its approval code/token. Go back to Telegram and open the latest approval button again.',
     };
   }
 
@@ -57,10 +57,23 @@ export function resolveRelayerBaseUrl(env: Record<string, unknown>): string {
   return raw.replace(/\/+$/, '');
 }
 
-export function buildOneTapAuthHeaders(token: string): Record<string, string> {
+export type ApprovalCredentialMode = 'token' | 'code';
+
+export function getApprovalCredentialMode(credential: string): ApprovalCredentialMode {
+  return credential.startsWith('ot1.') ? 'token' : 'code';
+}
+
+export function buildSessionWalletHeaders(credential: string): Record<string, string> {
+  const mode = getApprovalCredentialMode(credential);
+  if (mode === 'token') {
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${credential}`,
+    };
+  }
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
+    'X-One-Tap-Code': credential,
   };
 }
 
@@ -78,11 +91,29 @@ export function safeDecodeUrlComponent(value: string | null | undefined): string
   }
 }
 
+export function resolveApprovalCredential(input: {
+  credentialFromPath?: string | null | undefined;
+  credentialFromQuery?: string | null | undefined;
+}): string | null {
+  return (
+    safeDecodeUrlComponent(input.credentialFromPath) ?? safeDecodeUrlComponent(input.credentialFromQuery)
+  );
+}
+
+/** Backward-compatible alias (legacy name). */
 export function resolveOneTapToken(input: {
   tokenFromPath?: string | null | undefined;
   tokenFromQuery?: string | null | undefined;
 }): string | null {
-  return safeDecodeUrlComponent(input.tokenFromPath) ?? safeDecodeUrlComponent(input.tokenFromQuery);
+  return resolveApprovalCredential({
+    credentialFromPath: input.tokenFromPath,
+    credentialFromQuery: input.tokenFromQuery,
+  });
+}
+
+/** Backward-compatible alias (legacy name). */
+export function buildOneTapAuthHeaders(token: string): Record<string, string> {
+  return buildSessionWalletHeaders(token);
 }
 
 export function extractIntegerField(rawJson: string, fieldName: string): string | null {
@@ -166,17 +197,14 @@ export function parseSessionWallet(rawText: string): {
   };
 }
 
-export function buildBraavosApproveUrl(input: { chatId: string; token?: string | null }): string {
+export function buildBraavosApproveUrl(input: { chatId: string; credential?: string | null }): string {
   const encodedChatId = encodeURIComponent(input.chatId);
-  const encodedToken = input.token ? encodeURIComponent(input.token) : null;
+  const encodedCredential = input.credential ? encodeURIComponent(input.credential) : null;
 
-  // Prefer token-in-path because some wallet deeplink handlers drop query params.
-  const target = encodedToken
-    ? `https://smainer-miniapp.vercel.app/approve/${encodedChatId}/${encodedToken}`
-    : `https://smainer-miniapp.vercel.app/approve/${encodedChatId}`;
-
-  // Braavos deep-link parsing may drop extra path segments after `dapp/<host>/...`.
-  // To make `/approve/:chatId/:token` robust, encode the *entire* target URL as a single segment.
-  const encodedTarget = encodeURIComponent(target);
-  return `https://link.braavos.app/dapp/${encodedTarget}`;
+  // Conservative Braavos deeplink shape: `.../dapp/<host>/<path>`.
+  // Keep token/code in the path (some handlers drop query params).
+  const targetPath = encodedCredential
+    ? `/approve/${encodedChatId}/${encodedCredential}`
+    : `/approve/${encodedChatId}`;
+  return `https://link.braavos.app/dapp/smainer-miniapp.vercel.app${targetPath}`;
 }
