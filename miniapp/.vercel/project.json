@@ -9,8 +9,8 @@
     "installCommand": null,
     "buildCommand": null,
     "outputDirectory": null,
-    "rootDirectory": null,
+    "rootDirectory": "miniapp",
     "directoryListing": false,
-    "nodeVersion": "20.x"
+    "nodeVersion": "24.x"
   }
 }

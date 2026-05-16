@@ -19,27 +19,36 @@ import { CONTRACT_ADDRESSES, SMAINER_TOKEN_ABI } from '@/lib/starknet';
 import {
   resolveRelayerBaseUrl,
   validateOneTapUrlContext,
-  buildOneTapAuthHeaders,
+  buildSessionWalletHeaders,
+  getApprovalCredentialMode,
   parseSessionWallet,
   buildBraavosApproveUrl,
-  resolveOneTapToken,
+  resolveApprovalCredential,
   type SessionWalletResponse,
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-16-one-tap-encoded-braavos';
+const BUILD_VERSION = '2026-05-16-one-tap-short-code';
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
 export function OneTapApprove() {
   const [searchParams] = useSearchParams();
-  const routeParams = useParams<{ chatId?: string; token?: string }>();
+  const routeParams = useParams<{ chatId?: string; credential?: string }>();
   const chatId = routeParams.chatId || searchParams.get('chat_id');
-  const rawTokenFromQuery = searchParams.get('token');
-  const oneTapToken = resolveOneTapToken({
-    tokenFromPath: routeParams.token,
-    tokenFromQuery: rawTokenFromQuery,
+
+  const rawCredentialFromQuery =
+    searchParams.get('token') ?? searchParams.get('one_tap_code') ?? searchParams.get('code');
+
+  const approvalCredential = resolveApprovalCredential({
+    credentialFromPath: routeParams.credential,
+    credentialFromQuery: rawCredentialFromQuery,
   });
+
+  const credentialMode = useMemo(() => {
+    if (!approvalCredential) return null;
+    return getApprovalCredentialMode(approvalCredential);
+  }, [approvalCredential]);
 
   const relayerBaseUrl = useMemo(() => {
     try {
@@ -58,6 +67,10 @@ export function OneTapApprove() {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<SessionWalletResponse | null>(null);
 
+  useEffect(() => {
+    (globalThis as any).__SMAINER_BUILD_VERSION__ = BUILD_VERSION;
+  }, []);
+
   // Detect available wallet connectors
   const availableConnectors = connectors.filter(c => c.available());
   const hasBraavos = availableConnectors.some(c => c.id === 'braavos');
@@ -65,7 +78,7 @@ export function OneTapApprove() {
   const hasAnyWallet = hasBraavos || hasArgent;
 
   const registerWalletAndApprove = useCallback(async () => {
-    const validation = validateOneTapUrlContext({ chatId, token: oneTapToken });
+    const validation = validateOneTapUrlContext({ chatId, credential: approvalCredential });
     if (!validation.ok) {
       setError(validation.message);
       setStep('error');
@@ -87,7 +100,7 @@ export function OneTapApprove() {
       // Step 1: Register wallet with relayer
       const walletRes = await fetch(`${relayerBaseUrl}/api/v1/sessions/wallet`, {
         method: 'POST',
-        headers: buildOneTapAuthHeaders(oneTapToken!),
+        headers: buildSessionWalletHeaders(approvalCredential!),
         body: JSON.stringify({
           chat_id: chatId,
           wallet_address: address,
@@ -152,11 +165,11 @@ export function OneTapApprove() {
       }
       setStep('error');
     }
-  }, [chatId, oneTapToken, relayerBaseUrl, address, account, miniApp]);
+  }, [chatId, approvalCredential, relayerBaseUrl, address, account, miniApp]);
 
-  // Initialize — validate URL context (chat id + one-tap token)
+  // Initialize — validate URL context (chat id + approval credential)
   useEffect(() => {
-    const validation = validateOneTapUrlContext({ chatId, token: oneTapToken });
+    const validation = validateOneTapUrlContext({ chatId, credential: approvalCredential });
     if (!validation.ok) {
       setError(validation.message);
       setStep('error');
@@ -177,7 +190,7 @@ export function OneTapApprove() {
     } else {
       setStep('connect');
     }
-  }, [chatId, oneTapToken, relayerBaseUrl, isConnected, address, registerWalletAndApprove]);
+  }, [chatId, approvalCredential, relayerBaseUrl, isConnected, address, registerWalletAndApprove]);
 
   // When wallet connects, register it and trigger approve
   useEffect(() => {
@@ -204,7 +217,7 @@ export function OneTapApprove() {
 
   const openInBrowser = () => {
     if (!chatId) return;
-    const walletUrl = buildBraavosApproveUrl({ chatId, token: oneTapToken });
+    const walletUrl = buildBraavosApproveUrl({ chatId, credential: approvalCredential });
     if (miniApp) {
       (window.Telegram?.WebApp as any)?.openLink?.(walletUrl);
     } else {
@@ -334,15 +347,17 @@ export function OneTapApprove() {
             <h2 className="text-xl font-semibold mb-2">Something Went Wrong</h2>
             <p className="text-white/60 text-sm mb-4">{error}</p>
 
-            {(!chatId || !oneTapToken) && (
-              <div className="mb-4 rounded-xl bg-white/5 p-3 text-left text-xs text-white/50">
-                <div className="font-medium text-white/60 mb-1">Diagnostics</div>
-                <div>chat_id present: {chatId ? 'yes' : 'no'}</div>
-                <div>token present: {oneTapToken ? 'yes' : 'no'}</div>
-                <div>token in path: {routeParams.token ? 'yes' : 'no'}</div>
-                <div>token in query: {rawTokenFromQuery?.trim() ? 'yes' : 'no'}</div>
+            <div className="mb-4 rounded-xl bg-white/5 p-3 text-left text-xs text-white/50">
+              <div className="font-medium text-white/60 mb-1">Diagnostics</div>
+              <div>chat_id present: {chatId ? 'yes' : 'no'}</div>
+              <div>credential present: {approvalCredential ? 'yes' : 'no'}</div>
+              <div>
+                mode:{' '}
+                {credentialMode ? (credentialMode === 'token' ? 'token mode' : 'code mode') : 'unknown'}
               </div>
-            )}
+              <div>credential in path: {routeParams.credential ? 'yes' : 'no'}</div>
+              <div>credential in query: {rawCredentialFromQuery?.trim() ? 'yes' : 'no'}</div>
+            </div>
 
             <button
               onClick={handleRetry}

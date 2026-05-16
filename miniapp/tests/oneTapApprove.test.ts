@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 
 import {
   resolveRelayerBaseUrl,
-  buildOneTapAuthHeaders,
+  buildSessionWalletHeaders,
   validateOneTapUrlContext,
   parseSessionWallet,
-  resolveOneTapToken,
+  resolveApprovalCredential,
   buildBraavosApproveUrl,
 } from '../src/lib/oneTapApprove';
 
@@ -26,61 +26,64 @@ describe('oneTapApprove helpers', () => {
     expect(() => resolveRelayerBaseUrl({ VITE_RELAYER_URL: 'api.smainer.io' })).toThrow(/Invalid relayer URL/i);
   });
 
-  it('buildOneTapAuthHeaders uses Authorization Bearer and does not include API key headers', () => {
-    const headers = buildOneTapAuthHeaders('token123');
-    expect(headers.Authorization).toBe('Bearer token123');
+  it('buildSessionWalletHeaders uses Authorization Bearer for legacy ot1 tokens (backward compatible)', () => {
+    const headers = buildSessionWalletHeaders('ot1.tokenpayload.sig');
+    expect(headers.Authorization).toBe('Bearer ot1.tokenpayload.sig');
+    expect(headers).not.toHaveProperty('X-One-Tap-Code');
     expect(headers).not.toHaveProperty('X-API-Key');
   });
 
-  it('validateOneTapUrlContext returns missing_token when token absent', () => {
-    const result = validateOneTapUrlContext({ chatId: '123', token: null });
+  it('buildSessionWalletHeaders uses X-One-Tap-Code for short approve codes (no Authorization header)', () => {
+    const headers = buildSessionWalletHeaders('ABCdef1234567890');
+    expect(headers).toHaveProperty('X-One-Tap-Code', 'ABCdef1234567890');
+    expect(headers).not.toHaveProperty('Authorization');
+    expect(headers).not.toHaveProperty('X-API-Key');
+  });
+
+  it('validateOneTapUrlContext returns missing_credential when credential absent', () => {
+    const result = validateOneTapUrlContext({ chatId: '123', credential: null });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.code).toBe('missing_token');
+      expect(result.code).toBe('missing_credential');
       expect(result.message.toLowerCase()).toContain('missing');
+      expect(result.message.toLowerCase()).toContain('code');
     }
   });
 
-  it('resolveOneTapToken prefers path token over query token', () => {
-    const token = resolveOneTapToken({ tokenFromPath: 'pathToken', tokenFromQuery: 'queryToken' });
-    expect(token).toBe('pathToken');
+  it('resolveApprovalCredential prefers path credential over query credential', () => {
+    const credential = resolveApprovalCredential({
+      credentialFromPath: 'pathCredential',
+      credentialFromQuery: 'queryCredential',
+    });
+    expect(credential).toBe('pathCredential');
   });
 
-  it('resolveOneTapToken falls back to query token when path token is absent', () => {
-    const token = resolveOneTapToken({ tokenFromPath: null, tokenFromQuery: 'queryToken' });
-    expect(token).toBe('queryToken');
+  it('resolveApprovalCredential falls back to query credential when path credential is absent', () => {
+    const credential = resolveApprovalCredential({ credentialFromPath: null, credentialFromQuery: 'queryCredential' });
+    expect(credential).toBe('queryCredential');
   });
 
-  it('resolveOneTapToken returns null when both path and query tokens are missing/blank', () => {
-    const token = resolveOneTapToken({ tokenFromPath: undefined, tokenFromQuery: '   ' });
-    expect(token).toBe(null);
+  it('resolveApprovalCredential returns null when both path and query values are missing/blank', () => {
+    const credential = resolveApprovalCredential({ credentialFromPath: undefined, credentialFromQuery: '   ' });
+    expect(credential).toBe(null);
   });
 
-  it('resolveOneTapToken safely decodes percent-encoded tokens', () => {
-    const token = resolveOneTapToken({ tokenFromPath: 'abc%2Fdef%3D%3D', tokenFromQuery: null });
-    expect(token).toBe('abc/def==');
+  it('resolveApprovalCredential safely decodes percent-encoded values', () => {
+    const credential = resolveApprovalCredential({
+      credentialFromPath: 'abc%2Fdef%3D%3D',
+      credentialFromQuery: null,
+    });
+    expect(credential).toBe('abc/def==');
   });
 
-  it('buildBraavosApproveUrl encodes full approve URL as a single Braavos target segment', () => {
-    const url = buildBraavosApproveUrl({ chatId: '123', token: 'abc/def==' });
-
-    expect(url.startsWith('https://link.braavos.app/dapp/')).toBe(true);
-    expect(url).not.toContain('/dapp/smainer-miniapp.vercel.app/approve/');
-    expect(url).not.toContain('?token=');
-
-    const encodedTarget = url.split('/dapp/', 2)[1];
-    const decodedTarget = decodeURIComponent(encodedTarget);
-    expect(decodedTarget).toBe('https://smainer-miniapp.vercel.app/approve/123/abc%2Fdef%3D%3D');
+  it('buildBraavosApproveUrl uses a conservative Braavos deeplink shape (host + path)', () => {
+    const url = buildBraavosApproveUrl({ chatId: '123', credential: 'abc/def==' });
+    expect(url).toBe('https://link.braavos.app/dapp/smainer-miniapp.vercel.app/approve/123/abc%2Fdef%3D%3D');
   });
 
-  it('buildBraavosApproveUrl works without token (still wraps full target as a single segment)', () => {
-    const url = buildBraavosApproveUrl({ chatId: '123', token: null });
-    expect(url.startsWith('https://link.braavos.app/dapp/')).toBe(true);
-    expect(url).not.toContain('/dapp/smainer-miniapp.vercel.app/approve/');
-
-    const encodedTarget = url.split('/dapp/', 2)[1];
-    const decodedTarget = decodeURIComponent(encodedTarget);
-    expect(decodedTarget).toBe('https://smainer-miniapp.vercel.app/approve/123');
+  it('buildBraavosApproveUrl works without credential (still routes to /approve/:chatId)', () => {
+    const url = buildBraavosApproveUrl({ chatId: '123', credential: null });
+    expect(url).toBe('https://link.braavos.app/dapp/smainer-miniapp.vercel.app/approve/123');
   });
 
   it('parseSessionWallet prefers amount_to_approve_wei and keeps bigint precision via raw text', () => {
