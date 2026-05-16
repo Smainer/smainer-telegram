@@ -27,7 +27,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-16-one-tap-path-token';
+const BUILD_VERSION = '2026-05-16-one-tap-encoded-braavos';
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
@@ -35,9 +35,10 @@ export function OneTapApprove() {
   const [searchParams] = useSearchParams();
   const routeParams = useParams<{ chatId?: string; token?: string }>();
   const chatId = routeParams.chatId || searchParams.get('chat_id');
+  const rawTokenFromQuery = searchParams.get('token');
   const oneTapToken = resolveOneTapToken({
     tokenFromPath: routeParams.token,
-    tokenFromQuery: searchParams.get('token'),
+    tokenFromQuery: rawTokenFromQuery,
   });
 
   const relayerBaseUrl = useMemo(() => {
@@ -332,6 +333,17 @@ export function OneTapApprove() {
             </div>
             <h2 className="text-xl font-semibold mb-2">Something Went Wrong</h2>
             <p className="text-white/60 text-sm mb-4">{error}</p>
+
+            {(!chatId || !oneTapToken) && (
+              <div className="mb-4 rounded-xl bg-white/5 p-3 text-left text-xs text-white/50">
+                <div className="font-medium text-white/60 mb-1">Diagnostics</div>
+                <div>chat_id present: {chatId ? 'yes' : 'no'}</div>
+                <div>token present: {oneTapToken ? 'yes' : 'no'}</div>
+                <div>token in path: {routeParams.token ? 'yes' : 'no'}</div>
+                <div>token in query: {rawTokenFromQuery?.trim() ? 'yes' : 'no'}</div>
+              </div>
+            )}
+
             <button
               onClick={handleRetry}
               className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 rounded-xl font-medium transition-colors"
