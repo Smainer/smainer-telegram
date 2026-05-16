@@ -37,9 +37,9 @@ class ModelTier(str, Enum):
 
 # Map tiers to concrete VRAM / RAM requirements for the relayer
 MODEL_TIER_REQUIREMENTS = {
-    ModelTier.SMALL: {"ram_gb": 16, "gpu_vram_gb": 10, "gpu_required": True},
-    ModelTier.MEDIUM: {"ram_gb": 32, "gpu_vram_gb": 24, "gpu_required": True},
-    ModelTier.LARGE: {"ram_gb": 64, "gpu_vram_gb": 48, "gpu_required": True},
+        ModelTier.SMALL: {"ram_gb": 12, "gpu_vram_gb": 10, "gpu_required": False},
+        ModelTier.MEDIUM: {"ram_gb": 24, "gpu_vram_gb": 24, "gpu_required": False},
+        ModelTier.LARGE: {"ram_gb": 40, "gpu_vram_gb": 48, "gpu_required": False},
 }
 
 
