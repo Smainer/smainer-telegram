@@ -28,7 +28,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-17-one-tap-reload-recovery';
+const BUILD_VERSION = '2026-05-17-one-tap-reload-recovery-local';
 const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
 const APPROVAL_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -64,18 +64,23 @@ function readCachedApprovalSession(
   credential: string,
   walletAddress: string,
 ): CachedApprovalSession | null {
-  try {
-    const raw = window.sessionStorage.getItem(approvalCacheKey(chatId, credential));
-    if (!raw) return null;
+  const key = approvalCacheKey(chatId, credential);
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      const raw = storage.getItem(key);
+      if (!raw) continue;
 
-    const cached = JSON.parse(raw) as CachedApprovalSession;
-    if (Date.now() - cached.createdAt > APPROVAL_CACHE_TTL_MS) return null;
-    if (normalizeAddress(cached.walletAddress) !== normalizeAddress(walletAddress)) return null;
-    if (!cached.rawSession) return null;
-    return cached;
-  } catch {
-    return null;
+      const cached = JSON.parse(raw) as CachedApprovalSession;
+      if (Date.now() - cached.createdAt > APPROVAL_CACHE_TTL_MS) continue;
+      if (normalizeAddress(cached.walletAddress) !== normalizeAddress(walletAddress)) continue;
+      if (!cached.rawSession) continue;
+      return cached;
+    } catch {
+      // Some wallet webviews can deny one storage area; try the next one.
+    }
   }
+
+  return null;
 }
 
 function writeCachedApprovalSession(
@@ -83,10 +88,14 @@ function writeCachedApprovalSession(
   credential: string,
   session: CachedApprovalSession,
 ): void {
-  try {
-    window.sessionStorage.setItem(approvalCacheKey(chatId, credential), JSON.stringify(session));
-  } catch {
-    // Session storage can be unavailable in some wallet webviews. The flow can still continue once.
+  const key = approvalCacheKey(chatId, credential);
+  const value = JSON.stringify(session);
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      storage.setItem(key, value);
+    } catch {
+      // Storage can be unavailable in some wallet webviews. The flow can still continue once.
+    }
   }
 }
 
