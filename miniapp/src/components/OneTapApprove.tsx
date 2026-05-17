@@ -33,6 +33,15 @@ const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED =
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
+function isConsumedApprovalError(message: string | null): boolean {
+  const normalized = (message || '').toLowerCase();
+  return (
+    normalized.includes('already used') ||
+    normalized.includes('wallet already registered') ||
+    normalized.includes('not eligible for wallet registration')
+  );
+}
+
 export function OneTapApprove() {
   const [searchParams] = useSearchParams();
   const routeParams = useParams<{ chatId?: string; credential?: string }>();
@@ -128,7 +137,7 @@ export function OneTapApprove() {
         }
         if (walletRes.status === 409) {
           throw new Error(
-            'This approval link was already used. Go back to Telegram and request a new approval.'
+            'This approval link was already used. Close this screen and tap the newest approval button in Telegram.'
           );
         }
         throw new Error(`Relayer error (HTTP ${walletRes.status}). Please retry in a moment.`);
@@ -218,6 +227,15 @@ export function OneTapApprove() {
   };
 
   const handleRetry = () => {
+    if (isConsumedApprovalError(error)) {
+      if (miniApp) {
+        miniApp.close();
+        return;
+      }
+      window.location.href = 'https://t.me/SmainerBot';
+      return;
+    }
+
     setError(null);
     if (isConnected && address) {
       registerWalletAndApprove();
@@ -374,7 +392,7 @@ export function OneTapApprove() {
               onClick={handleRetry}
               className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 rounded-xl font-medium transition-colors"
             >
-              Try Again
+              {isConsumedApprovalError(error) ? 'Back to Telegram' : 'Try Again'}
             </button>
           </div>
         )}
