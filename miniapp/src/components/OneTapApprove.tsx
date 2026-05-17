@@ -29,6 +29,7 @@ import {
 
 // Build version for debugging
 const BUILD_VERSION = '2026-05-17-one-tap-raw-approve';
+const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
@@ -78,6 +79,12 @@ export function OneTapApprove() {
   const hasAnyWallet = hasBraavos || hasArgent;
 
   const registerWalletAndApprove = useCallback(async () => {
+    if (!ONE_TAP_APPROVAL_ENABLED) {
+      setError('Payment approvals are temporarily paused while we complete a contract compatibility upgrade. No new wallet approval is needed right now.');
+      setStep('error');
+      return;
+    }
+
     const validation = validateOneTapUrlContext({ chatId, credential: approvalCredential });
     if (!validation.ok) {
       setError(validation.message);
@@ -167,6 +174,12 @@ export function OneTapApprove() {
 
   // Initialize — validate URL context (chat id + approval credential)
   useEffect(() => {
+    if (!ONE_TAP_APPROVAL_ENABLED) {
+      setError('Payment approvals are temporarily paused while we complete a contract compatibility upgrade. No new wallet approval is needed right now.');
+      setStep('error');
+      return;
+    }
+
     const validation = validateOneTapUrlContext({ chatId, credential: approvalCredential });
     if (!validation.ok) {
       setError(validation.message);
