@@ -61,12 +61,12 @@ export const TOKEN_DECIMALS = {
 } as const;
 
 // Contract ABIs (simplified - full ABIs should be imported from JSON files)
-// NOTE: Using felt252 for addresses and Uint256 for u256 - starknet.js v5 compatible types
+// NOTE: starknet.js v5 validates `felt`/`core::felt252`, not bare `felt252`.
 export const SMAINER_TOKEN_ABI = [
   {
     type: 'function',
     name: 'balance_of',
-    inputs: [{ name: 'account', type: 'felt252' }],
+    inputs: [{ name: 'account', type: 'felt' }],
     outputs: [{ name: 'balance', type: 'Uint256' }],
     state_mutability: 'view',
   },
@@ -74,20 +74,20 @@ export const SMAINER_TOKEN_ABI = [
     type: 'function', 
     name: 'transfer',
     inputs: [
-      { name: 'recipient', type: 'felt252' },
+      { name: 'recipient', type: 'felt' },
       { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'felt252' }],
+    outputs: [{ name: 'success', type: 'felt' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'approve',
     inputs: [
-      { name: 'spender', type: 'felt252' },
+      { name: 'spender', type: 'felt' },
       { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'felt252' }],
+    outputs: [{ name: 'success', type: 'felt' }],
     state_mutability: 'external',
   },
 ] as const;
@@ -98,9 +98,9 @@ export const SMAINER_COMPUTE_ABI = [
     type: 'function',
     name: 'create_task',
     inputs: [
-      { name: 'token_address', type: 'felt252' },
+      { name: 'token_address', type: 'felt' },
       { name: 'amount', type: 'Uint256' },
-      { name: 'task_hash', type: 'felt252' },
+      { name: 'task_hash', type: 'felt' },
     ],
     outputs: [{ name: 'task_id', type: 'Uint256' }],
     state_mutability: 'external',
@@ -109,10 +109,10 @@ export const SMAINER_COMPUTE_ABI = [
     type: 'function',
     name: 'create_tiered_task',
     inputs: [
-      { name: 'token_address', type: 'felt252' },
+      { name: 'token_address', type: 'felt' },
       { name: 'base_amount', type: 'Uint256' },
-      { name: 'required_tier', type: 'felt252' },
-      { name: 'task_hash', type: 'felt252' },
+      { name: 'required_tier', type: 'felt' },
+      { name: 'task_hash', type: 'felt' },
     ],
     outputs: [{ name: 'task_id', type: 'Uint256' }],
     state_mutability: 'external',
@@ -120,7 +120,7 @@ export const SMAINER_COMPUTE_ABI = [
   {
     type: 'function',
     name: 'get_tier_multiplier',
-    inputs: [{ name: 'tier', type: 'felt252' }],
+    inputs: [{ name: 'tier', type: 'felt' }],
     outputs: [{ name: 'multiplier', type: 'Uint256' }],
     state_mutability: 'view',
   },
@@ -131,7 +131,7 @@ export const ERC20_ABI = [
   {
     type: 'function',
     name: 'balance_of',
-    inputs: [{ name: 'account', type: 'felt252' }],
+    inputs: [{ name: 'account', type: 'felt' }],
     outputs: [{ name: 'balance', type: 'Uint256' }],
     state_mutability: 'view',
   },
@@ -139,28 +139,28 @@ export const ERC20_ABI = [
     type: 'function', 
     name: 'transfer',
     inputs: [
-      { name: 'recipient', type: 'felt252' },
+      { name: 'recipient', type: 'felt' },
       { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'felt252' }],
+    outputs: [{ name: 'success', type: 'felt' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'approve',
     inputs: [
-      { name: 'spender', type: 'felt252' },
+      { name: 'spender', type: 'felt' },
       { name: 'amount', type: 'Uint256' },
     ],
-    outputs: [{ name: 'success', type: 'felt252' }],
+    outputs: [{ name: 'success', type: 'felt' }],
     state_mutability: 'external',
   },
   {
     type: 'function',
     name: 'allowance',
     inputs: [
-      { name: 'owner', type: 'felt252' },
-      { name: 'spender', type: 'felt252' },
+      { name: 'owner', type: 'felt' },
+      { name: 'spender', type: 'felt' },
     ],
     outputs: [{ name: 'remaining', type: 'Uint256' }],
     state_mutability: 'view',

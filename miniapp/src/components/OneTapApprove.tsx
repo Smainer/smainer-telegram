@@ -12,14 +12,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useAccount, useConnect } from '@starknet-react/core';
-import { Contract, uint256 } from 'starknet';
 import { useTelegramData } from '@/hooks/useTelegramData';
-import { CONTRACT_ADDRESSES, SMAINER_TOKEN_ABI } from '@/lib/starknet';
+import { CONTRACT_ADDRESSES } from '@/lib/starknet';
 
 import {
   resolveRelayerBaseUrl,
   validateOneTapUrlContext,
   buildSessionWalletHeaders,
+  buildStrkApproveCall,
   getApprovalCredentialMode,
   parseSessionWallet,
   buildBraavosApproveUrl,
@@ -28,7 +28,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-16-one-tap-short-code';
+const BUILD_VERSION = '2026-05-17-one-tap-raw-approve';
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
 
@@ -131,17 +131,15 @@ export function OneTapApprove() {
       const { session, totalApproveWei } = parseSessionWallet(rawSession);
       setSessionData(session);
 
-      // Step 3: Fire approve transaction
-      const strkContract = new Contract(
-        SMAINER_TOKEN_ABI as any,
-        CONTRACT_ADDRESSES.STRK_TOKEN,
-        account
-      );
-
-      // Convert to Uint256 format for starknet.js
-      const approveAmountU256 = uint256.bnToUint256(totalApproveWei);
-
-      const tx = await strkContract.approve(session.spender_address, approveAmountU256);
+      // Step 3: Fire approve transaction. Use raw calldata to avoid simplified
+      // ABI type-string drift across starknet.js versions.
+      const tx = await account.execute([
+        buildStrkApproveCall({
+          strkTokenAddress: CONTRACT_ADDRESSES.STRK_TOKEN,
+          spenderAddress: session.spender_address,
+          amountWei: totalApproveWei,
+        }),
+      ]);
 
       setTxHash(tx.transaction_hash);
       setStep('success');
