@@ -28,10 +28,18 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-17-one-tap-raw-approve';
+const BUILD_VERSION = '2026-05-17-one-tap-reload-recovery';
 const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
+const APPROVAL_CACHE_TTL_MS = 10 * 60 * 1000;
 
 type FlowStep = 'loading' | 'connect' | 'approving' | 'success' | 'error';
+
+interface CachedApprovalSession {
+  walletAddress: string;
+  rawSession: string;
+  txHash?: string;
+  createdAt: number;
+}
 
 function isConsumedApprovalError(message: string | null): boolean {
   const normalized = (message || '').toLowerCase();
@@ -40,6 +48,46 @@ function isConsumedApprovalError(message: string | null): boolean {
     normalized.includes('wallet already registered') ||
     normalized.includes('not eligible for wallet registration')
   );
+}
+
+function normalizeAddress(value: string | undefined): string {
+  return (value || '').toLowerCase();
+}
+
+function approvalCacheKey(chatId: string, credential: string): string {
+  const credentialHint = `${credential.slice(0, 8)}:${credential.slice(-8)}`;
+  return `smainer:oneTapApproval:${chatId}:${credentialHint}`;
+}
+
+function readCachedApprovalSession(
+  chatId: string,
+  credential: string,
+  walletAddress: string,
+): CachedApprovalSession | null {
+  try {
+    const raw = window.sessionStorage.getItem(approvalCacheKey(chatId, credential));
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw) as CachedApprovalSession;
+    if (Date.now() - cached.createdAt > APPROVAL_CACHE_TTL_MS) return null;
+    if (normalizeAddress(cached.walletAddress) !== normalizeAddress(walletAddress)) return null;
+    if (!cached.rawSession) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedApprovalSession(
+  chatId: string,
+  credential: string,
+  session: CachedApprovalSession,
+): void {
+  try {
+    window.sessionStorage.setItem(approvalCacheKey(chatId, credential), JSON.stringify(session));
+  } catch {
+    // Session storage can be unavailable in some wallet webviews. The flow can still continue once.
+  }
 }
 
 export function OneTapApprove() {
@@ -113,37 +161,69 @@ export function OneTapApprove() {
     setError(null);
 
     try {
-      // Step 1: Register wallet with relayer
-      const walletRes = await fetch(`${relayerBaseUrl}/api/v1/sessions/wallet`, {
-        method: 'POST',
-        headers: buildSessionWalletHeaders(approvalCredential!),
-        body: JSON.stringify({
-          chat_id: chatId,
-          wallet_address: address,
-        }),
-      });
+      let rawSession = '';
+      const cachedSession = readCachedApprovalSession(chatId!, approvalCredential!, address);
 
-      if (!walletRes.ok) {
-        // Actionable token/session errors vs network/CORS.
-        if (walletRes.status === 401 || walletRes.status === 403) {
-          throw new Error(
-            'This approval link is expired or invalid. Go back to Telegram and open the latest approval button again.'
-          );
-        }
-        if (walletRes.status === 404) {
-          throw new Error(
-            'Approval session was not found. Go back to Telegram and open the latest approval button again.'
-          );
-        }
-        if (walletRes.status === 409) {
-          throw new Error(
-            'This approval link was already used. Close this screen and tap the newest approval button in Telegram.'
-          );
-        }
-        throw new Error(`Relayer error (HTTP ${walletRes.status}). Please retry in a moment.`);
+      if (cachedSession?.txHash) {
+        setTxHash(cachedSession.txHash);
+        setStep('success');
+        setTimeout(() => {
+          if (miniApp) {
+            miniApp.close();
+          } else {
+            window.location.href = `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'}`;
+          }
+        }, 1500);
+        return;
       }
 
-      const rawSession = await walletRes.text();
+      if (cachedSession) {
+        rawSession = cachedSession.rawSession;
+      } else {
+        // Step 1: Register wallet with relayer. This consumes the one-tap code;
+        // cache the response so a wallet webview reload can still continue approval.
+        const walletRes = await fetch(`${relayerBaseUrl}/api/v1/sessions/wallet`, {
+          method: 'POST',
+          headers: buildSessionWalletHeaders(approvalCredential!),
+          body: JSON.stringify({
+            chat_id: chatId,
+            wallet_address: address,
+          }),
+        });
+
+        if (!walletRes.ok) {
+          const cachedAfterFailure = readCachedApprovalSession(chatId!, approvalCredential!, address);
+          if (walletRes.status === 409 && cachedAfterFailure) {
+            rawSession = cachedAfterFailure.rawSession;
+          } else {
+            // Actionable token/session errors vs network/CORS.
+            if (walletRes.status === 401 || walletRes.status === 403) {
+              throw new Error(
+                'This approval link is expired or invalid. Go back to Telegram and open the latest approval button again.'
+              );
+            }
+            if (walletRes.status === 404) {
+              throw new Error(
+                'Approval session was not found. Go back to Telegram and open the latest approval button again.'
+              );
+            }
+            if (walletRes.status === 409) {
+              throw new Error(
+                'This approval link was already used. Close this screen and tap the newest approval button in Telegram.'
+              );
+            }
+            throw new Error(`Relayer error (HTTP ${walletRes.status}). Please retry in a moment.`);
+          }
+        } else {
+          rawSession = await walletRes.text();
+          writeCachedApprovalSession(chatId!, approvalCredential!, {
+            walletAddress: address,
+            rawSession,
+            createdAt: Date.now(),
+          });
+        }
+      }
+
       const { session, totalApproveWei } = parseSessionWallet(rawSession);
       setSessionData(session);
 
@@ -158,6 +238,12 @@ export function OneTapApprove() {
       ]);
 
       setTxHash(tx.transaction_hash);
+      writeCachedApprovalSession(chatId!, approvalCredential!, {
+        walletAddress: address,
+        rawSession,
+        txHash: tx.transaction_hash,
+        createdAt: Date.now(),
+      });
       setStep('success');
       console.log('[OneTapApprove] Approve tx submitted:', tx.transaction_hash);
 
@@ -165,6 +251,8 @@ export function OneTapApprove() {
       setTimeout(() => {
         if (miniApp) {
           miniApp.close();
+        } else {
+          window.location.href = `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'}`;
         }
       }, 2000);
     } catch (err) {
