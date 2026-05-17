@@ -28,7 +28,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-17-one-tap-reload-recovery-local';
+const BUILD_VERSION = '2026-05-17-one-tap-close-recovery';
 const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
 const APPROVAL_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -97,6 +97,23 @@ function writeCachedApprovalSession(
       // Storage can be unavailable in some wallet webviews. The flow can still continue once.
     }
   }
+}
+
+function returnToTelegram(miniApp: ReturnType<typeof useTelegramData>['miniApp']): void {
+  if (miniApp) {
+    try {
+      miniApp.close();
+      return;
+    } catch {
+      // Fall through to deep-link return for wallet webviews.
+    }
+  }
+
+  const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot';
+  window.location.replace(`tg://resolve?domain=${botUsername}`);
+  window.setTimeout(() => {
+    window.location.replace(`https://t.me/${botUsername}`);
+  }, 800);
 }
 
 export function OneTapApprove() {
@@ -176,13 +193,7 @@ export function OneTapApprove() {
       if (cachedSession?.txHash) {
         setTxHash(cachedSession.txHash);
         setStep('success');
-        setTimeout(() => {
-          if (miniApp) {
-            miniApp.close();
-          } else {
-            window.location.href = `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'}`;
-          }
-        }, 1500);
+        setTimeout(() => returnToTelegram(miniApp), 1500);
         return;
       }
 
@@ -256,14 +267,7 @@ export function OneTapApprove() {
       setStep('success');
       console.log('[OneTapApprove] Approve tx submitted:', tx.transaction_hash);
 
-      // Auto-close after short delay
-      setTimeout(() => {
-        if (miniApp) {
-          miniApp.close();
-        } else {
-          window.location.href = `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot'}`;
-        }
-      }, 2000);
+      setTimeout(() => returnToTelegram(miniApp), 2000);
     } catch (err) {
       // Avoid logging one-tap tokens or request headers.
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -329,7 +333,7 @@ export function OneTapApprove() {
         miniApp.close();
         return;
       }
-      window.location.href = 'https://t.me/SmainerBot';
+      returnToTelegram(miniApp);
       return;
     }
 
@@ -458,8 +462,14 @@ export function OneTapApprove() {
               </p>
             )}
             <p className="text-white/40 text-sm mt-4">
-              Closing automatically...
+              Returning to Telegram...
             </p>
+            <button
+              onClick={() => returnToTelegram(miniApp)}
+              className="mt-4 w-full max-w-xs py-3 px-4 bg-blue-500 hover:bg-blue-600 rounded-xl font-medium transition-colors"
+            >
+              Back to Telegram
+            </button>
           </div>
         )}
 
