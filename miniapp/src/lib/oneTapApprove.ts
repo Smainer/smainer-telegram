@@ -1,4 +1,5 @@
 const STRK_WEI = 1_000_000_000_000_000_000n;
+const U128_MASK = (1n << 128n) - 1n;
 
 export type OneTapUrlValidationErrorCode = 'missing_chat_id' | 'missing_credential';
 
@@ -12,6 +13,41 @@ export interface SessionWalletResponse {
   amount_to_approve_strk?: number | string;
   amount_to_approve_wei?: number | string;
   amount_to_approve_display?: string;
+}
+
+export interface StarknetCall {
+  contractAddress: string;
+  entrypoint: string;
+  calldata: string[];
+}
+
+export function toU256Calldata(value: bigint): [string, string] {
+  if (value < 0n) {
+    throw new Error('Invalid u256 amount: negative value.');
+  }
+
+  const low = value & U128_MASK;
+  const high = value >> 128n;
+  return [low.toString(), high.toString()];
+}
+
+export function buildStrkApproveCall(input: {
+  strkTokenAddress: string;
+  spenderAddress: string;
+  amountWei: bigint;
+}): StarknetCall {
+  if (!/^0x[0-9a-fA-F]{1,64}$/.test(input.strkTokenAddress)) {
+    throw new Error('Invalid STRK token address.');
+  }
+  if (!/^0x[0-9a-fA-F]{1,64}$/.test(input.spenderAddress)) {
+    throw new Error('Invalid approval spender address.');
+  }
+
+  return {
+    contractAddress: input.strkTokenAddress,
+    entrypoint: 'approve',
+    calldata: [input.spenderAddress, ...toU256Calldata(input.amountWei)],
+  };
 }
 
 export function validateOneTapUrlContext(input: {

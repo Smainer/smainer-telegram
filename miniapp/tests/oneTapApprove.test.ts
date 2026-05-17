@@ -7,6 +7,8 @@ import {
   parseSessionWallet,
   resolveApprovalCredential,
   buildBraavosApproveUrl,
+  buildStrkApproveCall,
+  toU256Calldata,
 } from '../src/lib/oneTapApprove';
 
 describe('oneTapApprove helpers', () => {
@@ -119,5 +121,28 @@ describe('oneTapApprove helpers', () => {
     });
 
     expect(() => parseSessionWallet(raw)).toThrow(/missing amount/i);
+  });
+
+  it('toU256Calldata splits bigint values into low/high felts', () => {
+    expect(toU256Calldata(0n)).toEqual(['0', '0']);
+    expect(toU256Calldata((1n << 128n) + 5n)).toEqual(['5', '1']);
+  });
+
+  it('buildStrkApproveCall builds raw approve calldata without ABI validation', () => {
+    const call = buildStrkApproveCall({
+      strkTokenAddress: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+      spenderAddress: '0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe',
+      amountWei: 100000000000000000n + 42n,
+    });
+
+    expect(call).toEqual({
+      contractAddress: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+      entrypoint: 'approve',
+      calldata: [
+        '0x044bf558b2e5ba7b3b24a18ff4944833ef9526b47907bcbdcbf94c33f4431abe',
+        '100000000000000042',
+        '0',
+      ],
+    });
   });
 });
