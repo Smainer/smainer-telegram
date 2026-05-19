@@ -28,7 +28,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-17-one-tap-close-recovery';
+const BUILD_VERSION = '2026-05-19-telegram-return-fallback';
 const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
 const APPROVAL_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -99,20 +99,42 @@ function writeCachedApprovalSession(
   }
 }
 
+function getTelegramBotUsername(): string {
+  return import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot';
+}
+
+function getTelegramHttpUrl(): string {
+  return `https://t.me/${getTelegramBotUsername()}`;
+}
+
+function getTelegramDeepLink(): string {
+  return `tg://resolve?domain=${getTelegramBotUsername()}`;
+}
+
 function returnToTelegram(miniApp: ReturnType<typeof useTelegramData>['miniApp']): void {
-  if (miniApp) {
+  const webApp = window.Telegram?.WebApp as any;
+  const telegramHttpUrl = getTelegramHttpUrl();
+
+  if (webApp?.openTelegramLink) {
     try {
-      miniApp.close();
-      return;
-    } catch {
-      // Fall through to deep-link return for wallet webviews.
+      webApp.openTelegramLink(telegramHttpUrl);
+    } catch (error) {
+      console.warn('Telegram openTelegramLink failed:', error);
     }
   }
 
-  const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'smainer_ai_bot';
-  window.location.replace(`tg://resolve?domain=${botUsername}`);
+  if (miniApp) {
+    try {
+      miniApp.close();
+    } catch (error) {
+      // Fall through to deep-link return for wallet webviews.
+      console.warn('Telegram close failed:', error);
+    }
+  }
+
+  window.location.assign(getTelegramDeepLink());
   window.setTimeout(() => {
-    window.location.replace(`https://t.me/${botUsername}`);
+    window.location.assign(telegramHttpUrl);
   }, 800);
 }
 
@@ -329,10 +351,6 @@ export function OneTapApprove() {
 
   const handleRetry = () => {
     if (isConsumedApprovalError(error)) {
-      if (miniApp) {
-        miniApp.close();
-        return;
-      }
       returnToTelegram(miniApp);
       return;
     }
@@ -470,6 +488,13 @@ export function OneTapApprove() {
             >
               Back to Telegram
             </button>
+            <a
+              href={getTelegramHttpUrl()}
+              onClick={() => returnToTelegram(miniApp)}
+              className="mt-3 block text-sm text-blue-300 underline underline-offset-4"
+            >
+              Open Telegram manually
+            </a>
           </div>
         )}
 
@@ -501,6 +526,15 @@ export function OneTapApprove() {
             >
               {isConsumedApprovalError(error) ? 'Back to Telegram' : 'Try Again'}
             </button>
+            {isConsumedApprovalError(error) && (
+              <a
+                href={getTelegramHttpUrl()}
+                onClick={() => returnToTelegram(miniApp)}
+                className="mt-3 block text-sm text-blue-300 underline underline-offset-4"
+              >
+                Open Telegram manually
+              </a>
+            )}
           </div>
         )}
       </div>
