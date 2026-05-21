@@ -268,7 +268,7 @@ vercel deploy --prebuilt --prod
 Set these in your production environment (or in `vercel.json` env block):
 
 ```env
-VITE_RELAYER_URL=https://api.smainer.ai
+VITE_RELAYER_URL=https://api.smainer.io
 VITE_STARKNET_RPC_URL=https://api.cartridge.gg/x/starknet/mainnet
 VITE_SMAINER_CONTRACT_ADDRESS=0x...
 VITE_TELEGRAM_BOT_USERNAME=smainer_ai_bot
