@@ -28,7 +28,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-19-telegram-return-fallback';
+const BUILD_VERSION = '2026-05-22-telegram-close-after-wallet';
 const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
 const APPROVAL_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -114,6 +114,7 @@ function getTelegramDeepLink(): string {
 function returnToTelegram(miniApp: ReturnType<typeof useTelegramData>['miniApp']): void {
   const webApp = window.Telegram?.WebApp as any;
   const telegramHttpUrl = getTelegramHttpUrl();
+  let closeRequested = false;
 
   if (webApp?.openTelegramLink) {
     try {
@@ -126,16 +127,31 @@ function returnToTelegram(miniApp: ReturnType<typeof useTelegramData>['miniApp']
   if (miniApp) {
     try {
       miniApp.close();
+      closeRequested = true;
     } catch (error) {
       // Fall through to deep-link return for wallet webviews.
       console.warn('Telegram close failed:', error);
     }
   }
 
+  if (closeRequested) return;
+
   window.location.assign(getTelegramDeepLink());
   window.setTimeout(() => {
     window.location.assign(telegramHttpUrl);
   }, 800);
+}
+
+function closeTelegramAfterWalletLaunch(miniApp: ReturnType<typeof useTelegramData>['miniApp']): void {
+  if (!miniApp) return;
+
+  window.setTimeout(() => {
+    try {
+      miniApp.close();
+    } catch (error) {
+      console.warn('Telegram close after wallet launch failed:', error);
+    }
+  }, 700);
 }
 
 export function OneTapApprove() {
@@ -368,6 +384,7 @@ export function OneTapApprove() {
     const walletUrl = buildBraavosApproveUrl({ chatId, credential: approvalCredential });
     if (miniApp) {
       (window.Telegram?.WebApp as any)?.openLink?.(walletUrl);
+      closeTelegramAfterWalletLaunch(miniApp);
     } else {
       window.location.href = walletUrl;
     }
@@ -428,7 +445,7 @@ export function OneTapApprove() {
             ) : (
               <div className="text-center space-y-4">
                 <p className="text-white/60 text-sm">
-                  No wallet detected in Telegram. Open this approval in Braavos to continue.
+                  Starknet wallets cannot sign inside Telegram. Open Braavos to approve, then return to the bot chat.
                 </p>
                 <button
                   onClick={openInBrowser}
