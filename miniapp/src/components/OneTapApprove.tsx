@@ -28,7 +28,7 @@ import {
 } from '@/lib/oneTapApprove';
 
 // Build version for debugging
-const BUILD_VERSION = '2026-05-22-telegram-close-after-wallet';
+const BUILD_VERSION = '2026-05-23-wallet-done-page';
 const ONE_TAP_APPROVAL_ENABLED = import.meta.env.VITE_ONE_TAP_APPROVAL_ENABLED === 'true';
 const APPROVAL_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -231,7 +231,6 @@ export function OneTapApprove() {
       if (cachedSession?.txHash) {
         setTxHash(cachedSession.txHash);
         setStep('success');
-        setTimeout(() => returnToTelegram(miniApp), 1500);
         return;
       }
 
@@ -304,8 +303,6 @@ export function OneTapApprove() {
       });
       setStep('success');
       console.log('[OneTapApprove] Approve tx submitted:', tx.transaction_hash);
-
-      setTimeout(() => returnToTelegram(miniApp), 2000);
     } catch (err) {
       // Avoid logging one-tap tokens or request headers.
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -487,9 +484,9 @@ export function OneTapApprove() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold mb-2">Approval Submitted!</h2>
+            <h2 className="text-xl font-semibold mb-2">Approval Submitted</h2>
             <p className="text-white/60 text-sm mb-4">
-              Your payment approval has been sent. The bot will process your request shortly.
+              You are done here. Close Braavos and return to your Telegram chat; the bot will continue as soon as the approval is detected.
             </p>
             {txHash && (
               <p className="text-xs text-white/40 font-mono break-all">
@@ -497,21 +494,8 @@ export function OneTapApprove() {
               </p>
             )}
             <p className="text-white/40 text-sm mt-4">
-              Returning to Telegram...
+              You can now close this wallet screen.
             </p>
-            <button
-              onClick={() => returnToTelegram(miniApp)}
-              className="mt-4 w-full max-w-xs py-3 px-4 bg-blue-500 hover:bg-blue-600 rounded-xl font-medium transition-colors"
-            >
-              Back to Telegram
-            </button>
-            <a
-              href={getTelegramHttpUrl()}
-              onClick={() => returnToTelegram(miniApp)}
-              className="mt-3 block text-sm text-blue-300 underline underline-offset-4"
-            >
-              Open Telegram manually
-            </a>
           </div>
         )}
 
