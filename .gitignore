@@ -6,8 +6,6 @@ dist/
 build/
 .eggs/
 *.egg
-.env
-.env.local
 .venv/
 venv/
 node_modules/
@@ -25,8 +23,6 @@ miniapp/src/apply_redesign2.py
 .vercel
 
 # Local secrets
-.env
-.env.*
 *.env
 telegram-bot/.env
 telegram-bot/.env.*
@@ -34,3 +30,4 @@ smainer-bot/.env
 smainer-bot/.env.*
 miniapp/.env.local
 miniapp/.vercel/
+config.bat
